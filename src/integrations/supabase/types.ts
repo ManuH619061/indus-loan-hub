@@ -1,0 +1,693 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
+  public: {
+    Tables: {
+      amortization_rows: {
+        Row: {
+          closing_principal: number
+          created_at: string | null
+          due_on: string
+          extra_payment: number | null
+          id: string
+          interest_component: number
+          is_paid: boolean | null
+          loan_id: string
+          opening_principal: number
+          period_no: number
+          period_start: string
+          principal_component: number
+          scheduled_emi: number
+        }
+        Insert: {
+          closing_principal: number
+          created_at?: string | null
+          due_on: string
+          extra_payment?: number | null
+          id?: string
+          interest_component: number
+          is_paid?: boolean | null
+          loan_id: string
+          opening_principal: number
+          period_no: number
+          period_start: string
+          principal_component: number
+          scheduled_emi: number
+        }
+        Update: {
+          closing_principal?: number
+          created_at?: string | null
+          due_on?: string
+          extra_payment?: number | null
+          id?: string
+          interest_component?: number
+          is_paid?: boolean | null
+          loan_id?: string
+          opening_principal?: number
+          period_no?: number
+          period_start?: string
+          principal_component?: number
+          scheduled_emi?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "amortization_rows_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      charges: {
+        Row: {
+          amount: number
+          charge_on: string
+          charge_type: Database["public"]["Enums"]["charge_type"]
+          created_at: string | null
+          description: string | null
+          id: string
+          loan_id: string
+        }
+        Insert: {
+          amount: number
+          charge_on: string
+          charge_type: Database["public"]["Enums"]["charge_type"]
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          loan_id: string
+        }
+        Update: {
+          amount?: number
+          charge_on?: string
+          charge_type?: Database["public"]["Enums"]["charge_type"]
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          loan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "charges_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          added_on: string | null
+          file_name: string | null
+          file_size: number | null
+          file_url: string
+          id: string
+          label: string
+          loan_id: string
+        }
+        Insert: {
+          added_on?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_url: string
+          id?: string
+          label: string
+          loan_id: string
+        }
+        Update: {
+          added_on?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          label?: string
+          loan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lenders: {
+        Row: {
+          contact: string | null
+          created_at: string | null
+          id: string
+          name: string
+          notes: string | null
+          type: Database["public"]["Enums"]["lender_type"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          contact?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          type?: Database["public"]["Enums"]["lender_type"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          contact?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          type?: Database["public"]["Enums"]["lender_type"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      loan_tags: {
+        Row: {
+          created_at: string | null
+          loan_id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          loan_id: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string | null
+          loan_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_tags_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loans: {
+        Row: {
+          auto_debit: boolean | null
+          autopay_bank: string | null
+          billing_day: number | null
+          closure_date: string | null
+          compounding: Database["public"]["Enums"]["compounding_type"]
+          created_at: string | null
+          disbursed_on: string
+          due_day: number | null
+          emi_amount: number | null
+          gst_on_fees: number | null
+          id: string
+          insurance_fee: number | null
+          interest_rate_apy: number
+          lender_id: string | null
+          loan_name: string
+          loan_type: Database["public"]["Enums"]["loan_type"]
+          mandate_ref: string | null
+          other_upfront_costs: number | null
+          penalty_rule_id: string | null
+          principal_amount: number
+          processing_fee: number | null
+          rate_type: Database["public"]["Enums"]["rate_type"]
+          recast_mode: Database["public"]["Enums"]["recast_mode"] | null
+          remarks: string | null
+          status: Database["public"]["Enums"]["loan_status"]
+          tenure_months: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auto_debit?: boolean | null
+          autopay_bank?: string | null
+          billing_day?: number | null
+          closure_date?: string | null
+          compounding?: Database["public"]["Enums"]["compounding_type"]
+          created_at?: string | null
+          disbursed_on: string
+          due_day?: number | null
+          emi_amount?: number | null
+          gst_on_fees?: number | null
+          id?: string
+          insurance_fee?: number | null
+          interest_rate_apy: number
+          lender_id?: string | null
+          loan_name: string
+          loan_type?: Database["public"]["Enums"]["loan_type"]
+          mandate_ref?: string | null
+          other_upfront_costs?: number | null
+          penalty_rule_id?: string | null
+          principal_amount: number
+          processing_fee?: number | null
+          rate_type?: Database["public"]["Enums"]["rate_type"]
+          recast_mode?: Database["public"]["Enums"]["recast_mode"] | null
+          remarks?: string | null
+          status?: Database["public"]["Enums"]["loan_status"]
+          tenure_months: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auto_debit?: boolean | null
+          autopay_bank?: string | null
+          billing_day?: number | null
+          closure_date?: string | null
+          compounding?: Database["public"]["Enums"]["compounding_type"]
+          created_at?: string | null
+          disbursed_on?: string
+          due_day?: number | null
+          emi_amount?: number | null
+          gst_on_fees?: number | null
+          id?: string
+          insurance_fee?: number | null
+          interest_rate_apy?: number
+          lender_id?: string | null
+          loan_name?: string
+          loan_type?: Database["public"]["Enums"]["loan_type"]
+          mandate_ref?: string | null
+          other_upfront_costs?: number | null
+          penalty_rule_id?: string | null
+          principal_amount?: number
+          processing_fee?: number | null
+          rate_type?: Database["public"]["Enums"]["rate_type"]
+          recast_mode?: Database["public"]["Enums"]["recast_mode"] | null
+          remarks?: string | null
+          status?: Database["public"]["Enums"]["loan_status"]
+          tenure_months?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loans_lender_id_fkey"
+            columns: ["lender_id"]
+            isOneToOne: false
+            referencedRelation: "lenders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loans_penalty_rule_id_fkey"
+            columns: ["penalty_rule_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          loan_id: string
+          notes: string | null
+          paid_on: string
+          payment_type: Database["public"]["Enums"]["payment_type"]
+          reference: string | null
+          source: Database["public"]["Enums"]["payment_source"]
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          loan_id: string
+          notes?: string | null
+          paid_on: string
+          payment_type?: Database["public"]["Enums"]["payment_type"]
+          reference?: string | null
+          source?: Database["public"]["Enums"]["payment_source"]
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          loan_id?: string
+          notes?: string | null
+          paid_on?: string
+          payment_type?: Database["public"]["Enums"]["payment_type"]
+          reference?: string | null
+          source?: Database["public"]["Enums"]["payment_source"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      penalty_rules: {
+        Row: {
+          created_at: string | null
+          grace_days: number | null
+          id: string
+          late_fee_flat: number | null
+          late_fee_percent: number | null
+          name: string
+          penal_interest_pa: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          grace_days?: number | null
+          id?: string
+          late_fee_flat?: number | null
+          late_fee_percent?: number | null
+          name: string
+          penal_interest_pa?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          grace_days?: number | null
+          id?: string
+          late_fee_flat?: number | null
+          late_fee_percent?: number | null
+          name?: string
+          penal_interest_pa?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          currency: string | null
+          email: string
+          id: string
+          name: string | null
+          timezone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          currency?: string | null
+          email: string
+          id: string
+          name?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          currency?: string | null
+          email?: string
+          id?: string
+          name?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      rate_changes: {
+        Row: {
+          created_at: string | null
+          effective_from: string
+          id: string
+          loan_id: string
+          new_interest_rate_apy: number
+          notes: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          effective_from: string
+          id?: string
+          loan_id: string
+          new_interest_rate_apy: number
+          notes?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          effective_from?: string
+          id?: string
+          loan_id?: string
+          new_interest_rate_apy?: number
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rate_changes_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tags: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      charge_type:
+        | "PROCESSING"
+        | "LATE_FEE"
+        | "PENAL_INTEREST"
+        | "FORECLOSURE"
+        | "INSURANCE"
+        | "OTHERS"
+      compounding_type: "MONTHLY" | "DAILY" | "QUARTERLY" | "ANNUAL"
+      lender_type: "BANK" | "NBFC" | "CARD" | "FRIEND" | "OTHER"
+      loan_status: "ACTIVE" | "CLOSED" | "DEFAULTED"
+      loan_type:
+        | "PERSONAL"
+        | "CREDIT_CARD_CONVERSION"
+        | "CONSUMER_DURABLE"
+        | "EDUCATION"
+        | "VEHICLE"
+        | "HOME_TOPUP"
+        | "OTHER"
+      payment_source: "UPI" | "NETBANKING" | "CASH" | "CARD" | "ACH" | "OTHER"
+      payment_type:
+        | "EMI"
+        | "FULL_PREPAY"
+        | "PART_PREPAY"
+        | "LATE_FEE"
+        | "OTHER_FEE"
+        | "REFUND"
+        | "REVERSAL"
+      rate_type: "REDUCING" | "FLAT"
+      recast_mode: "REDUCE_TENURE" | "REDUCE_EMI"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      charge_type: [
+        "PROCESSING",
+        "LATE_FEE",
+        "PENAL_INTEREST",
+        "FORECLOSURE",
+        "INSURANCE",
+        "OTHERS",
+      ],
+      compounding_type: ["MONTHLY", "DAILY", "QUARTERLY", "ANNUAL"],
+      lender_type: ["BANK", "NBFC", "CARD", "FRIEND", "OTHER"],
+      loan_status: ["ACTIVE", "CLOSED", "DEFAULTED"],
+      loan_type: [
+        "PERSONAL",
+        "CREDIT_CARD_CONVERSION",
+        "CONSUMER_DURABLE",
+        "EDUCATION",
+        "VEHICLE",
+        "HOME_TOPUP",
+        "OTHER",
+      ],
+      payment_source: ["UPI", "NETBANKING", "CASH", "CARD", "ACH", "OTHER"],
+      payment_type: [
+        "EMI",
+        "FULL_PREPAY",
+        "PART_PREPAY",
+        "LATE_FEE",
+        "OTHER_FEE",
+        "REFUND",
+        "REVERSAL",
+      ],
+      rate_type: ["REDUCING", "FLAT"],
+      recast_mode: ["REDUCE_TENURE", "REDUCE_EMI"],
+    },
+  },
+} as const
