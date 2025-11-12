@@ -11,6 +11,8 @@ import Loans from "./pages/Loans";
 import NewLoan from "./pages/NewLoan";
 import LoanDetail from "./pages/LoanDetail";
 import Payments from "./pages/Payments";
+import Lenders from "./pages/Lenders";
+import Documents from "./pages/Documents";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -31,6 +33,8 @@ const App = () => (
           <Route path="/loans/new" element={<ProtectedRoute><Layout><NewLoan /></Layout></ProtectedRoute>} />
           <Route path="/loans/:id" element={<ProtectedRoute><Layout><LoanDetail /></Layout></ProtectedRoute>} />
           <Route path="/payments" element={<ProtectedRoute><Layout><Payments /></Layout></ProtectedRoute>} />
+          <Route path="/lenders" element={<ProtectedRoute><Layout><Lenders /></Layout></ProtectedRoute>} />
+          <Route path="/documents" element={<ProtectedRoute><Layout><Documents /></Layout></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

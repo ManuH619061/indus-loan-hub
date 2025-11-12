@@ -210,6 +210,19 @@ export default function QuickPaySheet({ open, onOpenChange, loan, onPaymentCompl
               }}
               placeholder="Enter amount"
               step="0.01"
+              min="0"
+            />
+          </div>
+
+          {/* Paid On Date */}
+          <div>
+            <Label htmlFor="paid_on">Paid On *</Label>
+            <Input
+              id="paid_on"
+              type="date"
+              defaultValue={new Date().toISOString().split("T")[0]}
+              max={new Date().toISOString().split("T")[0]}
+              required
             />
           </div>
 

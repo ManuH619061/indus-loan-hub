@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Calculator,
   Building2,
+  FileText,
   LogOut,
   Menu,
 } from "lucide-react";
@@ -28,6 +29,8 @@ const navigation = [
   { name: "Payoff Simulator", href: "/dashboard/simulator", icon: Calculator },
   { name: "Loans", href: "/loans", icon: Wallet },
   { name: "Payments", href: "/payments", icon: CreditCard },
+  { name: "Lender Management", href: "/lenders", icon: Building2 },
+  { name: "Documents", href: "/documents", icon: FileText },
 ];
 
 export default function Layout({ children }: LayoutProps) {

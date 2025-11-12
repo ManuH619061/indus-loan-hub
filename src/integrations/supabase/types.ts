@@ -111,30 +111,51 @@ export type Database = {
       documents: {
         Row: {
           added_on: string | null
+          doc_type: string | null
           file_name: string | null
           file_size: number | null
           file_url: string
           id: string
           label: string
           loan_id: string
+          noc_date: string | null
+          notes: string | null
+          received_via: string | null
+          reminder_days_before: number | null
+          valid_from: string | null
+          valid_to: string | null
         }
         Insert: {
           added_on?: string | null
+          doc_type?: string | null
           file_name?: string | null
           file_size?: number | null
           file_url: string
           id?: string
           label: string
           loan_id: string
+          noc_date?: string | null
+          notes?: string | null
+          received_via?: string | null
+          reminder_days_before?: number | null
+          valid_from?: string | null
+          valid_to?: string | null
         }
         Update: {
           added_on?: string | null
+          doc_type?: string | null
           file_name?: string | null
           file_size?: number | null
           file_url?: string
           id?: string
           label?: string
           loan_id?: string
+          noc_date?: string | null
+          notes?: string | null
+          received_via?: string | null
+          reminder_days_before?: number | null
+          valid_from?: string | null
+          valid_to?: string | null
         }
         Relationships: [
           {
@@ -148,6 +169,7 @@ export type Database = {
       }
       lenders: {
         Row: {
+          app_display_name: string | null
           app_link: string | null
           contact: string | null
           created_at: string | null
@@ -155,6 +177,8 @@ export type Database = {
           logo_url: string | null
           name: string
           notes: string | null
+          requires_noc_on_close: boolean | null
+          requires_sanction_letter: boolean | null
           type: Database["public"]["Enums"]["lender_type"]
           updated_at: string | null
           upi_vpa: string | null
@@ -162,6 +186,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          app_display_name?: string | null
           app_link?: string | null
           contact?: string | null
           created_at?: string | null
@@ -169,6 +194,8 @@ export type Database = {
           logo_url?: string | null
           name: string
           notes?: string | null
+          requires_noc_on_close?: boolean | null
+          requires_sanction_letter?: boolean | null
           type?: Database["public"]["Enums"]["lender_type"]
           updated_at?: string | null
           upi_vpa?: string | null
@@ -176,6 +203,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          app_display_name?: string | null
           app_link?: string | null
           contact?: string | null
           created_at?: string | null
@@ -183,6 +211,8 @@ export type Database = {
           logo_url?: string | null
           name?: string
           notes?: string | null
+          requires_noc_on_close?: boolean | null
+          requires_sanction_letter?: boolean | null
           type?: Database["public"]["Enums"]["lender_type"]
           updated_at?: string | null
           upi_vpa?: string | null
