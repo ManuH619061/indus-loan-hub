@@ -148,34 +148,46 @@ export type Database = {
       }
       lenders: {
         Row: {
+          app_link: string | null
           contact: string | null
           created_at: string | null
           id: string
+          logo_url: string | null
           name: string
           notes: string | null
           type: Database["public"]["Enums"]["lender_type"]
           updated_at: string | null
+          upi_vpa: string | null
           user_id: string
+          website: string | null
         }
         Insert: {
+          app_link?: string | null
           contact?: string | null
           created_at?: string | null
           id?: string
+          logo_url?: string | null
           name: string
           notes?: string | null
           type?: Database["public"]["Enums"]["lender_type"]
           updated_at?: string | null
+          upi_vpa?: string | null
           user_id: string
+          website?: string | null
         }
         Update: {
+          app_link?: string | null
           contact?: string | null
           created_at?: string | null
           id?: string
+          logo_url?: string | null
           name?: string
           notes?: string | null
           type?: Database["public"]["Enums"]["lender_type"]
           updated_at?: string | null
+          upi_vpa?: string | null
           user_id?: string
+          website?: string | null
         }
         Relationships: []
       }
@@ -230,9 +242,11 @@ export type Database = {
           lender_id: string | null
           loan_name: string
           loan_type: Database["public"]["Enums"]["loan_type"]
+          logo_url: string | null
           mandate_ref: string | null
           other_upfront_costs: number | null
           penalty_rule_id: string | null
+          preferred_method: string | null
           principal_amount: number
           processing_fee: number | null
           rate_type: Database["public"]["Enums"]["rate_type"]
@@ -260,9 +274,11 @@ export type Database = {
           lender_id?: string | null
           loan_name: string
           loan_type?: Database["public"]["Enums"]["loan_type"]
+          logo_url?: string | null
           mandate_ref?: string | null
           other_upfront_costs?: number | null
           penalty_rule_id?: string | null
+          preferred_method?: string | null
           principal_amount: number
           processing_fee?: number | null
           rate_type?: Database["public"]["Enums"]["rate_type"]
@@ -290,9 +306,11 @@ export type Database = {
           lender_id?: string | null
           loan_name?: string
           loan_type?: Database["public"]["Enums"]["loan_type"]
+          logo_url?: string | null
           mandate_ref?: string | null
           other_upfront_costs?: number | null
           penalty_rule_id?: string | null
+          preferred_method?: string | null
           principal_amount?: number
           processing_fee?: number | null
           rate_type?: Database["public"]["Enums"]["rate_type"]
@@ -324,38 +342,56 @@ export type Database = {
         Row: {
           amount: number
           created_at: string | null
+          external_ref: string | null
+          gateway_app: string | null
           id: string
           loan_id: string
+          method: string | null
           notes: string | null
           paid_on: string
           payment_type: Database["public"]["Enums"]["payment_type"]
           reference: string | null
           source: Database["public"]["Enums"]["payment_source"]
+          suggestion_used: string | null
           updated_at: string | null
+          upi_txn_id: string | null
+          upi_vpa: string | null
         }
         Insert: {
           amount: number
           created_at?: string | null
+          external_ref?: string | null
+          gateway_app?: string | null
           id?: string
           loan_id: string
+          method?: string | null
           notes?: string | null
           paid_on: string
           payment_type?: Database["public"]["Enums"]["payment_type"]
           reference?: string | null
           source?: Database["public"]["Enums"]["payment_source"]
+          suggestion_used?: string | null
           updated_at?: string | null
+          upi_txn_id?: string | null
+          upi_vpa?: string | null
         }
         Update: {
           amount?: number
           created_at?: string | null
+          external_ref?: string | null
+          gateway_app?: string | null
           id?: string
           loan_id?: string
+          method?: string | null
           notes?: string | null
           paid_on?: string
           payment_type?: Database["public"]["Enums"]["payment_type"]
           reference?: string | null
           source?: Database["public"]["Enums"]["payment_source"]
+          suggestion_used?: string | null
           updated_at?: string | null
+          upi_txn_id?: string | null
+          upi_vpa?: string | null
         }
         Relationships: [
           {

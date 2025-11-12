@@ -4,9 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { ArrowLeft, Calendar, TrendingUp, Building2 } from "lucide-react";
+import { ArrowLeft, Calendar, TrendingUp, Building2, CreditCard } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import QuickPaySheet from "@/components/QuickPaySheet";
 
 export default function LoanDetail() {
   const { id } = useParams();
@@ -14,6 +16,7 @@ export default function LoanDetail() {
   const [loan, setLoan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [amortization, setAmortization] = useState<any[]>([]);
+  const [showQuickPay, setShowQuickPay] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -72,6 +75,8 @@ export default function LoanDetail() {
 
   const unpaidRows = amortization.filter((row) => !row.is_paid);
   const outstanding = unpaidRows[0]?.closing_principal || 0;
+  const logoUrl = loan.logo_url || loan.lenders?.logo_url;
+  const initials = loan.loan_name.substring(0, 2).toUpperCase();
 
   return (
     <div className="space-y-6">
@@ -79,10 +84,18 @@ export default function LoanDetail() {
         <Button variant="ghost" size="icon" onClick={() => navigate("/loans")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
+        <Avatar className="h-12 w-12">
+          {logoUrl ? <AvatarImage src={logoUrl} alt={loan.loan_name} /> : null}
+          <AvatarFallback className="bg-primary/10 text-primary">{initials}</AvatarFallback>
+        </Avatar>
         <div className="flex-1">
           <h1 className="text-3xl font-bold">{loan.loan_name}</h1>
           <p className="text-muted-foreground">{loan.lenders?.name}</p>
         </div>
+        <Button onClick={() => setShowQuickPay(true)} className="gap-2">
+          <CreditCard className="h-4 w-4" />
+          Quick Pay
+        </Button>
         <Badge className={loan.status === "ACTIVE" ? "bg-success" : "bg-muted"}>
           {loan.status}
         </Badge>
@@ -258,6 +271,15 @@ export default function LoanDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <QuickPaySheet
+        open={showQuickPay}
+        onOpenChange={setShowQuickPay}
+        loan={loan}
+        onPaymentComplete={() => {
+          fetchLoanDetail();
+        }}
+      />
     </div>
   );
 }

@@ -5,13 +5,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { Wallet, Plus, Building2, Calendar, TrendingUp } from "lucide-react";
+import { Wallet, Plus, Building2, Calendar, TrendingUp, CreditCard } from "lucide-react";
+import QuickPaySheet from "@/components/QuickPaySheet";
 
 export default function Loans() {
   const { user } = useAuth();
   const [loans, setLoans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedLoanForPay, setSelectedLoanForPay] = useState<any>(null);
+  const [showQuickPay, setShowQuickPay] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -120,16 +124,29 @@ export default function Loans() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {loans.map((loan) => (
-            <Link key={loan.id} to={`/loans/${loan.id}`}>
-              <Card className="h-full hover:shadow-lg transition-all border-border/50 hover:border-primary/50">
+          {loans.map((loan) => {
+            const logoUrl = loan.logo_url || loan.lenders?.logo_url;
+            const initials = loan.loan_name.substring(0, 2).toUpperCase();
+            
+            return (
+              <Card key={loan.id} className="h-full hover:shadow-lg transition-all border-border/50 hover:border-primary/50">
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="space-y-1 flex-1">
-                      <CardTitle className="text-lg">{loan.loan_name}</CardTitle>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Building2 className="h-3 w-3" />
-                        <span>{loan.lenders?.name || "Unknown Lender"}</span>
+                    <div className="flex items-start gap-3 flex-1">
+                      <Avatar className="h-10 w-10">
+                        {logoUrl ? (
+                          <AvatarImage src={logoUrl} alt={loan.loan_name} />
+                        ) : null}
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="space-y-1 flex-1">
+                        <CardTitle className="text-lg">{loan.loan_name}</CardTitle>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Building2 className="h-3 w-3" />
+                          <span>{loan.lenders?.name || "Unknown Lender"}</span>
+                        </div>
                       </div>
                     </div>
                     <Badge className={getStatusColor(loan.status)} variant="outline">
@@ -172,13 +189,37 @@ export default function Loans() {
                       </div>
                       <span className="font-medium">{getLoanTypeLabel(loan.loan_type)}</span>
                     </div>
+                    
+                    <Button
+                      className="w-full mt-2 gap-2"
+                      size="sm"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSelectedLoanForPay(loan);
+                        setShowQuickPay(true);
+                      }}
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      Quick Pay
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       )}
+
+      <QuickPaySheet
+        open={showQuickPay}
+        onOpenChange={setShowQuickPay}
+        loan={selectedLoanForPay}
+        onPaymentComplete={() => {
+          fetchLoans();
+          setSelectedLoanForPay(null);
+        }}
+      />
     </div>
   );
 }
