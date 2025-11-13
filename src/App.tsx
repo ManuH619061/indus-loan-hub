@@ -12,6 +12,8 @@ import NewLoan from "./pages/NewLoan";
 import LoanDetail from "./pages/LoanDetail";
 import Payments from "./pages/Payments";
 import Lenders from "./pages/Lenders";
+import LendersDashboard from "./pages/LendersDashboard";
+import LenderDetail from "./pages/LenderDetail";
 import Documents from "./pages/Documents";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -29,11 +31,13 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
           <Route path="/dashboard/:tab" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+          <Route path="/dashboard/lenders" element={<ProtectedRoute><Layout><LendersDashboard /></Layout></ProtectedRoute>} />
           <Route path="/loans" element={<ProtectedRoute><Layout><Loans /></Layout></ProtectedRoute>} />
           <Route path="/loans/new" element={<ProtectedRoute><Layout><NewLoan /></Layout></ProtectedRoute>} />
           <Route path="/loans/:id" element={<ProtectedRoute><Layout><LoanDetail /></Layout></ProtectedRoute>} />
           <Route path="/payments" element={<ProtectedRoute><Layout><Payments /></Layout></ProtectedRoute>} />
           <Route path="/lenders" element={<ProtectedRoute><Layout><Lenders /></Layout></ProtectedRoute>} />
+          <Route path="/lenders/:id" element={<ProtectedRoute><Layout><LenderDetail /></Layout></ProtectedRoute>} />
           <Route path="/documents" element={<ProtectedRoute><Layout><Documents /></Layout></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
