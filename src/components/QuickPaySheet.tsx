@@ -60,7 +60,10 @@ export default function QuickPaySheet({ open, onOpenChange, loan, onPaymentCompl
         .eq("is_paid", false)
         .order("period_no", { ascending: true });
 
-      const outstanding = unpaidRows?.[0]?.closing_principal || 0;
+      // Calculate actual outstanding (last unpaid row's closing principal or sum of remaining principal)
+      const outstanding = unpaidRows && unpaidRows.length > 0 
+        ? Number(unpaidRows[unpaidRows.length - 1].closing_principal)
+        : 0;
       const dueToday = unpaidRows?.[0]?.scheduled_emi || 0;
       
       // Calculate overdue amount (sum of all unpaid EMIs before today)
@@ -125,11 +128,62 @@ export default function QuickPaySheet({ open, onOpenChange, loan, onPaymentCompl
         window.open(upiLink, "_blank");
       }
 
+      // Fetch unpaid rows to allocate payment
+      const { data: unpaidRows } = await supabase
+        .from("amortization_rows")
+        .select("*")
+        .eq("loan_id", loan.id)
+        .eq("is_paid", false)
+        .order("period_no", { ascending: true });
+
+      if (!unpaidRows || unpaidRows.length === 0) {
+        toast({ title: "Error", description: "No unpaid installments found", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+
       // Determine payment type
       let paymentType = "EMI";
-      const dueAmount = suggestions.find(s => s.type === "DUE_TODAY")?.amount || 0;
-      if (paymentAmount > dueAmount * 1.1) {
+      const dueAmount = unpaidRows[0].scheduled_emi;
+      let remainingAmount = paymentAmount;
+      const rowsToMarkPaid = [];
+      let extraPayment = 0;
+
+      // Allocate payment to unpaid rows
+      for (const row of unpaidRows) {
+        if (remainingAmount <= 0) break;
+        
+        if (remainingAmount >= Number(row.scheduled_emi)) {
+          // Full EMI payment
+          rowsToMarkPaid.push(row.id);
+          remainingAmount -= Number(row.scheduled_emi);
+        } else {
+          // Partial payment - for now, we'll just apply to first unpaid
+          break;
+        }
+      }
+
+      // If there's remaining amount after paying due EMIs, it's prepayment
+      if (remainingAmount > 0) {
         paymentType = "PART_PREPAY";
+        extraPayment = remainingAmount;
+        
+        // Apply extra payment to the next unpaid row
+        if (rowsToMarkPaid.length < unpaidRows.length) {
+          const nextRow = unpaidRows[rowsToMarkPaid.length];
+          await supabase
+            .from("amortization_rows")
+            .update({ extra_payment: Number(nextRow.extra_payment || 0) + extraPayment })
+            .eq("id", nextRow.id);
+        }
+      }
+
+      // Mark rows as paid
+      if (rowsToMarkPaid.length > 0) {
+        await supabase
+          .from("amortization_rows")
+          .update({ is_paid: true })
+          .in("id", rowsToMarkPaid);
       }
 
       // Record payment
@@ -148,7 +202,10 @@ export default function QuickPaySheet({ open, onOpenChange, loan, onPaymentCompl
 
       if (error) throw error;
 
-      toast({ title: "Payment Recorded", description: `₹${paymentAmount.toFixed(2)} payment saved successfully` });
+      toast({ 
+        title: "Payment Recorded", 
+        description: `₹${paymentAmount.toFixed(2)} paid. ${rowsToMarkPaid.length} EMI(s) marked as paid${extraPayment > 0 ? ` with ₹${extraPayment.toFixed(2)} prepayment` : ''}` 
+      });
       onPaymentComplete();
       onOpenChange(false);
     } catch (error: any) {
