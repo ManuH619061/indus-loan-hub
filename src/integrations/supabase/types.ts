@@ -584,7 +584,17 @@ export type Database = {
         | "VEHICLE"
         | "HOME_TOPUP"
         | "OTHER"
-      payment_source: "UPI" | "NETBANKING" | "CASH" | "CARD" | "ACH" | "OTHER"
+      payment_source:
+        | "UPI"
+        | "NETBANKING"
+        | "CASH"
+        | "CARD"
+        | "ACH"
+        | "OTHER"
+        | "UPI_PHONEPE"
+        | "UPI_GPAY"
+        | "UPI_PAYTM"
+        | "APP_NAVI"
       payment_type:
         | "EMI"
         | "FULL_PREPAY"
@@ -742,7 +752,18 @@ export const Constants = {
         "HOME_TOPUP",
         "OTHER",
       ],
-      payment_source: ["UPI", "NETBANKING", "CASH", "CARD", "ACH", "OTHER"],
+      payment_source: [
+        "UPI",
+        "NETBANKING",
+        "CASH",
+        "CARD",
+        "ACH",
+        "OTHER",
+        "UPI_PHONEPE",
+        "UPI_GPAY",
+        "UPI_PAYTM",
+        "APP_NAVI",
+      ],
       payment_type: [
         "EMI",
         "FULL_PREPAY",
