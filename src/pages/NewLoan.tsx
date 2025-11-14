@@ -1,15 +1,33 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { calculateReducingEMI, generateAmortizationSchedule } from "@/lib/emi-calculator";
+import { ArrowLeft, ArrowRight, Check, Upload, FileText } from "lucide-react";
+import { calculateReducingEMI, calculateFlatEMI, generateAmortizationSchedule } from "@/lib/emi-calculator";
+import { formatINR } from "@/lib/currency";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+
+interface Lender {
+  id: string;
+  name: string;
+  type: string;
+  requires_sanction_letter: boolean;
+}
+
+const STEPS = [
+  { num: 1, title: "Loan Basics", desc: "Core information" },
+  { num: 2, title: "Fees & Rules", desc: "Charges" },
+  { num: 3, title: "Documents", desc: "Upload files" },
+  { num: 4, title: "Preview", desc: "Review" },
+];
 
 export default function NewLoan() {
   const { user } = useAuth();
