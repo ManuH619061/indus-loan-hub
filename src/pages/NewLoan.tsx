@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowRight, Check, Upload, FileText } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Upload, FileText, Loader2 } from "lucide-react";
 import { calculateReducingEMI, calculateFlatEMI, generateAmortizationSchedule } from "@/lib/emi-calculator";
 import { formatINR } from "@/lib/currency";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
