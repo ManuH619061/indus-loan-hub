@@ -6,16 +6,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { Wallet, Plus, Building2, Calendar, TrendingUp, CreditCard } from "lucide-react";
+import { Wallet, Plus, Building2, Calendar, TrendingUp, CreditCard, Pencil, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import QuickPaySheet from "@/components/QuickPaySheet";
 
 export default function Loans() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [loans, setLoans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLoanForPay, setSelectedLoanForPay] = useState<any>(null);
   const [showQuickPay, setShowQuickPay] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [loanToDelete, setLoanToDelete] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
@@ -79,6 +84,30 @@ export default function Loans() {
 
   const getLoanTypeLabel = (type: string) => {
     return type.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
+  };
+
+  const handleDelete = async () => {
+    if (!loanToDelete) return;
+    
+    try {
+      const { error } = await supabase
+        .from("loans")
+        .delete()
+        .eq("id", loanToDelete.id);
+
+      if (error) throw error;
+
+      toast({ title: "Loan deleted successfully" });
+      setDeleteDialogOpen(false);
+      setLoanToDelete(null);
+      fetchLoans();
+    } catch (error: any) {
+      toast({ 
+        title: "Error deleting loan", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
   };
 
   if (loading) {
@@ -154,15 +183,18 @@ export default function Loans() {
                     </Badge>
                   </div>
                 </CardHeader>
+
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Outstanding</span>
-                      <span className="font-bold text-lg">{formatINR(loan.outstanding)}</span>
+                      <span className="text-xl font-bold text-primary">
+                        {formatINR(loan.outstanding)}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Monthly EMI</span>
-                      <span className="font-medium">{formatINR(loan.emi_amount || 0)}</span>
+                      <span className="text-sm text-muted-foreground">EMI Amount</span>
+                      <span className="font-medium">{formatINR(loan.nextEMI)}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Interest Rate</span>
@@ -189,19 +221,34 @@ export default function Loans() {
                       </div>
                       <span className="font-medium">{getLoanTypeLabel(loan.loan_type)}</span>
                     </div>
-                    
+                  </div>
+
+                  <div className="flex gap-2 pt-3 border-t">
                     <Button
-                      className="w-full mt-2 gap-2"
-                      size="sm"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
                         setSelectedLoanForPay(loan);
                         setShowQuickPay(true);
                       }}
                     >
-                      <CreditCard className="h-4 w-4" />
+                      <CreditCard className="h-4 w-4 mr-2" />
                       Quick Pay
+                    </Button>
+                    <Link to={`/loans/${loan.id}`}>
+                      <Button variant="ghost" size="icon">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setLoanToDelete(loan);
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
                 </CardContent>
@@ -216,10 +263,27 @@ export default function Loans() {
         onOpenChange={setShowQuickPay}
         loan={selectedLoanForPay}
         onPaymentComplete={() => {
+          setShowQuickPay(false);
           fetchLoans();
-          setSelectedLoanForPay(null);
         }}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Loan</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{loanToDelete?.loan_name}"? This action cannot be undone and will delete all associated payments, documents, and amortization data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -2,10 +2,16 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { formatINR } from "@/lib/currency";
-import { Plus, Smartphone, CreditCard, Banknote, Building2 } from "lucide-react";
+import { Plus, Smartphone, CreditCard, Banknote, Building2, Pencil, Trash2 } from "lucide-react";
 
 const PAYMENT_METHOD_ICONS: Record<string, any> = {
   UPI_PHONEPE: Smartphone,
@@ -19,8 +25,19 @@ const PAYMENT_METHOD_ICONS: Record<string, any> = {
 
 export default function Payments() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState({
+    amount: "",
+    paid_on: "",
+    payment_type: "EMI",
+    method: "UPI",
+    notes: "",
+  });
 
   useEffect(() => {
     if (user) {
@@ -50,6 +67,72 @@ export default function Payments() {
       console.error("Error fetching payments:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEdit = (payment: any) => {
+    setSelectedPayment(payment);
+    setEditFormData({
+      amount: payment.amount.toString(),
+      paid_on: payment.paid_on,
+      payment_type: payment.payment_type,
+      method: payment.method || "UPI",
+      notes: payment.notes || "",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPayment) return;
+
+    try {
+      const { error } = await supabase
+        .from("payments")
+        .update({
+          amount: parseFloat(editFormData.amount),
+          paid_on: editFormData.paid_on,
+          payment_type: editFormData.payment_type as any,
+          method: editFormData.method,
+          notes: editFormData.notes,
+        })
+        .eq("id", selectedPayment.id);
+
+      if (error) throw error;
+
+      toast({ title: "Payment updated successfully" });
+      setEditDialogOpen(false);
+      fetchPayments();
+    } catch (error: any) {
+      toast({ 
+        title: "Error updating payment", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedPayment) return;
+
+    try {
+      const { error } = await supabase
+        .from("payments")
+        .delete()
+        .eq("id", selectedPayment.id);
+
+      if (error) throw error;
+
+      toast({ title: "Payment deleted successfully" });
+      setDeleteDialogOpen(false);
+      setSelectedPayment(null);
+      fetchPayments();
+    } catch (error: any) {
+      toast({ 
+        title: "Error deleting payment", 
+        description: error.message, 
+        variant: "destructive" 
+      });
     }
   };
 
