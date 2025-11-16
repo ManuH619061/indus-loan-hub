@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Building2, Pencil, Trash2 } from "lucide-react";
+import { Plus, Building2, Pencil, Trash2, Loader2 } from "lucide-react";
 
 export default function Lenders() {
   const { user } = useAuth();
@@ -22,6 +22,7 @@ export default function Lenders() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedLender, setSelectedLender] = useState<any>(null);
+  const [fetchingDetails, setFetchingDetails] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     app_display_name: "",
@@ -30,6 +31,7 @@ export default function Lenders() {
     website: "",
     upi_vpa: "",
     app_link: "",
+    logo_url: "",
     notes: "",
     requires_sanction_letter: true,
     requires_noc_on_close: true,
@@ -54,6 +56,55 @@ export default function Lenders() {
     }
   };
 
+  const fetchLenderDetails = async (appName: string) => {
+    if (!appName.trim()) return;
+    
+    setFetchingDetails(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-lender-details', {
+        body: { appName }
+      });
+
+      if (error) throw error;
+
+      if (data) {
+        setFormData(prev => ({
+          ...prev,
+          website: data.website || prev.website,
+          logo_url: data.logo_url || prev.logo_url,
+          notes: data.description || prev.notes,
+          name: prev.name || data.name
+        }));
+        
+        toast({ 
+          title: "Details fetched", 
+          description: "Lender information has been auto-populated" 
+        });
+      }
+    } catch (error: any) {
+      console.error('Error fetching lender details:', error);
+      toast({ 
+        title: "Could not fetch details", 
+        description: "Please enter details manually",
+        variant: "destructive" 
+      });
+    } finally {
+      setFetchingDetails(false);
+    }
+  };
+
+  const handleAppNameChange = (value: string) => {
+    setFormData(prev => ({ ...prev, app_display_name: value }));
+    
+    // Auto-fetch details after user stops typing
+    if (value.length > 2) {
+      const timeoutId = setTimeout(() => {
+        fetchLenderDetails(value);
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -74,6 +125,7 @@ export default function Lenders() {
         website: "",
         upi_vpa: "",
         app_link: "",
+        logo_url: "",
         notes: "",
         requires_sanction_letter: true,
         requires_noc_on_close: true,
@@ -94,6 +146,7 @@ export default function Lenders() {
       website: lender.website || "",
       upi_vpa: lender.upi_vpa || "",
       app_link: lender.app_link || "",
+      logo_url: lender.logo_url || "",
       notes: lender.notes || "",
       requires_sanction_letter: lender.requires_sanction_letter ?? true,
       requires_noc_on_close: lender.requires_noc_on_close ?? true,
@@ -190,13 +243,20 @@ export default function Lenders() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="app_display_name">App Display Name</Label>
+                  <Label htmlFor="app_display_name">
+                    App Display Name
+                    {fetchingDetails && <Loader2 className="h-3 w-3 ml-2 inline animate-spin" />}
+                  </Label>
                   <Input
                     id="app_display_name"
                     value={formData.app_display_name}
-                    onChange={(e) => setFormData({ ...formData, app_display_name: e.target.value })}
-                    placeholder="e.g., Navi, Paytm"
+                    onChange={(e) => handleAppNameChange(e.target.value)}
+                    placeholder="e.g., Branch, MoneyView"
+                    disabled={fetchingDetails}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Auto-fetches logo and details
+                  </p>
                 </div>
               </div>
 
@@ -255,6 +315,26 @@ export default function Lenders() {
                   onChange={(e) => setFormData({ ...formData, app_link: e.target.value })}
                   placeholder="Deep link or app URL"
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="logo_url">Logo URL</Label>
+                <Input
+                  id="logo_url"
+                  value={formData.logo_url}
+                  onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                  placeholder="https://... (auto-filled)"
+                />
+                {formData.logo_url && (
+                  <img 
+                    src={formData.logo_url} 
+                    alt="Logo preview" 
+                    className="mt-2 h-12 w-12 object-contain rounded border"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                )}
               </div>
 
               <div>
@@ -439,6 +519,25 @@ export default function Lenders() {
                   value={formData.app_link}
                   onChange={(e) => setFormData({ ...formData, app_link: e.target.value })}
                 />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="edit-logo">Logo URL</Label>
+                <Input
+                  id="edit-logo"
+                  value={formData.logo_url}
+                  onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                  placeholder="https://..."
+                />
+                {formData.logo_url && (
+                  <img 
+                    src={formData.logo_url} 
+                    alt="Logo preview" 
+                    className="mt-2 h-12 w-12 object-contain rounded border"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                )}
               </div>
               <div className="col-span-2">
                 <Label htmlFor="edit-notes">Notes</Label>
