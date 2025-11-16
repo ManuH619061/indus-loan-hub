@@ -6,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Building2 } from "lucide-react";
+import { Plus, Building2, Pencil, Trash2 } from "lucide-react";
 
 export default function Lenders() {
   const { user } = useAuth();
@@ -18,6 +19,9 @@ export default function Lenders() {
   const [lenders, setLenders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedLender, setSelectedLender] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: "",
     app_display_name: "",
@@ -77,6 +81,72 @@ export default function Lenders() {
       fetchLenders();
     } catch (error: any) {
       toast({ title: "Error adding lender", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleEdit = (lender: any) => {
+    setSelectedLender(lender);
+    setFormData({
+      name: lender.name,
+      app_display_name: lender.app_display_name || "",
+      type: lender.type,
+      contact: lender.contact || "",
+      website: lender.website || "",
+      upi_vpa: lender.upi_vpa || "",
+      app_link: lender.app_link || "",
+      notes: lender.notes || "",
+      requires_sanction_letter: lender.requires_sanction_letter ?? true,
+      requires_noc_on_close: lender.requires_noc_on_close ?? true,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLender) return;
+
+    try {
+      const { error } = await supabase
+        .from("lenders")
+        .update(formData as any)
+        .eq("id", selectedLender.id);
+
+      if (error) throw error;
+
+      toast({ title: "Lender updated successfully" });
+      setEditDialogOpen(false);
+      setSelectedLender(null);
+      fetchLenders();
+    } catch (error: any) {
+      toast({ 
+        title: "Error updating lender", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedLender) return;
+
+    try {
+      const { error } = await supabase
+        .from("lenders")
+        .delete()
+        .eq("id", selectedLender.id);
+
+      if (error) throw error;
+
+      toast({ title: "Lender deleted successfully" });
+      setDeleteDialogOpen(false);
+      setSelectedLender(null);
+      fetchLenders();
+    } catch (error: any) {
+      toast({ 
+        title: "Error deleting lender", 
+        description: error.message, 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -252,6 +322,21 @@ export default function Lenders() {
                     <p className="text-sm text-muted-foreground">{lender.type}</p>
                   </div>
                 </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(lender)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setSelectedLender(lender);
+                      setDeleteDialogOpen(true);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -283,6 +368,136 @@ export default function Lenders() {
           ))
         )}
       </div>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Lender</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdate} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-name">Name *</Label>
+                <Input
+                  id="edit-name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-display">Display Name</Label>
+                <Input
+                  id="edit-display"
+                  value={formData.app_display_name}
+                  onChange={(e) => setFormData({ ...formData, app_display_name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-type">Type *</Label>
+                <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BANK">Bank</SelectItem>
+                    <SelectItem value="NBFC">NBFC</SelectItem>
+                    <SelectItem value="CARD">Credit Card</SelectItem>
+                    <SelectItem value="FRIEND">Friend/Family</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-contact">Contact</Label>
+                <Input
+                  id="edit-contact"
+                  value={formData.contact}
+                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-website">Website</Label>
+                <Input
+                  id="edit-website"
+                  value={formData.website}
+                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-upi">UPI VPA</Label>
+                <Input
+                  id="edit-upi"
+                  value={formData.upi_vpa}
+                  onChange={(e) => setFormData({ ...formData, upi_vpa: e.target.value })}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="edit-app">App Link</Label>
+                <Input
+                  id="edit-app"
+                  value={formData.app_link}
+                  onChange={(e) => setFormData({ ...formData, app_link: e.target.value })}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="edit-notes">Notes</Label>
+                <Textarea
+                  id="edit-notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-4 border-t">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="edit-sanction">Requires Sanction Letter</Label>
+                <Switch
+                  id="edit-sanction"
+                  checked={formData.requires_sanction_letter}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, requires_sanction_letter: checked })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="edit-noc">Requires NOC on Close</Label>
+                <Switch
+                  id="edit-noc"
+                  checked={formData.requires_noc_on_close}
+                  onCheckedChange={(checked) => setFormData({ ...formData, requires_noc_on_close: checked })}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Update Lender</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lender</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{selectedLender?.name}"? This will not delete associated loans, but they will lose the lender reference.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
