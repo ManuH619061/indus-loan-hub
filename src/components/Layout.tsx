@@ -13,6 +13,7 @@ import {
   FileText,
   LogOut,
   Menu,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -23,6 +24,7 @@ interface LayoutProps {
 
 const navigation = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Monthly Projection", href: "/monthly-projection", icon: CalendarClock },
   { name: "Cash Flow", href: "/dashboard/cashflow", icon: TrendingUp },
   { name: "Lenders", href: "/dashboard/lenders", icon: Building2 },
   { name: "Risk & Alerts", href: "/dashboard/risk", icon: AlertCircle },
