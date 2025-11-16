@@ -1,31 +1,69 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+"use client";
+
+import React, { useState, useEffect, useMemo } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Download, Plus, Pencil, Trash2 } from "lucide-react";
+import { FileText, Download, Plus, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+
+type Lender = {
+  name: string | null;
+};
+
+type Loan = {
+  loan_name: string | null;
+  user_id: string;
+  lenders: Lender | null;
+};
+
+type DocumentRow = {
+  id: string;
+  label: string | null;
+  doc_type: string | null;
+  file_url: string | null;
+  added_on: string | null;
+  valid_to: string | null;
+  notes: string | null;
+  loans: Loan | null;
+};
 
 export default function Documents() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [documentToDelete, setDocumentToDelete] = useState<any>(null);
+
+  const [documents, setDocuments] = useState<DocumentRow[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
+  const [documentToDelete, setDocumentToDelete] = useState<DocumentRow | null>(null);
 
   useEffect(() => {
-    if (user) fetchDocuments();
+    if (user) {
+      void fetchDocuments();
+    }
   }, [user]);
 
   const fetchDocuments = async () => {
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from("documents")
-        .select(`
+        .select<
+          DocumentRow
+        >(`
           *,
           loans!inner (
             loan_name,
@@ -36,32 +74,21 @@ export default function Documents() {
         .order("added_on", { ascending: false });
 
       if (error) throw error;
-      setDocuments(data || []);
+
+      // Optional: filter by current user if needed
+      const filtered = data?.filter((doc) => doc.loans?.user_id === user?.id) ?? [];
+
+      setDocuments(filtered);
     } catch (error) {
       console.error("Error fetching documents:", error);
+      toast({
+        title: "Error loading documents",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  };
-
-  const groupByLoan = () => {
-    const grouped: Record<string, any[]> = {};
-    documents.forEach((doc) => {
-      const loanName = doc.loans?.loan_name || "Unknown";
-      if (!grouped[loanName]) grouped[loanName] = [];
-      grouped[loanName].push(doc);
-    });
-    return grouped;
-  };
-
-  const groupByLender = () => {
-    const grouped: Record<string, any[]> = {};
-    documents.forEach((doc) => {
-      const lenderName = doc.loans?.lenders?.name || "Unknown";
-      if (!grouped[lenderName]) grouped[lenderName] = [];
-      grouped[lenderName].push(doc);
-    });
-    return grouped;
   };
 
   const handleDelete = async () => {
@@ -70,11 +97,14 @@ export default function Documents() {
     try {
       // Delete from storage if file exists
       if (documentToDelete.file_url) {
-        const fileName = documentToDelete.file_url.split('/').pop();
+        const fileName = documentToDelete.file_url.split("/").pop();
         if (fileName) {
-          await supabase.storage
-            .from('loan-documents')
+          const { error: storageError } = await supabase.storage
+            .from("loan-documents")
+            // If you store in folders, replace with full path here instead of just fileName
             .remove([fileName]);
+
+          if (storageError) throw storageError;
         }
       }
 
@@ -89,56 +119,93 @@ export default function Documents() {
       toast({ title: "Document deleted successfully" });
       setDeleteDialogOpen(false);
       setDocumentToDelete(null);
-      fetchDocuments();
+      void fetchDocuments();
     } catch (error: any) {
-      toast({ 
-        title: "Error deleting document", 
-        description: error.message, 
-        variant: "destructive" 
+      console.error("Error deleting document:", error);
+      toast({
+        title: "Error deleting document",
+        description: error?.message ?? "Something went wrong",
+        variant: "destructive",
       });
     }
   };
 
-  const DocumentCard = ({ doc }: { doc: any }) => (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3 flex-1">
-            <FileText className="h-5 w-5 text-muted-foreground mt-1" />
-            <div className="flex-1">
-              <h4 className="font-medium">{doc.label}</h4>
-              <p className="text-sm text-muted-foreground">
-                {doc.doc_type || "Document"} • Added {formatDistanceToNow(new Date(doc.added_on))} ago
-              </p>
-              {doc.valid_to && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Valid until {new Date(doc.valid_to).toLocaleDateString("en-IN")}
+  const byLoan = useMemo(() => {
+    const grouped: Record<string, DocumentRow[]> = {};
+    documents.forEach((doc) => {
+      const loanName = doc.loans?.loan_name || "Unknown loan";
+      if (!grouped[loanName]) grouped[loanName] = [];
+      grouped[loanName].push(doc);
+    });
+    return grouped;
+  }, [documents]);
+
+  const byLender = useMemo(() => {
+    const grouped: Record<string, DocumentRow[]> = {};
+    documents.forEach((doc) => {
+      const lenderName = doc.loans?.lenders?.name || "Unknown lender";
+      if (!grouped[lenderName]) grouped[lenderName] = [];
+      grouped[lenderName].push(doc);
+    });
+    return grouped;
+  }, [documents]);
+
+  const DocumentCard = ({ doc }: { doc: DocumentRow }) => {
+    const addedOnDate = doc.added_on ? new Date(doc.added_on) : null;
+    const validToDate = doc.valid_to ? new Date(doc.valid_to) : null;
+
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 flex-1">
+              <FileText className="h-5 w-5 text-muted-foreground mt-1" />
+              <div className="flex-1">
+                <h4 className="font-medium">{doc.label || "Untitled document"}</h4>
+                <p className="text-sm text-muted-foreground">
+                  {doc.doc_type || "Document"}
+                  {addedOnDate && (
+                    <>
+                      {" "}
+                      • Added{" "}
+                      {formatDistanceToNow(addedOnDate, {
+                        addSuffix: true,
+                      })}
+                    </>
+                  )}
                 </p>
+                {validToDate && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Valid until {validToDate.toLocaleDateString("en-IN")}
+                  </p>
+                )}
+                {doc.notes && <p className="text-sm mt-2 whitespace-pre-line">{doc.notes}</p>}
+              </div>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              {doc.file_url && (
+                <Button variant="ghost" size="sm" asChild>
+                  <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                    <Download className="h-4 w-4" />
+                  </a>
+                </Button>
               )}
-              {doc.notes && <p className="text-sm mt-2">{doc.notes}</p>}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDocumentToDelete(doc);
+                  setDeleteDialogOpen(true);
+                }}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                <Download className="h-4 w-4" />
-              </a>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setDocumentToDelete(doc);
-                setDeleteDialogOpen(true);
-              }}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
 
   if (loading) {
     return (
@@ -149,9 +216,6 @@ export default function Documents() {
       </div>
     );
   }
-
-  const byLoan = groupByLoan();
-  const byLender = groupByLender();
 
   return (
     <div className="space-y-6">
@@ -183,13 +247,11 @@ export default function Documents() {
             </Card>
           ) : (
             Object.entries(byLoan).map(([loanName, docs]) => (
-              <div key={loanName}>
-                <h3 className="text-lg font-semibold mb-3">{loanName}</h3>
-                <div className="space-y-3">
-                  {docs.map((doc) => (
-                    <DocumentCard key={doc.id} doc={doc} />
-                  ))}
-                </div>
+              <div key={loanName} className="space-y-3">
+                <h3 className="text-lg font-semibold mb-1">{loanName}</h3>
+                {docs.map((doc) => (
+                  <DocumentCard key={doc.id} doc={doc} />
+                ))}
               </div>
             ))
           )}
@@ -206,13 +268,11 @@ export default function Documents() {
             </Card>
           ) : (
             Object.entries(byLender).map(([lenderName, docs]) => (
-              <div key={lenderName}>
-                <h3 className="text-lg font-semibold mb-3">{lenderName}</h3>
-                <div className="space-y-3">
-                  {docs.map((doc) => (
-                    <DocumentCard key={doc.id} doc={doc} />
-                  ))}
-                </div>
+              <div key={lenderName} className="space-y-3">
+                <h3 className="text-lg font-semibold mb-1">{lenderName}</h3>
+                {docs.map((doc) => (
+                  <DocumentCard key={doc.id} doc={doc} />
+                ))}
               </div>
             ))
           )}
@@ -224,12 +284,16 @@ export default function Documents() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Document</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{documentToDelete?.label}"? This action cannot be undone and will permanently remove the document from storage.
+              Are you sure you want to delete &quot;{documentToDelete?.label || "this document"}&quot;? This
+              action cannot be undone and will permanently remove the document from storage.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
