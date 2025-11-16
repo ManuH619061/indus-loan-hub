@@ -61,9 +61,7 @@ export default function Documents() {
     try {
       const { data, error } = await supabase
         .from("documents")
-        .select<
-          DocumentRow
-        >(`
+        .select(`
           *,
           loans!inner (
             loan_name,
@@ -76,9 +74,9 @@ export default function Documents() {
       if (error) throw error;
 
       // Optional: filter by current user if needed
-      const filtered = data?.filter((doc) => doc.loans?.user_id === user?.id) ?? [];
+      const filtered = (data as any)?.filter((doc: any) => doc.loans?.user_id === user?.id) ?? [];
 
-      setDocuments(filtered);
+      setDocuments(filtered as DocumentRow[]);
     } catch (error) {
       console.error("Error fetching documents:", error);
       toast({
