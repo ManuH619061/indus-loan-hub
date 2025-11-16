@@ -15,6 +15,7 @@ import Lenders from "./pages/Lenders";
 import LendersDashboard from "./pages/LendersDashboard";
 import LenderDetail from "./pages/LenderDetail";
 import Documents from "./pages/Documents";
+import MonthlyProjection from "./pages/MonthlyProjection";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/lenders" element={<ProtectedRoute><Layout><Lenders /></Layout></ProtectedRoute>} />
           <Route path="/lenders/:id" element={<ProtectedRoute><Layout><LenderDetail /></Layout></ProtectedRoute>} />
           <Route path="/documents" element={<ProtectedRoute><Layout><Documents /></Layout></ProtectedRoute>} />
+          <Route path="/monthly-projection" element={<ProtectedRoute><Layout><MonthlyProjection /></Layout></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
