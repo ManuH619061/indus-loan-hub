@@ -31,6 +31,7 @@ const navigation = [
   { name: "Payoff Simulator", href: "/dashboard/simulator", icon: Calculator },
   { name: "Loans", href: "/loans", icon: Wallet },
   { name: "Payments", href: "/payments", icon: CreditCard },
+  { name: "Payment Analytics", href: "/analytics", icon: TrendingUp },
   { name: "Lender Management", href: "/lenders", icon: Building2 },
   { name: "Documents", href: "/documents", icon: FileText },
 ];

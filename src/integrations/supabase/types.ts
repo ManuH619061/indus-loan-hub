@@ -475,6 +475,7 @@ export type Database = {
           currency: string | null
           email: string
           id: string
+          monthly_income: number | null
           name: string | null
           timezone: string | null
           updated_at: string | null
@@ -484,6 +485,7 @@ export type Database = {
           currency?: string | null
           email: string
           id: string
+          monthly_income?: number | null
           name?: string | null
           timezone?: string | null
           updated_at?: string | null
@@ -493,6 +495,7 @@ export type Database = {
           currency?: string | null
           email?: string
           id?: string
+          monthly_income?: number | null
           name?: string | null
           timezone?: string | null
           updated_at?: string | null
