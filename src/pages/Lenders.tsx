@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Building2, Pencil, Trash2, Loader2 } from "lucide-react";
+import { LoanAppSelector } from "@/components/LoanAppSelector";
 
 export default function Lenders() {
   const { user } = useAuth();
@@ -96,12 +97,9 @@ export default function Lenders() {
   const handleAppNameChange = (value: string) => {
     setFormData(prev => ({ ...prev, app_display_name: value }));
     
-    // Auto-fetch details after user stops typing
-    if (value.length > 2) {
-      const timeoutId = setTimeout(() => {
-        fetchLenderDetails(value);
-      }, 500);
-      return () => clearTimeout(timeoutId);
+    // Auto-fetch details immediately when selected from dropdown
+    if (value && value.length > 0) {
+      fetchLenderDetails(value);
     }
   };
 
@@ -244,18 +242,16 @@ export default function Lenders() {
                 </div>
                 <div>
                   <Label htmlFor="app_display_name">
-                    App Display Name
+                    Select Loan App
                     {fetchingDetails && <Loader2 className="h-3 w-3 ml-2 inline animate-spin" />}
                   </Label>
-                  <Input
-                    id="app_display_name"
+                  <LoanAppSelector
                     value={formData.app_display_name}
-                    onChange={(e) => handleAppNameChange(e.target.value)}
-                    placeholder="e.g., Branch, MoneyView"
-                    disabled={fetchingDetails}
+                    onSelect={handleAppNameChange}
+                    placeholder="Select from popular loan apps..."
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Auto-fetches logo and details
+                    Auto-fetches logo and details from app store
                   </p>
                 </div>
               </div>
@@ -466,12 +462,18 @@ export default function Lenders() {
                 />
               </div>
               <div>
-                <Label htmlFor="edit-display">Display Name</Label>
-                <Input
-                  id="edit-display"
+                <Label htmlFor="edit-display">
+                  Select Loan App
+                  {fetchingDetails && <Loader2 className="h-3 w-3 ml-2 inline animate-spin" />}
+                </Label>
+                <LoanAppSelector
                   value={formData.app_display_name}
-                  onChange={(e) => setFormData({ ...formData, app_display_name: e.target.value })}
+                  onSelect={handleAppNameChange}
+                  placeholder="Select from popular loan apps..."
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Auto-fetches logo and details
+                </p>
               </div>
               <div>
                 <Label htmlFor="edit-type">Type *</Label>
