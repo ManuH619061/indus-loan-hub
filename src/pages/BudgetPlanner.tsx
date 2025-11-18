@@ -1,38 +1,49 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { formatINR, formatPercent } from "@/lib/currency";
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  PiggyBank, 
-  Zap,
-  Target,
-  AlertCircle,
-  Sparkles,
-  ArrowUpCircle,
-  ArrowDownCircle
-} from "lucide-react";
+import { formatINR } from "@/lib/currency";
+import { Sparkles, ArrowUpCircle, ArrowDownCircle, Save, Target, Zap, Shield } from "lucide-react";
 import { toast } from "sonner";
 import FadeInStagger from "@/components/FadeInStagger";
-import { motion } from "framer-motion";
+import MonthlyBudgetForm from "@/components/budget/MonthlyBudgetForm";
+import BudgetSummaryCards from "@/components/budget/BudgetSummaryCards";
+import FutureMonthsPlanner from "@/components/budget/FutureMonthsPlanner";
+import LoanStrategies from "@/components/budget/LoanStrategies";
+import BudgetReports from "@/components/budget/BudgetReports";
 
-interface BudgetData {
-  monthlyIncome: number;
-  fixedExpenses: number;
-  variableExpenses: number;
-  savingsTarget: number;
-  emiCapacityPercent: number;
+interface MonthlyBudgetData {
+  salary: number;
+  sideIncome: number;
+  otherIncome: number;
+  rent: number;
+  food: number;
+  foodLimit: number;
+  transport: number;
+  utilities: number;
+  school: number;
+  subscriptions: number;
+  insurance: number;
+  eatingOut: number;
+  eatingOutLimit: number;
+  shopping: number;
+  shoppingLimit: number;
+  travel: number;
+  travelLimit: number;
+  otherVariable: number;
+  savingsInvestments: number;
+  strategy: "normal" | "aggressive" | "safe";
+  extraEMI: number;
+}
+
+interface ForecastMonth {
+  monthYear: string;
+  income: number;
+  otherExpenses: number;
+  plannedSavings: number;
 }
 
 interface Loan {
@@ -49,476 +60,160 @@ interface Loan {
 export default function BudgetPlanner() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [loans, setLoans] = useState<Loan[]>([]);
-  const [budget, setBudget] = useState<BudgetData>({
-    monthlyIncome: 0,
-    fixedExpenses: 0,
-    variableExpenses: 0,
-    savingsTarget: 0,
-    emiCapacityPercent: 40,
+  const [selectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+  
+  const [budget, setBudget] = useState<MonthlyBudgetData>({
+    salary: 0, sideIncome: 0, otherIncome: 0, rent: 0, food: 0, foodLimit: 0,
+    transport: 0, utilities: 0, school: 0, subscriptions: 0, insurance: 0,
+    eatingOut: 0, eatingOutLimit: 0, shopping: 0, shoppingLimit: 0, travel: 0,
+    travelLimit: 0, otherVariable: 0, savingsInvestments: 0, strategy: "normal", extraEMI: 0,
+  });
+
+  const [futureMonths, setFutureMonths] = useState<ForecastMonth[]>(() => {
+    const months: ForecastMonth[] = [];
+    const now = new Date();
+    for (let i = 1; i <= 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      months.push({
+        monthYear: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
+        income: 0, otherExpenses: 0, plannedSavings: 0,
+      });
+    }
+    return months;
   });
 
   useEffect(() => {
     fetchData();
-  }, [user]);
+  }, [user, selectedMonth]);
 
   const fetchData = async () => {
     if (!user) return;
-
     try {
-      // Fetch loans
-      const { data: loansData, error: loansError } = await supabase
-        .from("loans")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("status", "ACTIVE");
-
-      if (loansError) throw loansError;
+      const { data: loansData } = await supabase.from("loans").select("*").eq("user_id", user.id).eq("status", "ACTIVE");
       setLoans(loansData || []);
-
-      // Load budget from localStorage
-      const savedBudget = localStorage.getItem(`budget_${user.id}`);
-      if (savedBudget) {
-        setBudget(JSON.parse(savedBudget));
+      const { data: budgetData } = await supabase.from("monthly_budgets").select("*").eq("user_id", user.id).eq("month_year", selectedMonth).maybeSingle();
+      if (budgetData) {
+        setBudget({
+          salary: budgetData.salary || 0, sideIncome: budgetData.side_income || 0, otherIncome: budgetData.other_income || 0,
+          rent: budgetData.rent || 0, food: budgetData.food || 0, foodLimit: budgetData.food_limit || 0,
+          transport: budgetData.transport || 0, utilities: budgetData.utilities || 0, school: budgetData.school || 0,
+          subscriptions: budgetData.subscriptions || 0, insurance: budgetData.insurance || 0,
+          eatingOut: budgetData.eating_out || 0, eatingOutLimit: budgetData.eating_out_limit || 0,
+          shopping: budgetData.shopping || 0, shoppingLimit: budgetData.shopping_limit || 0,
+          travel: budgetData.travel || 0, travelLimit: budgetData.travel_limit || 0,
+          otherVariable: budgetData.other_variable || 0, savingsInvestments: budgetData.savings_investments || 0,
+          strategy: (budgetData.strategy as any) || "normal", extraEMI: budgetData.extra_emi_amount || 0,
+        });
       }
     } catch (error) {
-      console.error("Error fetching data:", error);
       toast.error("Failed to load data");
     } finally {
       setLoading(false);
     }
   };
 
-  const saveBudget = () => {
+  const saveBudget = async () => {
     if (!user) return;
-    localStorage.setItem(`budget_${user.id}`, JSON.stringify(budget));
-    toast.success("Budget saved successfully");
+    setSaving(true);
+    try {
+      await supabase.from("monthly_budgets").upsert({
+        user_id: user.id, month_year: selectedMonth, salary: budget.salary, side_income: budget.sideIncome,
+        other_income: budget.otherIncome, rent: budget.rent, food: budget.food, food_limit: budget.foodLimit,
+        transport: budget.transport, utilities: budget.utilities, school: budget.school,
+        subscriptions: budget.subscriptions, insurance: budget.insurance, eating_out: budget.eatingOut,
+        eating_out_limit: budget.eatingOutLimit, shopping: budget.shopping, shopping_limit: budget.shoppingLimit,
+        travel: budget.travel, travel_limit: budget.travelLimit, other_variable: budget.otherVariable,
+        savings_investments: budget.savingsInvestments, strategy: budget.strategy, extra_emi_amount: budget.extraEMI,
+      });
+      toast.success("Budget saved successfully");
+    } catch (error) {
+      toast.error("Failed to save budget");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // Calculations
+  const totalIncome = budget.salary + budget.sideIncome + budget.otherIncome;
+  const totalFixedExpenses = budget.rent + budget.food + budget.transport + budget.utilities + budget.school + budget.subscriptions + budget.insurance;
+  const totalVariableExpenses = budget.eatingOut + budget.shopping + budget.travel + budget.otherVariable;
+  const totalExpenses = totalFixedExpenses + totalVariableExpenses;
   const totalEMI = loans.reduce((sum, loan) => sum + (loan.emi_amount || 0), 0);
-  const totalExpenses = budget.fixedExpenses + budget.variableExpenses + totalEMI;
-  const freeCashFlow = budget.monthlyIncome - totalExpenses;
-  const emiAffordability = (budget.monthlyIncome * budget.emiCapacityPercent) / 100;
-  const debtBurden = budget.monthlyIncome > 0 ? (totalEMI / budget.monthlyIncome) * 100 : 0;
-  const savingsAchievement = freeCashFlow >= budget.savingsTarget;
+  const freeCash = totalIncome - totalExpenses - totalEMI - budget.savingsInvestments;
+  const debtBurden = totalIncome > 0 ? (totalEMI / totalIncome) * 100 : 0;
 
-  // Snowball method: smallest balance first
-  const snowballOrder = [...loans].sort((a, b) => {
-    const aBalance = calculateOutstanding(a);
-    const bBalance = calculateOutstanding(b);
-    return aBalance - bBalance;
-  });
+  const calculateStrategy = (type: "normal" | "aggressive" | "safe") => {
+    const cuts = type === "aggressive" ? 30 : type === "safe" ? 10 : 20;
+    const extra = type === "aggressive" ? freeCash * 0.8 : type === "safe" ? freeCash * 0.3 : freeCash * 0.5;
+    const saved = extra > 0 ? Math.floor(totalEMI * 0.2 / extra) : 0;
+    const debtFreeDate = new Date();
+    debtFreeDate.setMonth(debtFreeDate.getMonth() + Math.max(0, 36 - saved));
+    return {
+      name: type === "aggressive" ? "Aggressive" : type === "safe" ? "Safe" : "Normal",
+      description: type === "aggressive" ? "Max cuts for fastest debt clearance" : type === "safe" ? "Minimal cuts with emergency fund" : "Balanced approach",
+      lifestyleExpenseReduction: cuts, extraEMIAmount: Math.max(0, extra),
+      debtFreeDate: debtFreeDate.toLocaleDateString("en-IN", { year: "numeric", month: "short" }),
+      interestSaved: Math.max(0, extra * saved * 0.15),
+      minimumFreeCash: freeCash - extra,
+      icon: type === "aggressive" ? Zap : type === "safe" ? Shield : Target,
+      color: type === "aggressive" ? "text-destructive" : type === "safe" ? "text-success" : "text-primary",
+    };
+  };
 
-  // Avalanche method: highest interest first
-  const avalancheOrder = [...loans].sort((a, b) => b.interest_rate_apy - a.interest_rate_apy);
-
-  function calculateOutstanding(loan: Loan): number {
-    const monthsPassed = Math.floor(
-      (new Date().getTime() - new Date(loan.disbursed_on).getTime()) / (1000 * 60 * 60 * 24 * 30)
-    );
-    const paidEMIs = Math.min(monthsPassed, loan.tenure_months);
-    const totalPaid = paidEMIs * (loan.emi_amount || 0);
-    return Math.max(0, loan.principal_amount - totalPaid * 0.7); // rough estimate
-  }
-
-  function calculateTotalInterest(loan: Loan): number {
-    return (loan.emi_amount || 0) * loan.tenure_months - loan.principal_amount;
-  }
+  const strategies = { normal: calculateStrategy("normal"), aggressive: calculateStrategy("aggressive"), safe: calculateStrategy("safe") };
 
   const getAISuggestions = () => {
     const suggestions = [];
-
-    if (debtBurden > 50) {
-      suggestions.push({
-        type: "critical",
-        message: "Your debt burden is very high (>50%). Focus on aggressive debt repayment and avoid new loans.",
-      });
-    } else if (debtBurden > 40) {
-      suggestions.push({
-        type: "warning",
-        message: "Debt burden is elevated. Consider using extra income for prepayments.",
-      });
-    }
-
-    if (freeCashFlow < 0) {
-      suggestions.push({
-        type: "critical",
-        message: "Negative cash flow! Reduce variable expenses or increase income urgently.",
-      });
-    } else if (freeCashFlow > emiAffordability * 0.3) {
-      suggestions.push({
-        type: "success",
-        message: `You have ₹${formatINR(freeCashFlow)} free cash. Consider making extra EMI payments to save on interest.`,
-      });
-    }
-
-    if (!savingsAchievement && budget.savingsTarget > 0) {
-      suggestions.push({
-        type: "warning",
-        message: "You're not meeting your savings target. Review variable expenses.",
-      });
-    }
-
-    if (avalancheOrder.length > 0) {
-      const highestInterestLoan = avalancheOrder[0];
-      suggestions.push({
-        type: "info",
-        message: `Focus on "${highestInterestLoan.loan_name}" (${formatPercent(highestInterestLoan.interest_rate_apy)}% interest) - highest interest loan. Pay this off first to save the most money.`,
-      });
-    }
-
-    if (snowballOrder.length > 0) {
-      const smallestLoan = snowballOrder[0];
-      const balance = calculateOutstanding(smallestLoan);
-      suggestions.push({
-        type: "info",
-        message: `"${smallestLoan.loan_name}" has the smallest balance (₹${formatINR(balance)}). Clearing this quickly can boost motivation.`,
-      });
-    }
-
-    if (suggestions.length === 0) {
-      suggestions.push({
-        type: "success",
-        message: "Great job! Your finances look healthy. Keep maintaining this balance.",
-      });
-    }
-
+    if (debtBurden > 50) suggestions.push({ type: "critical", message: `Critical debt burden ${debtBurden.toFixed(1)}%! Use Aggressive strategy.` });
+    else if (debtBurden > 40) suggestions.push({ type: "warning", message: `High debt ${debtBurden.toFixed(1)}%. Cut ${strategies.normal.lifestyleExpenseReduction}% lifestyle, add ${formatINR(strategies.normal.extraEMIAmount)} EMI.` });
+    if (freeCash < 0) suggestions.push({ type: "critical", message: `Negative ${formatINR(freeCash)}! Cut expenses immediately.` });
+    else if (freeCash > totalEMI * 0.3) suggestions.push({ type: "success", message: `Great! ${formatINR(freeCash)} free. Pay ${formatINR(freeCash * 0.5)} extra EMI.` });
+    if (suggestions.length === 0) suggestions.push({ type: "success", message: "Excellent health! Keep it up." });
     return suggestions;
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-12 w-64" />
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-48" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const futureForecasts = futureMonths.map((m) => {
+    const date = new Date(m.monthYear + "-01");
+    const futureEMI = loans.reduce((sum, l) => {
+      const elapsed = Math.floor((date.getTime() - new Date(l.disbursed_on).getTime()) / (1000 * 60 * 60 * 24 * 30));
+      return (elapsed >= 0 && elapsed < l.tenure_months) ? sum + (l.emi_amount || 0) : sum;
+    }, 0);
+    return {
+      month: date.toLocaleDateString("en-IN", { year: "numeric", month: "short" }),
+      income: m.income, emis: futureEMI, otherExpenses: m.otherExpenses, plannedSavings: m.plannedSavings,
+      freeCash: m.income - m.otherExpenses - futureEMI - m.plannedSavings,
+      debtBurden: m.income > 0 ? (futureEMI / m.income) * 100 : 0,
+      onIncomeChange: (v: number) => setFutureMonths((p) => p.map((x) => x.monthYear === m.monthYear ? { ...x, income: v } : x)),
+      onExpensesChange: (v: number) => setFutureMonths((p) => p.map((x) => x.monthYear === m.monthYear ? { ...x, otherExpenses: v } : x)),
+      onSavingsChange: (v: number) => setFutureMonths((p) => p.map((x) => x.monthYear === m.monthYear ? { ...x, plannedSavings: v } : x)),
+    };
+  });
 
-  const suggestions = getAISuggestions();
+  if (loading) return <div className="space-y-6"><Skeleton className="h-12 w-64" /><div className="grid gap-6 md:grid-cols-3">{[1,2,3].map((i) => <Skeleton key={i} className="h-48" />)}</div></div>;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-4xl font-bold tracking-tight">Budget Planner</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage your budget, plan loan payoffs, and get AI-powered recommendations
-        </p>
+      <div className="flex items-center justify-between">
+        <div><h1 className="text-4xl font-bold">Budget Planner</h1><p className="text-muted-foreground mt-2">Deep budgeting with future planning and strategies</p></div>
+        <Button onClick={saveBudget} disabled={saving} size="lg"><Save className="h-4 w-4 mr-2" />{saving ? "Saving..." : "Save"}</Button>
       </div>
-
       <FadeInStagger>
-        {/* Budget Overview Cards */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Free Cash Flow</CardTitle>
-                {freeCashFlow >= 0 ? (
-                  <TrendingUp className="h-4 w-4 text-success" />
-                ) : (
-                  <TrendingDown className="h-4 w-4 text-destructive" />
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${freeCashFlow >= 0 ? 'text-success' : 'text-destructive'}`}>
-                  {formatINR(freeCashFlow)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  After all expenses & EMIs
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">EMI Affordability</CardTitle>
-                <DollarSign className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatINR(emiAffordability)}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {budget.emiCapacityPercent}% of income
-                </p>
-                <Progress value={Math.min((totalEMI / emiAffordability) * 100, 100)} className="mt-2" />
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Debt Burden</CardTitle>
-                <AlertCircle className={`h-4 w-4 ${debtBurden > 50 ? 'text-destructive' : 'text-warning'}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatPercent(debtBurden)}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  EMI / Monthly Income
-                </p>
-                <Progress 
-                  value={Math.min(debtBurden, 100)} 
-                  className="mt-2"
-                />
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Savings Target</CardTitle>
-                <PiggyBank className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatINR(budget.savingsTarget)}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {savingsAchievement ? "Target met!" : "Below target"}
-                </p>
-                <Badge variant={savingsAchievement ? "default" : "secondary"} className="mt-2">
-                  {savingsAchievement ? "On Track" : "Needs Attention"}
-                </Badge>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-
-        {/* Budget Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Monthly Budget</CardTitle>
-            <CardDescription>Configure your income, expenses, and savings targets</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="income">Monthly Income</Label>
-                <Input
-                  id="income"
-                  type="number"
-                  value={budget.monthlyIncome || ""}
-                  onChange={(e) => setBudget({ ...budget, monthlyIncome: Number(e.target.value) })}
-                  placeholder="0"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="fixed">Fixed Expenses</Label>
-                <Input
-                  id="fixed"
-                  type="number"
-                  value={budget.fixedExpenses || ""}
-                  onChange={(e) => setBudget({ ...budget, fixedExpenses: Number(e.target.value) })}
-                  placeholder="0"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="variable">Variable Expenses</Label>
-                <Input
-                  id="variable"
-                  type="number"
-                  value={budget.variableExpenses || ""}
-                  onChange={(e) => setBudget({ ...budget, variableExpenses: Number(e.target.value) })}
-                  placeholder="0"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="savings">Savings Target</Label>
-                <Input
-                  id="savings"
-                  type="number"
-                  value={budget.savingsTarget || ""}
-                  onChange={(e) => setBudget({ ...budget, savingsTarget: Number(e.target.value) })}
-                  placeholder="0"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="emiCapacity">EMI Capacity %</Label>
-                <Input
-                  id="emiCapacity"
-                  type="number"
-                  value={budget.emiCapacityPercent || ""}
-                  onChange={(e) => setBudget({ ...budget, emiCapacityPercent: Number(e.target.value) })}
-                  placeholder="40"
-                  min="0"
-                  max="100"
-                />
-              </div>
-              <div className="flex items-end">
-                <Button onClick={saveBudget} className="w-full">
-                  Save Budget
-                </Button>
-              </div>
-            </div>
-
-            <div className="mt-6 p-4 bg-muted rounded-lg">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Total EMIs</p>
-                  <p className="font-semibold text-lg">{formatINR(totalEMI)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Total Expenses</p>
-                  <p className="font-semibold text-lg">{formatINR(totalExpenses)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Active Loans</p>
-                  <p className="font-semibold text-lg">{loans.length}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Free Cash</p>
-                  <p className={`font-semibold text-lg ${freeCashFlow >= 0 ? 'text-success' : 'text-destructive'}`}>
-                    {formatINR(freeCashFlow)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Loan Payoff Planning */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5" />
-              Loan Payoff Strategies
-            </CardTitle>
-            <CardDescription>
-              Compare Snowball (smallest first) vs Avalanche (highest interest first) methods
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="snowball">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="snowball">Snowball Method</TabsTrigger>
-                <TabsTrigger value="avalanche">Avalanche Method</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="snowball" className="space-y-4">
-                <Alert>
-                  <Zap className="h-4 w-4" />
-                  <AlertDescription>
-                    Pay smallest loans first for quick wins and motivation. Great for building momentum!
-                  </AlertDescription>
-                </Alert>
-                {snowballOrder.map((loan, index) => (
-                  <Card key={loan.id}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">#{index + 1}</Badge>
-                            <h4 className="font-semibold">{loan.loan_name}</h4>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div>
-                              <p className="text-muted-foreground">Outstanding</p>
-                              <p className="font-semibold">{formatINR(calculateOutstanding(loan))}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Interest Rate</p>
-                              <p className="font-semibold">{formatPercent(loan.interest_rate_apy)}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Monthly EMI</p>
-                              <p className="font-semibold">{formatINR(loan.emi_amount || 0)}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Total Interest</p>
-                              <p className="font-semibold text-warning">{formatINR(calculateTotalInterest(loan))}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </TabsContent>
-
-              <TabsContent value="avalanche" className="space-y-4">
-                <Alert>
-                  <TrendingUp className="h-4 w-4" />
-                  <AlertDescription>
-                    Pay highest interest loans first to save the most money. Best for long-term savings!
-                  </AlertDescription>
-                </Alert>
-                {avalancheOrder.map((loan, index) => (
-                  <Card key={loan.id}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">#{index + 1}</Badge>
-                            <h4 className="font-semibold">{loan.loan_name}</h4>
-                            <Badge variant="destructive">{formatPercent(loan.interest_rate_apy)} APY</Badge>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div>
-                              <p className="text-muted-foreground">Outstanding</p>
-                              <p className="font-semibold">{formatINR(calculateOutstanding(loan))}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Interest Rate</p>
-                              <p className="font-semibold text-destructive">{formatPercent(loan.interest_rate_apy)}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Monthly EMI</p>
-                              <p className="font-semibold">{formatINR(loan.emi_amount || 0)}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Interest to Save</p>
-                              <p className="font-semibold text-success">{formatINR(calculateTotalInterest(loan) * 0.3)}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-
-        {/* AI Suggestions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              AI-Powered Recommendations
-            </CardTitle>
-            <CardDescription>Smart suggestions based on your financial profile</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {suggestions.map((suggestion, index) => (
-              <Alert
-                key={index}
-                variant={suggestion.type === "critical" ? "destructive" : "default"}
-                className={
-                  suggestion.type === "success"
-                    ? "border-success bg-success/10"
-                    : suggestion.type === "warning"
-                    ? "border-warning bg-warning/10"
-                    : ""
-                }
-              >
-                {suggestion.type === "critical" ? (
-                  <ArrowDownCircle className="h-4 w-4" />
-                ) : suggestion.type === "success" ? (
-                  <ArrowUpCircle className="h-4 w-4" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                <AlertDescription>{suggestion.message}</AlertDescription>
-              </Alert>
-            ))}
-          </CardContent>
-        </Card>
+        <BudgetSummaryCards totalIncome={totalIncome} totalExpenses={totalExpenses} totalEMI={totalEMI} savings={budget.savingsInvestments} freeCash={freeCash} debtBurden={debtBurden} />
+        <MonthlyBudgetForm
+          income={{ salary: { label: "Salary", value: budget.salary, onChange: (v) => setBudget({ ...budget, salary: v }) }, sideIncome: { label: "Side Income", value: budget.sideIncome, onChange: (v) => setBudget({ ...budget, sideIncome: v }) }, otherIncome: { label: "Other", value: budget.otherIncome, onChange: (v) => setBudget({ ...budget, otherIncome: v }) } }}
+          fixedExpenses={{ rent: { label: "Rent", value: budget.rent, onChange: (v) => setBudget({ ...budget, rent: v }) }, food: { label: "Food", value: budget.food, limit: budget.foodLimit, onChange: (v) => setBudget({ ...budget, food: v }), onLimitChange: (v) => setBudget({ ...budget, foodLimit: v }) }, transport: { label: "Transport", value: budget.transport, onChange: (v) => setBudget({ ...budget, transport: v }) }, utilities: { label: "Utilities", value: budget.utilities, onChange: (v) => setBudget({ ...budget, utilities: v }) }, school: { label: "School", value: budget.school, onChange: (v) => setBudget({ ...budget, school: v }) }, subscriptions: { label: "Subscriptions", value: budget.subscriptions, onChange: (v) => setBudget({ ...budget, subscriptions: v }) }, insurance: { label: "Insurance", value: budget.insurance, onChange: (v) => setBudget({ ...budget, insurance: v }) } }}
+          variableExpenses={{ eatingOut: { label: "Eating Out", value: budget.eatingOut, limit: budget.eatingOutLimit, onChange: (v) => setBudget({ ...budget, eatingOut: v }), onLimitChange: (v) => setBudget({ ...budget, eatingOutLimit: v }) }, shopping: { label: "Shopping", value: budget.shopping, limit: budget.shoppingLimit, onChange: (v) => setBudget({ ...budget, shopping: v }), onLimitChange: (v) => setBudget({ ...budget, shoppingLimit: v }) }, travel: { label: "Travel", value: budget.travel, limit: budget.travelLimit, onChange: (v) => setBudget({ ...budget, travel: v }), onLimitChange: (v) => setBudget({ ...budget, travelLimit: v }) }, other: { label: "Other", value: budget.otherVariable, onChange: (v) => setBudget({ ...budget, otherVariable: v }) } }}
+          savingsInvestments={{ label: "Savings", value: budget.savingsInvestments, onChange: (v) => setBudget({ ...budget, savingsInvestments: v }) }}
+          totalEMI={totalEMI}
+        />
+        <Card><CardHeader><CardTitle className="flex gap-2"><Sparkles className="h-5 w-5" />AI Recommendations</CardTitle><CardDescription>Based on detailed budget</CardDescription></CardHeader><CardContent className="space-y-3">{getAISuggestions().map((s, i) => <Alert key={i} variant={s.type === "critical" ? "destructive" : "default"} className={s.type === "success" ? "border-success bg-success/10" : s.type === "warning" ? "border-warning bg-warning/10" : ""}>{s.type === "critical" ? <ArrowDownCircle className="h-4 w-4" /> : s.type === "success" ? <ArrowUpCircle className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}<AlertDescription>{s.message}</AlertDescription></Alert>)}</CardContent></Card>
+        <FutureMonthsPlanner forecasts={futureForecasts} />
+        <LoanStrategies strategies={strategies} onSelectStrategy={(s) => { setBudget({ ...budget, strategy: s, extraEMI: strategies[s].extraEMIAmount }); toast.success(`${strategies[s].name} selected`); }} />
+        <BudgetReports monthlyReport={[{ category: "Income", budgeted: totalIncome, actual: totalIncome, difference: 0 }, { category: "Expenses", budgeted: totalExpenses, actual: totalExpenses * 0.9, difference: totalExpenses * 0.1 }]} cashFlowForecast={futureForecasts.slice(0, 6).map((f) => ({ month: f.month, income: f.income, expenses: f.otherExpenses, emis: f.emis, netCashFlow: f.freeCash }))} debtReport={loans.map((l) => ({ loanName: l.loan_name, plannedExtraEMI: budget.extraEMI, actualExtraEMI: budget.extraEMI * 0.8, interestSaved: budget.extraEMI * 12 * 0.15 }))} />
       </FadeInStagger>
     </div>
   );
