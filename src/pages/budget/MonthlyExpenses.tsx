@@ -12,7 +12,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/currency";
-import { Plus, Upload, Download, Calendar, Sparkles, AlertCircle, TrendingUp } from "lucide-react";
+import { Plus, Upload, Download, Calendar, Sparkles, AlertCircle, TrendingUp, Pencil, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
 import { ResponsiveChartLegacy } from "@/components/ui/responsive-chart";
@@ -56,6 +57,8 @@ export default function MonthlyExpenses() {
   });
 
   const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
 
   useEffect(() => {
     fetchTransactions();
@@ -138,6 +141,26 @@ export default function MonthlyExpenses() {
       fetchTransactions();
     } catch (error: any) {
       toast.error("Failed to add transaction");
+    }
+  };
+
+  const handleDeleteTransaction = async () => {
+    if (!transactionToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", transactionToDelete.id);
+
+      if (error) throw error;
+
+      toast.success("Transaction deleted successfully");
+      setDeleteDialogOpen(false);
+      setTransactionToDelete(null);
+      fetchTransactions();
+    } catch (error: any) {
+      toast.error("Failed to delete transaction");
     }
   };
 
@@ -429,8 +452,23 @@ export default function MonthlyExpenses() {
                       <Badge variant="outline">{transaction.category}</Badge>
                     </TableCell>
                     <TableCell>{transaction.bank_type}</TableCell>
-                    <TableCell className="text-right font-medium text-destructive">
-                      {formatINR(transaction.debit || 0)}
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="font-medium text-destructive">
+                          {formatINR(transaction.debit || 0)}
+                        </span>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => {
+                            setTransactionToDelete(transaction);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -439,6 +477,23 @@ export default function MonthlyExpenses() {
           </CardContent>
         </Card>
       </FadeInStagger>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this transaction of {transactionToDelete && formatINR(transactionToDelete.debit)}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTransaction} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { Building2, Plus, ExternalLink, AlertCircle, ImagePlus } from "lucide-react";
+import { Building2, Plus, ExternalLink, AlertCircle, ImagePlus, Pencil, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { getCategoryLabel, getCategoryColor } from "@/lib/loan-apps-library";
 import AddLogoDialog from "./AddLogoDialog";
 
@@ -27,6 +29,9 @@ export default function MyLendersTab() {
   const [loading, setLoading] = useState(true);
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [selectedLender, setSelectedLender] = useState<{ id: string; name: string } | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [lenderToDelete, setLenderToDelete] = useState<LenderWithStats | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user) fetchLendersWithStats();
@@ -91,6 +96,30 @@ export default function MyLendersTab() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!lenderToDelete) return;
+    
+    try {
+      const { error } = await supabase
+        .from("lenders")
+        .delete()
+        .eq("id", lenderToDelete.id);
+
+      if (error) throw error;
+
+      toast({ title: "Lender deleted successfully" });
+      setDeleteDialogOpen(false);
+      setLenderToDelete(null);
+      fetchLendersWithStats();
+    } catch (error: any) {
+      toast({ 
+        title: "Error deleting lender", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
+  };
+
   if (loading) {
     return <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {[1, 2, 3].map((i) => <Card key={i} className="animate-pulse"><CardContent className="h-48" /></Card>)}
@@ -148,6 +177,19 @@ export default function MyLendersTab() {
                     )}
                   </div>
                 </div>
+                <div className="flex items-center gap-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => {
+                      setLenderToDelete(lender);
+                      setDeleteDialogOpen(true);
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
           <CardContent className="space-y-4">
@@ -179,6 +221,23 @@ export default function MyLendersTab() {
         </Card>
       ))}
     </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lender</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{lenderToDelete?.name}"? This will not delete associated loans.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     
     {selectedLender && (
       <AddLogoDialog
