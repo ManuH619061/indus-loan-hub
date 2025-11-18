@@ -167,6 +167,53 @@ export type Database = {
           },
         ]
       }
+      goals: {
+        Row: {
+          created_at: string
+          goal_type: string
+          id: string
+          loan_id: string | null
+          monthly_extra_payment: number | null
+          notes: string | null
+          target_amount: number | null
+          target_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          goal_type: string
+          id?: string
+          loan_id?: string | null
+          monthly_extra_payment?: number | null
+          notes?: string | null
+          target_amount?: number | null
+          target_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          goal_type?: string
+          id?: string
+          loan_id?: string | null
+          monthly_extra_payment?: number | null
+          notes?: string | null
+          target_amount?: number | null
+          target_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lenders: {
         Row: {
           app_display_name: string | null

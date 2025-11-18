@@ -17,6 +17,7 @@ import LenderDetail from "./pages/LenderDetail";
 import Documents from "./pages/Documents";
 import MonthlyProjection from "./pages/MonthlyProjection";
 import PaymentAnalytics from "./pages/PaymentAnalytics";
+import Goals from "./pages/Goals";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -43,6 +44,7 @@ const App = () => (
           <Route path="/documents" element={<ProtectedRoute><Layout><Documents /></Layout></ProtectedRoute>} />
           <Route path="/monthly-projection" element={<ProtectedRoute><Layout><MonthlyProjection /></Layout></ProtectedRoute>} />
           <Route path="/analytics" element={<ProtectedRoute><Layout><PaymentAnalytics /></Layout></ProtectedRoute>} />
+          <Route path="/goals" element={<ProtectedRoute><Layout><Goals /></Layout></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
