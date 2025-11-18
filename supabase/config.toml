@@ -2,3 +2,6 @@ project_id = "mhhskwckcxoeqtkeduoz"
 
 [functions.fetch-lender-details]
 verify_jwt = false
+
+[functions.debt-advisor]
+verify_jwt = false
