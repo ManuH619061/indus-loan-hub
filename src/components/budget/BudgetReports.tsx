@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ResponsiveTableSimple } from "@/components/ui/responsive-table";
 import { formatINR } from "@/lib/currency";
 import { Download, FileText, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
@@ -77,7 +78,7 @@ export default function BudgetReports({
                 Excel
               </Button>
             </div>
-            <Table>
+            <ResponsiveTableSimple minWidth={500}>
               <TableHeader>
                 <TableRow>
                   <TableHead>Category</TableHead>
@@ -102,7 +103,7 @@ export default function BudgetReports({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </ResponsiveTableSimple>
           </TabsContent>
 
           <TabsContent value="forecast" className="space-y-4">
@@ -116,7 +117,7 @@ export default function BudgetReports({
                 Excel
               </Button>
             </div>
-            <Table>
+            <ResponsiveTableSimple minWidth={600}>
               <TableHeader>
                 <TableRow>
                   <TableHead>Month</TableHead>
@@ -143,7 +144,7 @@ export default function BudgetReports({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </ResponsiveTableSimple>
           </TabsContent>
 
           <TabsContent value="debt" className="space-y-4">
@@ -157,7 +158,7 @@ export default function BudgetReports({
                 Excel
               </Button>
             </div>
-            <Table>
+            <ResponsiveTableSimple minWidth={600}>
               <TableHeader>
                 <TableRow>
                   <TableHead>Loan</TableHead>
@@ -178,7 +179,7 @@ export default function BudgetReports({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </ResponsiveTableSimple>
           </TabsContent>
         </Tabs>
       </CardContent>

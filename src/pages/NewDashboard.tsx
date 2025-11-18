@@ -16,6 +16,7 @@ import {
 import { format, addMonths, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from "date-fns";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from "recharts";
+import { ResponsiveChart } from "@/components/ui/responsive-chart";
 import FadeInStagger, { FadeInStaggerItem } from "@/components/FadeInStagger";
 
 interface DashboardStats {
@@ -368,36 +369,38 @@ export default function NewDashboard() {
       {/* 6-Month EMI Projection */}
       <Card>
         <CardHeader>
-          <CardTitle>6-Month EMI Projection</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base sm:text-lg">6-Month EMI Projection</CardTitle>
+            <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+          </div>
         </CardHeader>
         <CardContent>
-          <ChartContainer
+          <ResponsiveChart
             config={{
               emi: {
                 label: "EMI",
                 color: "hsl(var(--primary))",
               },
             }}
-            className="h-[300px]"
+            height={300}
+            minHeight={250}
           >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={projectionData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis 
-                  dataKey="month" 
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                />
-                <YAxis 
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                  tickFormatter={(value) => formatINR(value)}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="emi" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartContainer>
+            <BarChart data={projectionData}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis 
+                dataKey="month" 
+                className="text-xs"
+                tick={{ fontSize: 12 }}
+              />
+              <YAxis 
+                className="text-xs"
+                tick={{ fontSize: 12 }}
+                tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Bar dataKey="emi" fill="var(--color-emi)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveChart>
         </CardContent>
       </Card>
 
