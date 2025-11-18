@@ -1,9 +1,30 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Input validation schemas
+const loanSchema = z.object({
+  loan_name: z.string().min(1).max(200),
+  outstanding: z.number().positive().max(100000000),
+  interest_rate_apy: z.number().min(0).max(100),
+  emi_amount: z.number().nonnegative().max(10000000).optional(),
+  rate_type: z.string().max(50),
+});
+
+const goalSchema = z.object({
+  goal_type: z.string().min(1).max(100),
+  notes: z.string().max(1000).optional(),
+});
+
+const requestSchema = z.object({
+  loans: z.array(loanSchema).min(1).max(50),
+  monthlyIncome: z.number().positive().max(100000000).optional(),
+  goals: z.array(goalSchema).max(20).optional(),
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -11,7 +32,24 @@ serve(async (req) => {
   }
 
   try {
-    const { loans, monthlyIncome, goals } = await req.json();
+    const body = await req.json();
+    
+    // Validate input
+    const validationResult = requestSchema.safeParse(body);
+    if (!validationResult.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid input data", 
+          details: validationResult.error.format() 
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const { loans, monthlyIncome, goals } = validationResult.data;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -19,10 +57,10 @@ serve(async (req) => {
     }
 
     // Build comprehensive context for AI
-    const totalOutstanding = loans.reduce((sum: number, loan: any) => sum + loan.outstanding, 0);
-    const totalMonthlyEMI = loans.reduce((sum: number, loan: any) => sum + (loan.emi_amount || 0), 0);
+    const totalOutstanding = loans.reduce((sum: number, loan) => sum + loan.outstanding, 0);
+    const totalMonthlyEMI = loans.reduce((sum: number, loan) => sum + (loan.emi_amount || 0), 0);
     const avgInterestRate = loans.length > 0 
-      ? loans.reduce((sum: number, loan: any) => sum + loan.interest_rate_apy, 0) / loans.length 
+      ? loans.reduce((sum: number, loan) => sum + loan.interest_rate_apy, 0) / loans.length 
       : 0;
 
     const systemPrompt = `You are an expert financial advisor specializing in debt management and payoff strategies. 
@@ -47,7 +85,7 @@ Format your response with clear sections:
     const userPrompt = `Please analyze my debt situation and create a personalized debt payoff plan:
 
 **Current Debt Portfolio:**
-${loans.map((loan: any, idx: number) => `
+${loans.map((loan, idx: number) => `
 ${idx + 1}. ${loan.loan_name}
    - Outstanding: ₹${loan.outstanding.toLocaleString('en-IN')}
    - Interest Rate: ${loan.interest_rate_apy}% APY
@@ -63,7 +101,7 @@ ${monthlyIncome ? `- Monthly Income: ₹${monthlyIncome.toLocaleString('en-IN')}
 ${monthlyIncome ? `- EMI to Income Ratio: ${((totalMonthlyEMI / monthlyIncome) * 100).toFixed(1)}%` : ''}
 
 ${goals && goals.length > 0 ? `**Current Goals:**
-${goals.map((goal: any, idx: number) => `${idx + 1}. ${goal.goal_type}: ${goal.notes || 'No notes'}`).join('\n')}` : ''}
+${goals.map((goal, idx: number) => `${idx + 1}. ${goal.goal_type}: ${goal.notes || 'No notes'}`).join('\n')}` : ''}
 
 Please provide a comprehensive debt payoff strategy tailored to my situation. Include specific recommendations on:
 1. Which debt repayment strategy suits me best (avalanche vs snowball)

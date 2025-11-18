@@ -4,4 +4,4 @@ project_id = "mhhskwckcxoeqtkeduoz"
 verify_jwt = false
 
 [functions.debt-advisor]
-verify_jwt = false
+verify_jwt = true
