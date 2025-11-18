@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,7 @@ import {
 import { format, addMonths, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from "date-fns";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from "recharts";
+import FadeInStagger, { FadeInStaggerItem } from "@/components/FadeInStagger";
 
 interface DashboardStats {
   totalOutstanding: number;
@@ -194,59 +196,67 @@ export default function NewDashboard() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatINR(stats.totalOutstanding)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Across {stats.activeLoans} active {stats.activeLoans === 1 ? 'loan' : 'loans'}
-            </p>
-          </CardContent>
-        </Card>
+      <FadeInStagger className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <FadeInStaggerItem>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatINR(stats.totalOutstanding)}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Across {stats.activeLoans} active {stats.activeLoans === 1 ? 'loan' : 'loans'}
+              </p>
+            </CardContent>
+          </Card>
+        </FadeInStaggerItem>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Next 30 Days EMI</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatINR(stats.upcomingEMI)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {upcomingEMIs.length} payment{upcomingEMIs.length !== 1 ? 's' : ''} due
-            </p>
-          </CardContent>
-        </Card>
+        <FadeInStaggerItem>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Next 30 Days EMI</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatINR(stats.upcomingEMI)}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {upcomingEMIs.length} payment{upcomingEMIs.length !== 1 ? 's' : ''} due
+              </p>
+            </CardContent>
+          </Card>
+        </FadeInStaggerItem>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Avg Interest Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatPercent(stats.avgInterestRate, 1)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Weighted average
-            </p>
-          </CardContent>
-        </Card>
+        <FadeInStaggerItem>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Avg Interest Rate</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatPercent(stats.avgInterestRate, 1)}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Weighted average
+              </p>
+            </CardContent>
+          </Card>
+        </FadeInStaggerItem>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Alerts</CardTitle>
-            <AlertCircle className={`h-4 w-4 ${stats.overdueCount > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.overdueCount + riskAlerts.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.overdueCount} overdue, {riskAlerts.length} warnings
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+        <FadeInStaggerItem>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Alerts</CardTitle>
+              <AlertCircle className={`h-4 w-4 ${stats.overdueCount > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.overdueCount + riskAlerts.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.overdueCount} overdue, {riskAlerts.length} warnings
+              </p>
+            </CardContent>
+          </Card>
+        </FadeInStaggerItem>
+      </FadeInStagger>
 
       {/* Payoff Progress */}
       <Card>
