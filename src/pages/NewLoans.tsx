@@ -122,14 +122,14 @@ export default function NewLoans() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-full overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Loans</h1>
           <p className="text-muted-foreground">Manage all your loans in one place</p>
         </div>
         <Link to="/loans/new">
-          <Button className="gap-2">
+          <Button className="gap-2 w-full sm:w-auto">
             <Plus className="h-4 w-4" />
             Add Loan
           </Button>
@@ -175,21 +175,21 @@ export default function NewLoans() {
                         </Avatar>
 
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                            <div className="min-w-0 flex-1">
                               <Link to={`/loans/${loan.id}`}>
-                                <h3 className="text-xl font-semibold hover:text-primary transition-colors">
+                                <h3 className="text-xl font-semibold hover:text-primary transition-colors truncate">
                                   {loan.loan_name}
                                 </h3>
                               </Link>
                               <div className="flex items-center gap-2 mt-1">
-                                <Building2 className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-sm text-muted-foreground">
+                                <Building2 className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                <span className="text-sm text-muted-foreground truncate">
                                   {loan.lenders?.name || "No lender"}
                                 </span>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-shrink-0">
                               <Badge className={getStatusColor(loan.status)} variant="outline">
                                 {loan.status}
                               </Badge>
@@ -211,7 +211,7 @@ export default function NewLoans() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                          <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4">
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Outstanding</p>
                               <p className="font-semibold">{formatINR(loan.outstanding)}</p>

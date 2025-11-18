@@ -221,10 +221,10 @@ export default function BudgetPlanner() {
   if (loading) return <div className="space-y-6"><Skeleton className="h-12 w-64" /><div className="grid gap-6 md:grid-cols-3">{[1,2,3].map((i) => <Skeleton key={i} className="h-48" />)}</div></div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-4xl font-bold">Budget Planner</h1><p className="text-muted-foreground mt-2">Deep budgeting with future planning and strategies</p></div>
-        <Button onClick={saveBudget} disabled={saving} size="lg"><Save className="h-4 w-4 mr-2" />{saving ? "Saving..." : "Save"}</Button>
+    <div className="space-y-6 max-w-full overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div><h1 className="text-3xl sm:text-4xl font-bold">Budget Planner</h1><p className="text-muted-foreground mt-2">Deep budgeting with future planning and strategies</p></div>
+        <Button onClick={saveBudget} disabled={saving} size="lg" className="w-full sm:w-auto"><Save className="h-4 w-4 mr-2" />{saving ? "Saving..." : "Save"}</Button>
       </div>
       <FadeInStagger>
         <BudgetSummaryCards totalIncome={totalIncome} totalExpenses={totalExpenses} totalEMI={totalEMI} savings={budget.savingsInvestments} freeCash={freeCash} debtBurden={debtBurden} />
