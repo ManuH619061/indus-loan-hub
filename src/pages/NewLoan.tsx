@@ -11,11 +11,13 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowRight, Check, Upload, FileText, Loader2, Plus } from "lucide-react";
 import { calculateReducingEMI, calculateFlatEMI, generateAmortizationSchedule } from "@/lib/emi-calculator";
 import { formatINR, formatPercent } from "@/lib/currency";
+import { loanAppsLibrary } from "@/lib/loan-apps-library";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import SmartLenderSelector from "@/components/SmartLenderSelector";
 
 interface Lender {
   id: string;
@@ -72,6 +74,13 @@ export default function NewLoan() {
 
   useEffect(() => {
     fetchLenders();
+    
+    // Check for pre-selected lender from URL
+    const params = new URLSearchParams(window.location.search);
+    const lenderId = params.get("lender");
+    if (lenderId) {
+      setFormData((prev) => ({ ...prev, lender_id: lenderId }));
+    }
   }, [user]);
 
   const fetchLenders = async () => {
@@ -82,6 +91,63 @@ export default function NewLoan() {
       .eq("user_id", user.id)
       .order("name");
     if (data) setLenders(data);
+  };
+
+  const handleLenderChange = async (value: string) => {
+    if (value === "__add_custom__") {
+      setNewLenderOpen(true);
+      return;
+    }
+
+    // Check if it's from library
+    if (value.startsWith("library:")) {
+      const appId = value.replace("library:", "");
+      const app = loanAppsLibrary.find((a) => a.id === appId);
+      
+      if (app && user) {
+        // Check if lender already exists
+        const { data: existingLender } = await supabase
+          .from("lenders")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("name", app.name)
+          .maybeSingle();
+
+        if (existingLender) {
+          setFormData({ ...formData, lender_id: existingLender.id });
+        } else {
+          // Create new lender from library
+          const lenderType = 
+            app.category === "INSTANT_LOAN" ? "OTHER" as const :
+            app.category === "SALARY_ADVANCE" ? "OTHER" as const :
+            app.category === "CREDIT_CARD" ? "CARD" as const :
+            app.category as "BANK" | "NBFC" | "OTHER";
+
+          const { data: newLender } = await supabase
+            .from("lenders")
+            .insert([{
+              user_id: user.id,
+              name: app.name,
+              type: lenderType,
+              logo_url: app.logo_url,
+              website: app.website,
+              app_link: app.app_link,
+              upi_vpa: app.upi_vpa,
+              notes: app.description,
+            }] as any)
+            .select()
+            .single();
+
+          if (newLender) {
+            setLenders([...lenders, newLender]);
+            setFormData({ ...formData, lender_id: newLender.id });
+            toast({ title: "Lender added from library!" });
+          }
+        }
+      }
+    } else {
+      setFormData({ ...formData, lender_id: value });
+    }
   };
 
   const handleAddLender = async () => {
@@ -326,76 +392,11 @@ export default function NewLoan() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Lender *</Label>
-                <div className="flex gap-2">
-                  <Select
-                    value={formData.lender_id}
-                    onValueChange={(value) => setFormData({ ...formData, lender_id: value })}
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select lender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {lenders.map((lender) => (
-                        <SelectItem key={lender.id} value={lender.id}>
-                          {lender.name} ({lender.type})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Dialog open={newLenderOpen} onOpenChange={setNewLenderOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="icon">
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Add New Lender</DialogTitle>
-                        <DialogDescription>Create a new lender to associate with this loan</DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label>Lender Name *</Label>
-                          <Input
-                            value={newLenderData.name}
-                            onChange={(e) => setNewLenderData({ ...newLenderData, name: e.target.value })}
-                            placeholder="e.g., HDFC Bank"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Type *</Label>
-                          <Select
-                            value={newLenderData.type}
-                            onValueChange={(value: any) => setNewLenderData({ ...newLenderData, type: value })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="BANK">Bank</SelectItem>
-                              <SelectItem value="NBFC">NBFC</SelectItem>
-                              <SelectItem value="CARD">Credit Card</SelectItem>
-                              <SelectItem value="FRIEND">Friend/Family</SelectItem>
-                              <SelectItem value="OTHER">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            checked={newLenderData.requires_sanction_letter}
-                            onCheckedChange={(checked) =>
-                              setNewLenderData({ ...newLenderData, requires_sanction_letter: checked })
-                            }
-                          />
-                          <Label>Requires Sanction Letter</Label>
-                        </div>
-                        <Button onClick={handleAddLender} disabled={loading} className="w-full">
-                          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Lender"}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
+                <SmartLenderSelector
+                  value={formData.lender_id}
+                  onChange={handleLenderChange}
+                  onAddCustom={() => setNewLenderOpen(true)}
+                />
               </div>
 
               <div className="space-y-2">
