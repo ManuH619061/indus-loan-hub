@@ -19,6 +19,10 @@ import Documents from "./pages/Documents";
 import NewInsights from "./pages/NewInsights";
 import BudgetPlanner from "./pages/BudgetPlanner";
 import BudgetHistory from "./pages/BudgetHistory";
+import MonthlyExpenses from "./pages/budget/MonthlyExpenses";
+import FutureCashFlow from "./pages/budget/FutureCashFlow";
+import SavingsGoals from "./pages/budget/SavingsGoals";
+import BudgetReports from "./pages/budget/BudgetReports";
 import BankStatementImport from "./pages/BankStatementImport";
 import Expenses from "./pages/Expenses";
 import LoanComparison from "./pages/LoanComparison";
@@ -38,7 +42,11 @@ function AnimatedRoutes() {
         <Route path="/auth" element={<Auth />} />
         <Route path="/dashboard" element={<ProtectedRoute><Layout><PageTransition><NewDashboard /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/budget-planner" element={<ProtectedRoute><Layout><PageTransition><BudgetPlanner /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/budget/monthly-expenses" element={<ProtectedRoute><Layout><PageTransition><MonthlyExpenses /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/budget-history" element={<ProtectedRoute><Layout><PageTransition><BudgetHistory /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/budget/future-cashflow" element={<ProtectedRoute><Layout><PageTransition><FutureCashFlow /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/budget/savings-goals" element={<ProtectedRoute><Layout><PageTransition><SavingsGoals /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/budget/reports" element={<ProtectedRoute><Layout><PageTransition><BudgetReports /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/bank-import" element={<ProtectedRoute><Layout><PageTransition><BankStatementImport /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute><Layout><PageTransition><Expenses /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/loans" element={<ProtectedRoute><Layout><PageTransition><NewLoans /></PageTransition></Layout></ProtectedRoute>} />
