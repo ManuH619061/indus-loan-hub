@@ -11,7 +11,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { formatINR } from "@/lib/currency";
 import { z } from "zod";
-import { Plus, Smartphone, CreditCard, Banknote, Building2, TrendingUp, Calendar, AlertCircle } from "lucide-react";
+import { Plus, Smartphone, CreditCard, Banknote, Building2, TrendingUp, Calendar, AlertCircle, Pencil, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { ResponsiveChart } from "@/components/ui/responsive-chart";
@@ -34,6 +35,8 @@ export default function NewPayments() {
   const [upcomingEMIs, setUpcomingEMIs] = useState<any[]>([]);
   const [overdueEMIs, setOverdueEMIs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<any>(null);
   const [paymentForm, setPaymentForm] = useState({
     loan_id: "",
     amount: "",
@@ -152,6 +155,30 @@ export default function NewPayments() {
     } catch (error: any) {
       toast({ 
         title: "Error recording payment", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleDeletePayment = async () => {
+    if (!paymentToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from("payments")
+        .delete()
+        .eq("id", paymentToDelete.id);
+
+      if (error) throw error;
+
+      toast({ title: "Payment deleted successfully" });
+      setDeleteDialogOpen(false);
+      setPaymentToDelete(null);
+      fetchData();
+    } catch (error: any) {
+      toast({ 
+        title: "Error deleting payment", 
         description: error.message, 
         variant: "destructive" 
       });
@@ -435,15 +462,28 @@ export default function NewPayments() {
               <div className="space-y-2">
                 {payments.map((payment) => (
                   <div key={payment.id} className="flex items-center justify-between p-3 rounded-lg border">
-                    <div className="flex items-center gap-3">
-                      <div>
-                        <p className="font-medium text-sm">{payment.loans.loan_name}</p>
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{payment.loans.loan_name}</p>
                         <p className="text-xs text-muted-foreground">
                           {format(new Date(payment.paid_on), "MMM d, yyyy")} • {payment.payment_type}
                         </p>
                       </div>
                     </div>
-                    <p className="font-semibold">{formatINR(payment.amount)}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold">{formatINR(payment.amount)}</p>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => {
+                          setPaymentToDelete(payment);
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -494,6 +534,23 @@ export default function NewPayments() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Payment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this payment of {paymentToDelete && formatINR(paymentToDelete.amount)}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeletePayment} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
