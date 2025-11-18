@@ -415,6 +415,96 @@ export type Database = {
           },
         ]
       }
+      monthly_budgets: {
+        Row: {
+          created_at: string | null
+          eating_out: number | null
+          eating_out_limit: number | null
+          extra_emi_amount: number | null
+          food: number | null
+          food_limit: number | null
+          id: string
+          insurance: number | null
+          month_year: string
+          notes: string | null
+          other_income: number | null
+          other_variable: number | null
+          rent: number | null
+          salary: number | null
+          savings_investments: number | null
+          school: number | null
+          shopping: number | null
+          shopping_limit: number | null
+          side_income: number | null
+          strategy: string | null
+          subscriptions: number | null
+          transport: number | null
+          travel: number | null
+          travel_limit: number | null
+          updated_at: string | null
+          user_id: string
+          utilities: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          eating_out?: number | null
+          eating_out_limit?: number | null
+          extra_emi_amount?: number | null
+          food?: number | null
+          food_limit?: number | null
+          id?: string
+          insurance?: number | null
+          month_year: string
+          notes?: string | null
+          other_income?: number | null
+          other_variable?: number | null
+          rent?: number | null
+          salary?: number | null
+          savings_investments?: number | null
+          school?: number | null
+          shopping?: number | null
+          shopping_limit?: number | null
+          side_income?: number | null
+          strategy?: string | null
+          subscriptions?: number | null
+          transport?: number | null
+          travel?: number | null
+          travel_limit?: number | null
+          updated_at?: string | null
+          user_id: string
+          utilities?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          eating_out?: number | null
+          eating_out_limit?: number | null
+          extra_emi_amount?: number | null
+          food?: number | null
+          food_limit?: number | null
+          id?: string
+          insurance?: number | null
+          month_year?: string
+          notes?: string | null
+          other_income?: number | null
+          other_variable?: number | null
+          rent?: number | null
+          salary?: number | null
+          savings_investments?: number | null
+          school?: number | null
+          shopping?: number | null
+          shopping_limit?: number | null
+          side_income?: number | null
+          strategy?: string | null
+          subscriptions?: number | null
+          transport?: number | null
+          travel?: number | null
+          travel_limit?: number | null
+          updated_at?: string | null
+          user_id?: string
+          utilities?: number | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
