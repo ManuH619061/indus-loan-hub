@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { ArrowLeft, Calendar, TrendingUp, Building2, CreditCard, Target, Calculator, FileText } from "lucide-react";
+import { ArrowLeft, Calendar, TrendingUp, Building2, CreditCard, Target, Calculator, FileText, Pencil } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import QuickPaySheet from "@/components/QuickPaySheet";
 import AIDebtAdvisor from "@/components/AIDebtAdvisor";
+import { EditLoanDialog } from "@/components/EditLoanDialog";
 
 export default function NewLoanDetail() {
   const { id } = useParams();
@@ -20,6 +21,7 @@ export default function NewLoanDetail() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
   const [showQuickPay, setShowQuickPay] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -111,6 +113,10 @@ export default function NewLoanDetail() {
           <h1 className="text-3xl font-bold">{loan.loan_name}</h1>
           <p className="text-muted-foreground">{loan.lenders?.name}</p>
         </div>
+        <Button onClick={() => setEditDialogOpen(true)} variant="outline" className="gap-2">
+          <Pencil className="h-4 w-4" />
+          Edit
+        </Button>
         <Button onClick={() => setShowQuickPay(true)} className="gap-2">
           <CreditCard className="h-4 w-4" />
           Quick Pay
@@ -341,6 +347,17 @@ export default function NewLoanDetail() {
           onOpenChange={setShowQuickPay}
           loan={loan}
           onPaymentComplete={fetchLoanDetail}
+        />
+      )}
+
+      {editDialogOpen && (
+        <EditLoanDialog
+          loan={loan}
+          open={editDialogOpen}
+          onOpenChange={(open) => {
+            setEditDialogOpen(open);
+            if (!open) fetchLoanDetail(); // Refresh data after edit
+          }}
         />
       )}
     </div>
