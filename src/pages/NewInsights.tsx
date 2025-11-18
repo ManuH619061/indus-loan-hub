@@ -157,10 +157,12 @@ export default function NewInsights() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Financial Insights</h1>
-        <p className="text-muted-foreground">Deep analysis of your financial health and risk factors</p>
+    <div className="space-y-6 max-w-full overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Financial Insights</h1>
+          <p className="text-muted-foreground">Deep analysis of your financial health and risk factors</p>
+        </div>
       </div>
 
       {/* Key Health Metrics */}
@@ -283,7 +285,7 @@ export default function NewInsights() {
           <CardHeader>
             <CardTitle>Monthly Income Breakdown</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             <ResponsiveChart
               config={{
                 debt: {
@@ -305,7 +307,7 @@ export default function NewInsights() {
                     cy="50%"
                     labelLine={false}
                     label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
+                    outerRadius={60}
                     fill="#8884d8"
                     dataKey="value"
                   >
@@ -341,7 +343,7 @@ export default function NewInsights() {
           <CardHeader>
             <CardTitle>Loan Interest Rates</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             <div className="space-y-3">
               {loans.map((loan) => {
                 const unpaidRows = loan.amortization_rows?.filter((r: any) => !r.is_paid) || [];
@@ -349,16 +351,16 @@ export default function NewInsights() {
 
                 return (
                   <div key={loan.id} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">{loan.loan_name}</p>
-                      <p className="text-sm font-semibold">{formatPercent(loan.interest_rate_apy, 1)}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium truncate flex-1 min-w-0">{loan.loan_name}</p>
+                      <p className="text-sm font-semibold flex-shrink-0">{formatPercent(loan.interest_rate_apy, 1)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Progress 
                         value={Math.min((loan.interest_rate_apy / 20) * 100, 100)} 
-                        className="flex-1 h-2"
+                        className="flex-1 h-2 min-w-0"
                       />
-                      <span className="text-xs text-muted-foreground">{formatINR(outstanding)}</span>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">{formatINR(outstanding)}</span>
                     </div>
                   </div>
                 );

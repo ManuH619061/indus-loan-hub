@@ -201,10 +201,12 @@ export default function NewPayments() {
   const prepaid = payments.filter(p => p.payment_type === "PART_PREPAY" || p.payment_type === "FULL_PREPAY").reduce((sum, p) => sum + p.amount, 0);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
-        <p className="text-muted-foreground">Record and track all your loan payments</p>
+    <div className="space-y-6 max-w-full overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
+          <p className="text-muted-foreground">Record and track all your loan payments</p>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
