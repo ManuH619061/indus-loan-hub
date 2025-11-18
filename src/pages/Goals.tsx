@@ -16,6 +16,7 @@ import { formatINR } from "@/lib/currency";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { format } from "date-fns";
+import AIDebtAdvisor from "@/components/AIDebtAdvisor";
 
 interface Goal {
   id: string;
@@ -44,6 +45,7 @@ export default function Goals() {
   const { toast } = useToast();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
+  const [monthlyIncome, setMonthlyIncome] = useState<number | undefined>();
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -63,6 +65,17 @@ export default function Goals() {
 
   const fetchData = async () => {
     try {
+      // Fetch profile for monthly income
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("monthly_income")
+        .eq("id", user?.id)
+        .single();
+
+      if (!profileError && profileData) {
+        setMonthlyIncome(profileData.monthly_income || undefined);
+      }
+
       // Fetch goals
       const { data: goalsData, error: goalsError } = await supabase
         .from("goals")
@@ -391,6 +404,9 @@ export default function Goals() {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Debt Advisor */}
+      <AIDebtAdvisor loans={loans} monthlyIncome={monthlyIncome} goals={goals} />
 
       {/* Debt Projection Chart */}
       <Card>
