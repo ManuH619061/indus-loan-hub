@@ -39,10 +39,13 @@ const navigation = [
     ]
   },
   { 
-    name: "Import & Expenses", 
-    icon: Upload,
+    name: "Banking & BRS", 
+    icon: Building2,
     children: [
-      { name: "Bank Import", href: "/bank-import", icon: Upload },
+      { name: "Bank Accounts", href: "/banking/accounts", icon: Building2 },
+      { name: "Reconciliation", href: "/banking/reconcile", icon: Scale },
+      { name: "Automation Rules", href: "/banking/rules", icon: FileText },
+      { name: "BRS Report", href: "/banking/brs-report", icon: BarChart3 },
       { name: "Transactions", href: "/expenses", icon: Receipt },
     ]
   },
