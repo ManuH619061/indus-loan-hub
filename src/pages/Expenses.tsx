@@ -12,6 +12,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/currency";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { ResponsiveChartLegacy } from "@/components/ui/responsive-chart";
+import { ResponsiveTableSimple } from "@/components/ui/responsive-table";
 
 interface Transaction {
   id: string;
@@ -161,9 +163,9 @@ export default function Expenses() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h3 className="font-bold mb-4">Spending by Category</h3>
-          <ResponsiveContainer width="100%" height={300}>
+        <Card className="p-4 sm:p-6">
+          <h3 className="font-bold mb-4 text-sm sm:text-base">Spending by Category</h3>
+          <ResponsiveChartLegacy height={300} minHeight={250}>
             <PieChart>
               <Pie
                 data={categoryData}
@@ -181,12 +183,12 @@ export default function Expenses() {
               </Pie>
               <Tooltip formatter={(value) => formatINR(Number(value))} />
             </PieChart>
-          </ResponsiveContainer>
+          </ResponsiveChartLegacy>
         </Card>
 
-        <Card className="p-6">
-          <h3 className="font-bold mb-4">Income vs Expenses</h3>
-          <ResponsiveContainer width="100%" height={300}>
+        <Card className="p-4 sm:p-6">
+          <h3 className="font-bold mb-4 text-sm sm:text-base">Income vs Expenses</h3>
+          <ResponsiveChartLegacy height={300} minHeight={250}>
             <BarChart
               data={[
                 { name: 'Income', amount: totalIncome },
@@ -200,7 +202,7 @@ export default function Expenses() {
               <Tooltip formatter={(value) => formatINR(Number(value))} />
               <Bar dataKey="amount" fill="#8884d8" />
             </BarChart>
-          </ResponsiveContainer>
+          </ResponsiveChartLegacy>
         </Card>
       </div>
 
@@ -249,8 +251,8 @@ export default function Expenses() {
       </Card>
 
       {/* Transactions Table */}
-      <Card>
-        <Table>
+      <Card className="p-0">
+        <ResponsiveTableSimple minWidth={800}>
           <TableHeader>
             <TableRow>
               <TableHead>Date</TableHead>
@@ -302,7 +304,7 @@ export default function Expenses() {
               ))
             )}
           </TableBody>
-        </Table>
+        </ResponsiveTableSimple>
       </Card>
     </div>
   );
