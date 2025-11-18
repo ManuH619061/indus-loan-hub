@@ -70,6 +70,236 @@ export type Database = {
           },
         ]
       }
+      bank_accounts: {
+        Row: {
+          account_number_full: string | null
+          account_number_masked: string
+          account_type: string
+          bank_name: string
+          book_balance: number
+          branch: string | null
+          created_at: string
+          icon_url: string | null
+          id: string
+          ifsc_code: string | null
+          is_active: boolean
+          last_imported_at: string | null
+          last_reconciled_at: string | null
+          notes: string | null
+          statement_balance: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_number_full?: string | null
+          account_number_masked: string
+          account_type?: string
+          bank_name: string
+          book_balance?: number
+          branch?: string | null
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          ifsc_code?: string | null
+          is_active?: boolean
+          last_imported_at?: string | null
+          last_reconciled_at?: string | null
+          notes?: string | null
+          statement_balance?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_number_full?: string | null
+          account_number_masked?: string
+          account_type?: string
+          bank_name?: string
+          book_balance?: number
+          branch?: string | null
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          ifsc_code?: string | null
+          is_active?: boolean
+          last_imported_at?: string | null
+          last_reconciled_at?: string | null
+          notes?: string | null
+          statement_balance?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      bank_rules: {
+        Row: {
+          action_category: string | null
+          action_loan_id: string | null
+          action_subcategory: string | null
+          action_type: string
+          bank_account_id: string | null
+          condition_field: string
+          condition_type: string
+          condition_value: string
+          created_at: string
+          id: string
+          is_active: boolean
+          priority: number
+          rule_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_category?: string | null
+          action_loan_id?: string | null
+          action_subcategory?: string | null
+          action_type: string
+          bank_account_id?: string | null
+          condition_field: string
+          condition_type: string
+          condition_value: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          priority?: number
+          rule_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_category?: string | null
+          action_loan_id?: string | null
+          action_subcategory?: string | null
+          action_type?: string
+          bank_account_id?: string | null
+          condition_field?: string
+          condition_type?: string
+          condition_value?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          priority?: number
+          rule_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_rules_action_loan_id_fkey"
+            columns: ["action_loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_rules_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_statement_entries: {
+        Row: {
+          balance: number | null
+          bank_account_id: string
+          category: string | null
+          created_at: string
+          credit: number | null
+          debit: number | null
+          id: string
+          import_id: string | null
+          is_emi: boolean | null
+          is_transfer: boolean | null
+          loan_id: string | null
+          matched_transaction_id: string | null
+          narration: string
+          notes: string | null
+          reference: string | null
+          status: string
+          subcategory: string | null
+          transaction_date: string
+          updated_at: string
+          user_id: string
+          value_date: string | null
+        }
+        Insert: {
+          balance?: number | null
+          bank_account_id: string
+          category?: string | null
+          created_at?: string
+          credit?: number | null
+          debit?: number | null
+          id?: string
+          import_id?: string | null
+          is_emi?: boolean | null
+          is_transfer?: boolean | null
+          loan_id?: string | null
+          matched_transaction_id?: string | null
+          narration: string
+          notes?: string | null
+          reference?: string | null
+          status?: string
+          subcategory?: string | null
+          transaction_date: string
+          updated_at?: string
+          user_id: string
+          value_date?: string | null
+        }
+        Update: {
+          balance?: number | null
+          bank_account_id?: string
+          category?: string | null
+          created_at?: string
+          credit?: number | null
+          debit?: number | null
+          id?: string
+          import_id?: string | null
+          is_emi?: boolean | null
+          is_transfer?: boolean | null
+          loan_id?: string | null
+          matched_transaction_id?: string | null
+          narration?: string
+          notes?: string | null
+          reference?: string | null
+          status?: string
+          subcategory?: string | null
+          transaction_date?: string
+          updated_at?: string
+          user_id?: string
+          value_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_statement_entries_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_entries_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "bank_statement_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_entries_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_entries_matched_transaction_id_fkey"
+            columns: ["matched_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_statement_imports: {
         Row: {
           bank_type: string
@@ -715,6 +945,70 @@ export type Database = {
             columns: ["loan_id"]
             isOneToOne: false
             referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reconciliation_matches: {
+        Row: {
+          bank_account_id: string
+          bank_entry_id: string
+          created_at: string
+          id: string
+          match_confidence: number | null
+          match_type: string
+          matched_at: string
+          matched_by: string | null
+          notes: string | null
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          bank_account_id: string
+          bank_entry_id: string
+          created_at?: string
+          id?: string
+          match_confidence?: number | null
+          match_type: string
+          matched_at?: string
+          matched_by?: string | null
+          notes?: string | null
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          bank_account_id?: string
+          bank_entry_id?: string
+          created_at?: string
+          id?: string
+          match_confidence?: number | null
+          match_type?: string
+          matched_at?: string
+          matched_by?: string | null
+          notes?: string | null
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliation_matches_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_matches_bank_entry_id_fkey"
+            columns: ["bank_entry_id"]
+            isOneToOne: false
+            referencedRelation: "bank_statement_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_matches_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
         ]
