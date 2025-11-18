@@ -157,14 +157,14 @@ function AppSidebar() {
 
   return (
     <Sidebar 
-      className="border-r border-border/40"
+      className="border-r border-border/40 bg-background"
       collapsible="offcanvas"
     >
-      <SidebarContent>
+      <SidebarContent className="bg-background">
         <div className="flex flex-col h-full">
           {/* Logo / Brand */}
           <div className="px-6 py-5 border-b border-border/40">
-            <h2 className="text-lg font-semibold text-foreground">Money Manager</h2>
+            <h2 className="text-lg font-semibold text-foreground">Finance Manager</h2>
           </div>
 
           {/* Navigation */}
@@ -331,7 +331,7 @@ function MobileHeader() {
   const { toggleSidebar } = useSidebar();
   
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+    <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background md:hidden">
       <div className="flex h-14 items-center gap-4 px-4">
         <Button
           variant="ghost"
@@ -342,7 +342,7 @@ function MobileHeader() {
           <Menu className="h-5 w-5" />
           <span className="sr-only">Toggle navigation menu</span>
         </Button>
-        <h1 className="text-lg font-semibold">Money Manager</h1>
+        <h1 className="text-lg font-semibold">Finance Manager</h1>
       </div>
     </header>
   );
