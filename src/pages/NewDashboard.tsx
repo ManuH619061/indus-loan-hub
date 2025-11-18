@@ -197,7 +197,7 @@ export default function NewDashboard() {
       </div>
 
       {/* Key Metrics */}
-      <FadeInStagger className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <FadeInStagger className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         <FadeInStaggerItem>
           <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">

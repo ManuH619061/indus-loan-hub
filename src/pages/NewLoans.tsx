@@ -211,7 +211,7 @@ export default function NewLoans() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4">
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Outstanding</p>
                               <p className="font-semibold">{formatINR(loan.outstanding)}</p>
