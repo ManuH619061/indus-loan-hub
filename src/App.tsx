@@ -24,6 +24,11 @@ import FutureCashFlow from "./pages/budget/FutureCashFlow";
 import SavingsGoals from "./pages/budget/SavingsGoals";
 import BudgetReports from "./pages/budget/BudgetReports";
 import BankStatementImport from "./pages/BankStatementImport";
+import BankAccountsDashboard from "./pages/banking/BankAccountsDashboard";
+import Reconciliation from "./pages/banking/Reconciliation";
+import BankRules from "./pages/banking/BankRules";
+import BRSReport from "./pages/banking/BRSReport";
+import AddBankAccount from "./pages/banking/AddBankAccount";
 import Expenses from "./pages/Expenses";
 import LoanComparison from "./pages/LoanComparison";
 import Layout from "./components/Layout";
@@ -47,7 +52,13 @@ function AnimatedRoutes() {
         <Route path="/budget/future-cashflow" element={<ProtectedRoute><Layout><PageTransition><FutureCashFlow /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/budget/savings-goals" element={<ProtectedRoute><Layout><PageTransition><SavingsGoals /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/budget/reports" element={<ProtectedRoute><Layout><PageTransition><BudgetReports /></PageTransition></Layout></ProtectedRoute>} />
-        <Route path="/banking/accounts" element={<ProtectedRoute><Layout><PageTransition><BankStatementImport /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/banking/accounts" element={<ProtectedRoute><Layout><PageTransition><BankAccountsDashboard /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/banking/add-account" element={<ProtectedRoute><Layout><PageTransition><AddBankAccount /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/banking/reconcile" element={<ProtectedRoute><Layout><PageTransition><Reconciliation /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/banking/reconcile/:accountId" element={<ProtectedRoute><Layout><PageTransition><Reconciliation /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/banking/rules" element={<ProtectedRoute><Layout><PageTransition><BankRules /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/banking/brs-report" element={<ProtectedRoute><Layout><PageTransition><BRSReport /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/bank-import" element={<ProtectedRoute><Layout><PageTransition><BankStatementImport /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute><Layout><PageTransition><Expenses /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/loans" element={<ProtectedRoute><Layout><PageTransition><NewLoans /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/loans/new" element={<ProtectedRoute><Layout><PageTransition><NewLoan /></PageTransition></Layout></ProtectedRoute>} />
