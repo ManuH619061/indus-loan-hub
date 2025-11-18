@@ -14,6 +14,7 @@ import BudgetSummaryCards from "@/components/budget/BudgetSummaryCards";
 import FutureMonthsPlanner from "@/components/budget/FutureMonthsPlanner";
 import LoanStrategies from "@/components/budget/LoanStrategies";
 import BudgetReports from "@/components/budget/BudgetReports";
+import { z } from "zod";
 
 interface MonthlyBudgetData {
   salary: number;
@@ -117,10 +118,34 @@ export default function BudgetPlanner() {
     }
   };
 
+  const budgetSchema = z.object({
+    salary: z.number().min(0, "Salary cannot be negative").max(10000000, "Amount too large"),
+    sideIncome: z.number().min(0, "Income cannot be negative").max(10000000, "Amount too large"),
+    otherIncome: z.number().min(0, "Income cannot be negative").max(10000000, "Amount too large"),
+    rent: z.number().min(0, "Expense cannot be negative").max(10000000, "Amount too large"),
+    extraEMI: z.number().min(0, "Extra EMI cannot be negative").max(10000000, "Amount too large"),
+  });
+
   const saveBudget = async () => {
     if (!user) return;
     setSaving(true);
     try {
+      // Validate budget values
+      const validationResult = budgetSchema.safeParse({
+        salary: budget.salary,
+        sideIncome: budget.sideIncome,
+        otherIncome: budget.otherIncome,
+        rent: budget.rent,
+        extraEMI: budget.extraEMI,
+      });
+
+      if (!validationResult.success) {
+        const errorMsg = validationResult.error.errors[0].message;
+        toast.error(`Validation error: ${errorMsg}`);
+        setSaving(false);
+        return;
+      }
+
       await supabase.from("monthly_budgets").upsert({
         user_id: user.id, month_year: selectedMonth, salary: budget.salary, side_income: budget.sideIncome,
         other_income: budget.otherIncome, rent: budget.rent, food: budget.food, food_limit: budget.foodLimit,

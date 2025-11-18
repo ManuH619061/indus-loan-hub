@@ -18,6 +18,8 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import SmartLenderSelector from "@/components/SmartLenderSelector";
+import { toast } from "sonner";
+import { z } from "zod";
 
 interface Lender {
   id: string;
@@ -238,6 +240,19 @@ export default function NewLoan() {
     return schedule.slice(0, 12);
   };
 
+  const loanSchema = z.object({
+    principal_amount: z.number().positive("Principal must be positive").max(100000000, "Principal too large"),
+    interest_rate_apy: z.number().min(0.1, "Interest rate must be at least 0.1%").max(100, "Interest rate cannot exceed 100%"),
+    tenure_months: z.number().int().min(1, "Tenure must be at least 1 month").max(600, "Tenure cannot exceed 50 years"),
+    loan_name: z.string().min(1, "Loan name is required").max(100, "Loan name too long"),
+    processing_fee: z.number().min(0, "Fee cannot be negative").max(1000000, "Fee too large"),
+    insurance_fee: z.number().min(0, "Fee cannot be negative").max(1000000, "Fee too large"),
+    gst_on_fees: z.number().min(0, "GST cannot be negative").max(1000000, "GST too large"),
+    other_upfront_costs: z.number().min(0, "Cost cannot be negative").max(1000000, "Cost too large"),
+    billing_day: z.number().int().min(1, "Day must be 1-31").max(31, "Day must be 1-31"),
+    due_day: z.number().int().min(1, "Day must be 1-31").max(31, "Day must be 1-31"),
+  });
+
   const handleSubmit = async () => {
     if (!user) return;
     setLoading(true);
@@ -246,6 +261,27 @@ export default function NewLoan() {
       const principal = parseFloat(formData.principal_amount);
       const rate = parseFloat(formData.interest_rate_apy);
       const tenure = parseInt(formData.tenure_months);
+      
+      // Validate inputs
+      const validationResult = loanSchema.safeParse({
+        principal_amount: principal,
+        interest_rate_apy: rate,
+        tenure_months: tenure,
+        loan_name: formData.loan_name,
+        processing_fee: parseFloat(formData.processing_fee),
+        insurance_fee: parseFloat(formData.insurance_fee),
+        gst_on_fees: parseFloat(formData.gst_on_fees),
+        other_upfront_costs: parseFloat(formData.other_upfront_costs),
+        billing_day: parseInt(formData.billing_day),
+        due_day: parseInt(formData.due_day),
+      });
+
+      if (!validationResult.success) {
+        const errorMsg = validationResult.error.errors[0].message;
+        toast({ variant: "destructive", title: "Validation Error", description: errorMsg });
+        return;
+      }
+
       const emi = calculateEMI();
 
       const { data: loan, error: loanError } = await supabase
