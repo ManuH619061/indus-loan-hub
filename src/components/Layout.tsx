@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -11,50 +10,120 @@ import {
   Building2,
   FileText,
   LogOut,
-  Menu,
+  PiggyBank,
   BarChart3,
   Scale,
-  Upload,
   Receipt,
+  Target,
+  Calendar,
+  LineChart,
+  DollarSign,
+  Landmark,
+  Settings,
+  TrendingDown,
+  TrendingUp as TrendingUpIcon,
+  FileBarChart,
 } from "lucide-react";
+import { NavLink } from "@/components/NavLink";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ChevronDown } from "lucide-react";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { 
-    name: "Budget", 
-    icon: TrendingUp,
+    name: "Dashboard", 
+    href: "/dashboard", 
+    icon: LayoutDashboard 
+  },
+  { 
+    name: "Money Manager", 
+    icon: PiggyBank,
     children: [
-      { name: "Budget Planner", href: "/budget-planner", icon: TrendingUp },
+      { name: "Budget Planner", href: "/budget-planner", icon: Target },
       { name: "Monthly Expenses", href: "/budget/monthly-expenses", icon: Receipt },
-      { name: "Budget History", href: "/budget-history", icon: BarChart3 },
-      { name: "Future Cash-Flow", href: "/budget/future-cashflow", icon: TrendingUp },
-      { name: "Savings & Goals", href: "/budget/savings-goals", icon: TrendingUp },
-      { name: "Budget Reports", href: "/budget/reports", icon: FileText },
+      { name: "Budget History", href: "/budget-history", icon: Calendar },
+      { name: "Future Cash-Flow", href: "/budget/future-cashflow", icon: TrendingUpIcon },
+      { name: "Savings & Goals", href: "/budget/savings-goals", icon: PiggyBank },
+      { name: "Budget Reports", href: "/budget/reports", icon: BarChart3 },
     ]
   },
   { 
-    name: "Banking & BRS", 
-    icon: Building2,
+    name: "Loans Manager", 
+    icon: Wallet,
     children: [
-      { name: "Bank Accounts", href: "/banking/accounts", icon: Building2 },
-      { name: "Reconciliation", href: "/banking/reconcile", icon: Scale },
-      { name: "Automation Rules", href: "/banking/rules", icon: FileText },
-      { name: "BRS Report", href: "/banking/brs-report", icon: BarChart3 },
-      { name: "Transactions", href: "/expenses", icon: Receipt },
+      { name: "Loans", href: "/loans", icon: Wallet },
+      { name: "Payments", href: "/payments", icon: CreditCard },
+      { name: "Lenders", href: "/lenders", icon: Building2 },
+      { name: "Loan Comparison", href: "/loan-comparison", icon: Scale },
+      { name: "EMI Insights", href: "/insights", icon: LineChart },
     ]
   },
-  { name: "Loans", href: "/loans", icon: Wallet },
-  { name: "Payments", href: "/payments", icon: CreditCard },
-  { name: "Lenders", href: "/lenders", icon: Building2 },
-  { name: "Loan Comparison", href: "/loan-comparison", icon: Scale },
-  { name: "Insights", href: "/insights", icon: FileText },
-  { name: "Documents", href: "/documents", icon: FileText },
+  { 
+    name: "Finance Manager", 
+    icon: Landmark,
+    children: [
+      {
+        name: "Banking",
+        icon: Building2,
+        subChildren: [
+          { name: "Bank Accounts", href: "/banking/accounts", icon: Building2 },
+          { name: "Reconciliation (BRS)", href: "/banking/reconcile", icon: Scale },
+          { name: "Automation Rules", href: "/banking/rules", icon: Settings },
+          { name: "Transactions", href: "/expenses", icon: Receipt },
+          { name: "BRS Report", href: "/banking/brs-report", icon: FileBarChart },
+          { name: "Import Statements", href: "/bank-statement-import", icon: FileText },
+        ]
+      },
+      {
+        name: "Expenses",
+        icon: TrendingDown,
+        subChildren: [
+          { name: "Expense Ledger", href: "/expenses", icon: Receipt },
+        ]
+      },
+      {
+        name: "Income",
+        icon: DollarSign,
+        subChildren: [
+          { name: "Income Ledger", href: "/expenses", icon: DollarSign },
+        ]
+      },
+    ]
+  },
+  { 
+    name: "Insights", 
+    href: "/insights", 
+    icon: LineChart 
+  },
+  { 
+    name: "Documents", 
+    href: "/documents", 
+    icon: FileText 
+  },
 ];
 
 export default function Layout({ children }: LayoutProps) {
