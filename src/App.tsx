@@ -18,6 +18,8 @@ import Documents from "./pages/Documents";
 import NewInsights from "./pages/NewInsights";
 import BudgetPlanner from "./pages/BudgetPlanner";
 import BudgetHistory from "./pages/BudgetHistory";
+import BankStatementImport from "./pages/BankStatementImport";
+import Expenses from "./pages/Expenses";
 import LoanComparison from "./pages/LoanComparison";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -36,6 +38,8 @@ function AnimatedRoutes() {
         <Route path="/dashboard" element={<ProtectedRoute><Layout><PageTransition><NewDashboard /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/budget-planner" element={<ProtectedRoute><Layout><PageTransition><BudgetPlanner /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/budget-history" element={<ProtectedRoute><Layout><PageTransition><BudgetHistory /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/bank-import" element={<ProtectedRoute><Layout><PageTransition><BankStatementImport /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/expenses" element={<ProtectedRoute><Layout><PageTransition><Expenses /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/loans" element={<ProtectedRoute><Layout><PageTransition><NewLoans /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/loans/new" element={<ProtectedRoute><Layout><PageTransition><NewLoan /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/loans/:id" element={<ProtectedRoute><Layout><PageTransition><NewLoanDetail /></PageTransition></Layout></ProtectedRoute>} />
