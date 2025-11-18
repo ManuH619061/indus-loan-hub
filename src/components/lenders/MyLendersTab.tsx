@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { getCategoryLabel, getCategoryColor } from "@/lib/loan-apps-library";
 import AddLogoDialog from "./AddLogoDialog";
+import { EditLenderDialog } from "@/components/EditLenderDialog";
 
 interface LenderWithStats {
   id: string;
@@ -31,6 +32,8 @@ export default function MyLendersTab() {
   const [selectedLender, setSelectedLender] = useState<{ id: string; name: string } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [lenderToDelete, setLenderToDelete] = useState<LenderWithStats | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingLender, setEditingLender] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -182,6 +185,25 @@ export default function MyLendersTab() {
                     variant="ghost" 
                     size="icon"
                     className="h-7 w-7"
+                    onClick={async () => {
+                      // Fetch full lender details for editing
+                      const { data } = await supabase
+                        .from("lenders")
+                        .select("*")
+                        .eq("id", lender.id)
+                        .single();
+                      if (data) {
+                        setEditingLender(data);
+                        setEditDialogOpen(true);
+                      }
+                    }}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="h-7 w-7"
                     onClick={() => {
                       setLenderToDelete(lender);
                       setDeleteDialogOpen(true);
@@ -239,15 +261,24 @@ export default function MyLendersTab() {
         </AlertDialogContent>
       </AlertDialog>
     
-    {selectedLender && (
-      <AddLogoDialog
-        open={logoDialogOpen}
-        onOpenChange={setLogoDialogOpen}
-        lenderId={selectedLender.id}
-        lenderName={selectedLender.name}
-        onLogoAdded={fetchLendersWithStats}
-      />
-    )}
+      {selectedLender && (
+        <AddLogoDialog
+          open={logoDialogOpen}
+          onOpenChange={setLogoDialogOpen}
+          lenderId={selectedLender.id}
+          lenderName={selectedLender.name}
+          onLogoAdded={fetchLendersWithStats}
+        />
+      )}
+
+      {editingLender && (
+        <EditLenderDialog
+          lender={editingLender}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onSuccess={fetchLendersWithStats}
+        />
+      )}
     </>
   );
 }
