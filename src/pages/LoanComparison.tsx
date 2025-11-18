@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { ResponsiveChartLegacy } from "@/components/ui/responsive-chart";
 import MultiLenderSelector from "@/components/MultiLenderSelector";
 import FadeInStagger from "@/components/FadeInStagger";
 import { calculateReducingEMI, calculateTotalInterest } from "@/lib/emi-calculator";
@@ -129,7 +130,7 @@ export default function LoanComparison() {
                 <CardTitle>Visual Comparison</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveChartLegacy height={300} minHeight={250}>
                   <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="name" className="text-xs" />
@@ -147,7 +148,7 @@ export default function LoanComparison() {
                     <Bar dataKey="Total Interest" fill="hsl(var(--destructive))" />
                     <Bar dataKey="Total Cost" fill="hsl(var(--warning))" />
                   </BarChart>
-                </ResponsiveContainer>
+                </ResponsiveChartLegacy>
               </CardContent>
             </Card>
 

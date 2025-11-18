@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/currency";
 import { TrendingUp, TrendingDown, Calendar, PiggyBank, CreditCard, BarChart3 } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from "recharts";
+import { ResponsiveChartLegacy } from "@/components/ui/responsive-chart";
 import FadeInStagger from "@/components/FadeInStagger";
 
 interface BudgetHistoryData {
@@ -260,7 +261,7 @@ export default function BudgetHistory() {
             <CardDescription>Monthly comparison of income, expenses, EMI, and savings</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
+            <ResponsiveChartLegacy height={350} minHeight={250}>
               <AreaChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="month" className="text-xs" />
@@ -275,7 +276,7 @@ export default function BudgetHistory() {
                 <Area type="monotone" dataKey="EMI" stackId="2" stroke="hsl(var(--warning))" fill="hsl(var(--warning))" fillOpacity={0.6} />
                 <Area type="monotone" dataKey="Savings" stackId="2" stroke="hsl(var(--success))" fill="hsl(var(--success))" fillOpacity={0.6} />
               </AreaChart>
-            </ResponsiveContainer>
+            </ResponsiveChartLegacy>
           </CardContent>
         </Card>
 
@@ -289,7 +290,7 @@ export default function BudgetHistory() {
             <CardDescription>Category-wise spending breakdown over time</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
+            <ResponsiveChartLegacy height={350} minHeight={250}>
               <BarChart data={expenseCategories}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="month" className="text-xs" />
@@ -307,7 +308,7 @@ export default function BudgetHistory() {
                 <Bar dataKey="Travel" stackId="a" fill="hsl(var(--success))" />
                 <Bar dataKey="Other" stackId="a" fill="hsl(var(--muted))" />
               </BarChart>
-            </ResponsiveContainer>
+            </ResponsiveChartLegacy>
           </CardContent>
         </Card>
 
@@ -322,7 +323,7 @@ export default function BudgetHistory() {
               <CardDescription>Percentage of income saved each month</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveChartLegacy height={250} minHeight={200}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="month" className="text-xs" />
@@ -333,7 +334,7 @@ export default function BudgetHistory() {
                   />
                   <Line type="monotone" dataKey="Savings Rate" stroke="hsl(var(--success))" strokeWidth={2} dot={{ fill: 'hsl(var(--success))' }} />
                 </LineChart>
-              </ResponsiveContainer>
+              </ResponsiveChartLegacy>
             </CardContent>
           </Card>
 
@@ -346,7 +347,7 @@ export default function BudgetHistory() {
               <CardDescription>EMI to income ratio over time</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveChartLegacy height={250} minHeight={200}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="month" className="text-xs" />
@@ -357,7 +358,7 @@ export default function BudgetHistory() {
                   />
                   <Line type="monotone" dataKey="Debt Burden" stroke="hsl(var(--destructive))" strokeWidth={2} dot={{ fill: 'hsl(var(--destructive))' }} />
                 </LineChart>
-              </ResponsiveContainer>
+              </ResponsiveChartLegacy>
             </CardContent>
           </Card>
         </div>
@@ -372,7 +373,7 @@ export default function BudgetHistory() {
             <CardDescription>Total outstanding debt over 12 months</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveChartLegacy height={300} minHeight={250}>
               <AreaChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="month" className="text-xs" />
@@ -383,7 +384,7 @@ export default function BudgetHistory() {
                 />
                 <Area type="monotone" dataKey="Total Debt" stroke="hsl(var(--warning))" fill="hsl(var(--warning))" fillOpacity={0.6} />
               </AreaChart>
-            </ResponsiveContainer>
+            </ResponsiveChartLegacy>
           </CardContent>
         </Card>
 
@@ -397,7 +398,7 @@ export default function BudgetHistory() {
             <CardDescription>Available cash after all expenses and EMIs</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveChartLegacy height={300} minHeight={250}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="month" className="text-xs" />
@@ -408,7 +409,7 @@ export default function BudgetHistory() {
                 />
                 <Bar dataKey="Free Cash" fill="hsl(var(--primary))" />
               </BarChart>
-            </ResponsiveContainer>
+            </ResponsiveChartLegacy>
           </CardContent>
         </Card>
       </FadeInStagger>

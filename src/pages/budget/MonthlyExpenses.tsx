@@ -15,6 +15,8 @@ import { formatINR } from "@/lib/currency";
 import { Plus, Upload, Download, Calendar, Sparkles, AlertCircle, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
+import { ResponsiveChartLegacy } from "@/components/ui/responsive-chart";
+import { ResponsiveTableSimple } from "@/components/ui/responsive-table";
 import FadeInStagger from "@/components/FadeInStagger";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--destructive))'];
@@ -294,7 +296,7 @@ export default function MonthlyExpenses() {
             </CardHeader>
             <CardContent>
               {categoryData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveChartLegacy height={300} minHeight={250}>
                   <PieChart>
                     <Pie
                       data={categoryData}
@@ -312,7 +314,7 @@ export default function MonthlyExpenses() {
                     </Pie>
                     <Tooltip formatter={(value: any) => formatINR(value)} />
                   </PieChart>
-                </ResponsiveContainer>
+                </ResponsiveChartLegacy>
               ) : (
                 <div className="flex items-center justify-center h-[300px] text-muted-foreground">
                   No expense data available
@@ -357,7 +359,7 @@ export default function MonthlyExpenses() {
           </CardHeader>
           <CardContent>
             {trendData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveChartLegacy height={300} minHeight={250}>
                 <LineChart data={trendData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
@@ -365,7 +367,7 @@ export default function MonthlyExpenses() {
                   <Tooltip formatter={(value: any) => formatINR(value)} />
                   <Line type="monotone" dataKey="amount" stroke="hsl(var(--primary))" strokeWidth={2} />
                 </LineChart>
-              </ResponsiveContainer>
+              </ResponsiveChartLegacy>
             ) : (
               <div className="flex items-center justify-center h-[300px] text-muted-foreground">
                 No trend data available
@@ -403,7 +405,7 @@ export default function MonthlyExpenses() {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
+            <ResponsiveTableSimple minWidth={700}>
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
@@ -433,7 +435,7 @@ export default function MonthlyExpenses() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </ResponsiveTableSimple>
           </CardContent>
         </Card>
       </FadeInStagger>

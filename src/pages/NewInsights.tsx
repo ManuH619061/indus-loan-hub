@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { ResponsiveChart } from "@/components/ui/responsive-chart";
 import AIDebtAdvisor from "@/components/AIDebtAdvisor";
 
 export default function NewInsights() {
@@ -283,7 +284,7 @@ export default function NewInsights() {
             <CardTitle>Monthly Income Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer
+            <ResponsiveChart
               config={{
                 debt: {
                   label: "Debt Payments",
@@ -294,10 +295,10 @@ export default function NewInsights() {
                   color: "hsl(var(--primary))",
                 },
               }}
-              className="h-[300px]"
+              height={300}
+              minHeight={250}
             >
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+              <PieChart>
                   <Pie
                     data={incomeBreakdownData}
                     cx="50%"
@@ -315,9 +316,8 @@ export default function NewInsights() {
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Legend />
                 </PieChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-            <div className="mt-4 space-y-2">
+              </ResponsiveChart>
+              <div className="mt-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Monthly Income</span>
                 <span className="font-semibold">{formatINR(financialMetrics.monthlyIncome)}</span>
@@ -332,8 +332,8 @@ export default function NewInsights() {
                   {formatINR(Math.max(0, financialMetrics.monthlyIncome - financialMetrics.totalMonthlyDebt))}
                 </span>
               </div>
-            </div>
-          </CardContent>
+              </div>
+            </CardContent>
         </Card>
 
         {/* Loan Distribution by Interest Rate */}

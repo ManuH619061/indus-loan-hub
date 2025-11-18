@@ -14,6 +14,7 @@ import { z } from "zod";
 import { Plus, Smartphone, CreditCard, Banknote, Building2, TrendingUp, Calendar, AlertCircle } from "lucide-react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { ResponsiveChart } from "@/components/ui/responsive-chart";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 
 const paymentSchema = z.object({
@@ -457,7 +458,7 @@ export default function NewPayments() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer
+              <ResponsiveChart
                 config={{
                   emi: {
                     label: "EMI",
@@ -468,10 +469,10 @@ export default function NewPayments() {
                     color: "hsl(var(--success))",
                   },
                 }}
-                className="h-[300px]"
+                height={300}
+                minHeight={250}
               >
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trendData}>
+                <LineChart data={trendData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis 
                       dataKey="month" 
@@ -486,9 +487,8 @@ export default function NewPayments() {
                     <Line type="monotone" dataKey="emi" stroke="hsl(var(--primary))" strokeWidth={2} />
                     <Line type="monotone" dataKey="prepayment" stroke="hsl(var(--success))" strokeWidth={2} />
                   </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </CardContent>
+                </ResponsiveChart>
+              </CardContent>
           </Card>
         </TabsContent>
       </Tabs>

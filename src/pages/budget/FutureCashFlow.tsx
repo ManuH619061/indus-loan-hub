@@ -12,6 +12,7 @@ import { formatINR } from "@/lib/currency";
 import { TrendingUp, TrendingDown, AlertTriangle, Sparkles, Calendar, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line, ComposedChart, Area } from "recharts";
+import { ResponsiveChartLegacy } from "@/components/ui/responsive-chart";
 import FadeInStagger from "@/components/FadeInStagger";
 
 interface CashFlowMonth {
@@ -254,7 +255,7 @@ export default function FutureCashFlow() {
             <CardDescription>Income, expenses, EMIs, and free cash projection</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={400}>
+            <ResponsiveChartLegacy height={400} minHeight={300}>
               <ComposedChart data={forecast}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
@@ -266,7 +267,7 @@ export default function FutureCashFlow() {
                 <Bar dataKey="emis" fill="hsl(var(--destructive))" name="EMIs" />
                 <Line type="monotone" dataKey="freeCash" stroke="hsl(var(--primary))" strokeWidth={2} name="Free Cash" />
               </ComposedChart>
-            </ResponsiveContainer>
+            </ResponsiveChartLegacy>
           </CardContent>
         </Card>
 
@@ -276,7 +277,7 @@ export default function FutureCashFlow() {
             <CardDescription>EMI as percentage of income over time</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveChartLegacy height={300} minHeight={250}>
               <ComposedChart data={forecast}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
@@ -284,7 +285,7 @@ export default function FutureCashFlow() {
                 <Tooltip formatter={(value: any) => `${value.toFixed(1)}%`} />
                 <Area type="monotone" dataKey="debtBurden" fill="hsl(var(--primary))" stroke="hsl(var(--primary))" name="Debt Burden %" />
               </ComposedChart>
-            </ResponsiveContainer>
+            </ResponsiveChartLegacy>
           </CardContent>
         </Card>
 
