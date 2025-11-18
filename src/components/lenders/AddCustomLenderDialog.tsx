@@ -10,6 +10,10 @@ interface AddCustomLenderDialogProps {
   lenderData: {
     name: string;
     type: "BANK" | "NBFC" | "CARD" | "FRIEND" | "OTHER";
+    logo_url: string;
+    website: string;
+    contact: string;
+    notes: string;
   };
   onDataChange: (data: any) => void;
   onSubmit: () => void;
@@ -57,7 +61,39 @@ export default function AddCustomLenderDialog({
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={onSubmit} disabled={loading} className="w-full">
+          <div className="space-y-2">
+            <Label>Logo URL (optional)</Label>
+            <Input
+              value={lenderData.logo_url}
+              onChange={(e) => onDataChange({ ...lenderData, logo_url: e.target.value })}
+              placeholder="https://example.com/logo.png"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Website (optional)</Label>
+            <Input
+              value={lenderData.website}
+              onChange={(e) => onDataChange({ ...lenderData, website: e.target.value })}
+              placeholder="https://example.com"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Contact (optional)</Label>
+            <Input
+              value={lenderData.contact}
+              onChange={(e) => onDataChange({ ...lenderData, contact: e.target.value })}
+              placeholder="Phone or email"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Notes (optional)</Label>
+            <Input
+              value={lenderData.notes}
+              onChange={(e) => onDataChange({ ...lenderData, notes: e.target.value })}
+              placeholder="Any additional notes"
+            />
+          </div>
+          <Button onClick={onSubmit} disabled={loading || !lenderData.name} className="w-full">
             {loading ? "Adding..." : "Add Lender"}
           </Button>
         </div>
