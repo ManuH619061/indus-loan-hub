@@ -12,6 +12,7 @@ import {
   FileText,
   LogOut,
   Menu,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -23,6 +24,7 @@ interface LayoutProps {
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Budget Planner", href: "/budget-planner", icon: TrendingUp },
+  { name: "Budget History", href: "/budget-history", icon: BarChart3 },
   { name: "Loans", href: "/loans", icon: Wallet },
   { name: "Payments", href: "/payments", icon: CreditCard },
   { name: "Lenders", href: "/lenders", icon: Building2 },
