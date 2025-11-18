@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   BarChart3,
+  Scale,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -28,6 +29,7 @@ const navigation = [
   { name: "Loans", href: "/loans", icon: Wallet },
   { name: "Payments", href: "/payments", icon: CreditCard },
   { name: "Lenders", href: "/lenders", icon: Building2 },
+  { name: "Loan Comparison", href: "/loan-comparison", icon: Scale },
   { name: "Insights", href: "/insights", icon: FileText },
   { name: "Documents", href: "/documents", icon: FileText },
 ];
