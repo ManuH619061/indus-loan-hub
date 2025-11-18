@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { BottomNav } from "./BottomNav";
 import {
   LayoutDashboard,
   Wallet,
@@ -327,10 +328,11 @@ export function Layout({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <main className="flex-1 overflow-y-auto bg-background w-full">
-          <div className="container mx-auto p-3 sm:p-6">
+          <div className="container mx-auto p-3 sm:p-6 pb-20 md:pb-6">
             {children}
           </div>
         </main>
+        <BottomNav />
       </div>
     </SidebarProvider>
   );
