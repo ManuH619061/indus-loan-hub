@@ -1,15 +1,18 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Cloud, Loader2 } from "lucide-react";
+import { Cloud, Loader2, Upload, Download } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 export function BackupManager() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleBackup = async () => {
     if (!user) {
@@ -68,6 +71,77 @@ export function BackupManager() {
     }
   };
 
+  const handleRestore = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user || !event.target.files || event.target.files.length === 0) return;
+
+    const file = event.target.files[0];
+    setIsRestoring(true);
+
+    try {
+      const fileContent = await file.text();
+      const backupData = JSON.parse(fileContent);
+
+      // Validate backup structure
+      if (!backupData.loans || !backupData.lenders || !backupData.payments || !backupData.budgets) {
+        throw new Error("Invalid backup file format");
+      }
+
+      // Restore lenders first (they're referenced by loans)
+      if (backupData.lenders.length > 0) {
+        const { error: lendersError } = await supabase
+          .from("lenders")
+          .upsert(backupData.lenders.map((l: any) => ({ ...l, user_id: user.id })));
+        
+        if (lendersError) throw lendersError;
+      }
+
+      // Restore loans
+      if (backupData.loans.length > 0) {
+        const { error: loansError } = await supabase
+          .from("loans")
+          .upsert(backupData.loans.map((l: any) => ({ ...l, user_id: user.id })));
+        
+        if (loansError) throw loansError;
+      }
+
+      // Restore payments
+      if (backupData.payments.length > 0) {
+        const { error: paymentsError } = await supabase
+          .from("payments")
+          .upsert(backupData.payments);
+        
+        if (paymentsError) throw paymentsError;
+      }
+
+      // Restore budgets
+      if (backupData.budgets.length > 0) {
+        const { error: budgetsError } = await supabase
+          .from("monthly_budgets")
+          .upsert(backupData.budgets.map((b: any) => ({ ...b, user_id: user.id })));
+        
+        if (budgetsError) throw budgetsError;
+      }
+
+      toast({
+        title: "Restore completed successfully",
+        description: "Your data has been restored from the backup",
+      });
+
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Restore failed",
+        description: error.message || "Invalid backup file",
+      });
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -79,8 +153,8 @@ export function BackupManager() {
           Backup your financial data to your device
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <Button onClick={handleBackup} disabled={isBackingUp} className="w-full">
+      <CardContent className="space-y-3">
+        <Button onClick={handleBackup} disabled={isBackingUp || isRestoring} className="w-full">
           {isBackingUp ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -88,11 +162,41 @@ export function BackupManager() {
             </>
           ) : (
             <>
-              <Cloud className="h-4 w-4 mr-2" />
-              Create Backup
+              <Download className="h-4 w-4 mr-2" />
+              Download Backup
             </>
           )}
         </Button>
+        
+        <div className="relative">
+          <Input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleRestore}
+            disabled={isBackingUp || isRestoring}
+            className="hidden"
+            id="restore-file"
+          />
+          <Button 
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isBackingUp || isRestoring}
+            variant="outline"
+            className="w-full"
+          >
+            {isRestoring ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Restoring...
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4 mr-2" />
+                Restore Backup
+              </>
+            )}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -356,16 +356,63 @@ function MobileHeader() {
 export function Layout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen={false}>
-      <div className="flex min-h-screen w-full overflow-x-hidden">
-        <AppSidebar />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background w-full max-w-full">
-          <MobileHeader />
-          <div className="px-4 sm:px-6 py-3 sm:py-6 pb-20 md:pb-6 w-full max-w-full">
-            {children}
-          </div>
-        </main>
+      <SwipeHandler>
+        <div className="flex min-h-screen w-full overflow-x-hidden">
+          <AppSidebar />
+          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background w-full max-w-full">
+            <MobileHeader />
+            <div className="px-4 sm:px-6 py-3 sm:py-6 pb-20 md:pb-6 w-full max-w-full">
+              {children}
+            </div>
+          </main>
         <BottomNav />
-      </div>
+        </div>
+      </SwipeHandler>
     </SidebarProvider>
+  );
+}
+
+function SwipeHandler({ children }: { children: ReactNode }) {
+  const { toggleSidebar, open } = useSidebar();
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    // Only trigger on mobile devices
+    if (window.innerWidth < 768) {
+      if (isRightSwipe && !open) {
+        toggleSidebar();
+      } else if (isLeftSwipe && open) {
+        toggleSidebar();
+      }
+    }
+  };
+
+  return (
+    <div 
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      className="w-full h-full"
+    >
+      {children}
+    </div>
   );
 }
