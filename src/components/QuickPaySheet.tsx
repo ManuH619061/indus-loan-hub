@@ -8,6 +8,7 @@ import { formatINR } from "@/lib/currency";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Smartphone, CreditCard, Banknote, Building2 } from "lucide-react";
+import { z } from "zod";
 
 interface QuickPaySheetProps {
   open: boolean;
@@ -110,15 +111,24 @@ export default function QuickPaySheet({ open, onOpenChange, loan, onPaymentCompl
     return `upi://pay?pa=${vpa}&pn=${lenderName}&am=${amt.toFixed(2)}&cu=INR&tn=${note}`;
   };
 
+  const paymentSchema = z.object({
+    amount: z.number().positive("Amount must be positive").max(100000000, "Amount too large"),
+  });
+
   const handlePay = async () => {
-    if (!amount || parseFloat(amount) <= 0) {
-      toast({ title: "Invalid Amount", description: "Please enter a valid amount", variant: "destructive" });
+    const paymentAmount = parseFloat(amount);
+    
+    // Validate input
+    const validationResult = paymentSchema.safeParse({ amount: paymentAmount });
+    
+    if (!validationResult.success) {
+      const errorMsg = validationResult.error.errors[0].message;
+      toast({ title: "Invalid Amount", description: errorMsg, variant: "destructive" });
       return;
     }
 
     setLoading(true);
     try {
-      const paymentAmount = parseFloat(amount);
       const isUPI = selectedMethod.startsWith("UPI_");
       const lenderUPI = loan.lenders?.upi_vpa;
 

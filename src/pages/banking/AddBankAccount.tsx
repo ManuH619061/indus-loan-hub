@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { z } from "zod";
 
 const indianBanks = [
   "State Bank of India",
@@ -54,9 +55,16 @@ export default function AddBankAccount() {
     return "****" + number.slice(-4);
   };
 
+  const bankAccountSchema = z.object({
+    bankName: z.string().min(1, "Bank name is required").max(100, "Bank name too long"),
+    accountNumber: z.string().min(5, "Account number must be at least 5 digits").max(20, "Account number too long"),
+    ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code format").or(z.literal("")),
+    bookBalance: z.number().min(0, "Balance cannot be negative").max(1000000000, "Balance too large"),
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!bankName || !accountNumber) {
       toast({ title: "Please fill required fields", variant: "destructive" });
       return;
@@ -64,6 +72,22 @@ export default function AddBankAccount() {
 
     try {
       setLoading(true);
+      
+      // Validate inputs
+      const validationResult = bankAccountSchema.safeParse({
+        bankName,
+        accountNumber,
+        ifscCode: ifscCode || "",
+        bookBalance: parseFloat(bookBalance) || 0,
+      });
+
+      if (!validationResult.success) {
+        const errorMsg = validationResult.error.errors[0].message;
+        toast({ title: `Validation error: ${errorMsg}`, variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 

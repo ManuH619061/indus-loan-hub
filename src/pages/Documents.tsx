@@ -95,14 +95,14 @@ export default function Documents() {
     try {
       // Delete from storage if file exists
       if (documentToDelete.file_url) {
-        const fileName = documentToDelete.file_url.split("/").pop();
-        if (fileName) {
-          const { error: storageError } = await supabase.storage
-            .from("loan-documents")
-            // If you store in folders, replace with full path here instead of just fileName
-            .remove([fileName]);
+        // Use the full storage path (file_url already contains the full path)
+        const { error: storageError } = await supabase.storage
+          .from("loan-documents")
+          .remove([documentToDelete.file_url]);
 
-          if (storageError) throw storageError;
+        if (storageError) {
+          console.error("Storage deletion error:", storageError);
+          throw new Error(`Failed to delete file from storage: ${storageError.message}`);
         }
       }
 
