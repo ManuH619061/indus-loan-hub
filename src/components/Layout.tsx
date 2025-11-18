@@ -22,10 +22,11 @@ interface LayoutProps {
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Budget Planner", href: "/budget-planner", icon: TrendingUp },
   { name: "Loans", href: "/loans", icon: Wallet },
   { name: "Payments", href: "/payments", icon: CreditCard },
   { name: "Lenders", href: "/lenders", icon: Building2 },
-  { name: "Insights", href: "/insights", icon: TrendingUp },
+  { name: "Insights", href: "/insights", icon: FileText },
   { name: "Documents", href: "/documents", icon: FileText },
 ];
 
