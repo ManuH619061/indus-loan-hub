@@ -4,11 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { EditLenderDialog } from "@/components/EditLenderDialog";
 
 interface Lender {
   id: string;
@@ -59,16 +55,6 @@ export default function LenderDetail() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    app_display_name: "",
-    type: "BANK",
-    contact: "",
-    website: "",
-    upi_vpa: "",
-    app_link: "",
-    notes: "",
-  });
 
   useEffect(() => {
     if (user && id) fetchData();
@@ -87,16 +73,6 @@ export default function LenderDetail() {
 
       if (lenderError) throw lenderError;
       setLender(lenderData);
-      setFormData({
-        name: lenderData.name || "",
-        app_display_name: lenderData.app_display_name || "",
-        type: lenderData.type || "BANK",
-        contact: lenderData.contact || "",
-        website: lenderData.website || "",
-        upi_vpa: lenderData.upi_vpa || "",
-        app_link: lenderData.app_link || "",
-        notes: lenderData.notes || "",
-      });
 
       // Fetch loans for this lender
       const { data: loansData, error: loansError } = await supabase
@@ -121,23 +97,6 @@ export default function LenderDetail() {
       toast({ title: "Error loading lender", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleEdit = async () => {
-    try {
-      const { error } = await supabase
-        .from("lenders")
-        .update(formData as any)
-        .eq("id", id);
-
-      if (error) throw error;
-
-      toast({ title: "Lender updated successfully" });
-      setEditDialogOpen(false);
-      fetchData();
-    } catch (error: any) {
-      toast({ title: "Error updating lender", description: error.message, variant: "destructive" });
     }
   };
 
@@ -411,99 +370,14 @@ export default function LenderDetail() {
         </TabsContent>
       </Tabs>
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Lender</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name">Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="app_display_name">App Display Name</Label>
-                <Input
-                  id="app_display_name"
-                  value={formData.app_display_name}
-                  onChange={(e) => setFormData({ ...formData, app_display_name: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="type">Type</Label>
-                <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="BANK">Bank</SelectItem>
-                    <SelectItem value="NBFC">NBFC</SelectItem>
-                    <SelectItem value="CARD">Credit Card</SelectItem>
-                    <SelectItem value="FRIEND">Friend/Family</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="contact">Contact</Label>
-                <Input
-                  id="contact"
-                  value={formData.contact}
-                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="website">Website</Label>
-                <Input
-                  id="website"
-                  value={formData.website}
-                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="upi_vpa">UPI VPA</Label>
-                <Input
-                  id="upi_vpa"
-                  value={formData.upi_vpa}
-                  onChange={(e) => setFormData({ ...formData, upi_vpa: e.target.value })}
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="app_link">App Link</Label>
-              <Input
-                id="app_link"
-                value={formData.app_link}
-                onChange={(e) => setFormData({ ...formData, app_link: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleEdit}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {lender && (
+        <EditLenderDialog
+          lender={lender}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onSuccess={fetchData}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
