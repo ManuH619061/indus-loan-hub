@@ -17,6 +17,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { ResponsiveChart } from "@/components/ui/responsive-chart";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { EditPaymentDialog } from "@/components/EditPaymentDialog";
 
 const paymentSchema = z.object({
   loan_id: z.string().min(1, "Loan is required"),
@@ -37,6 +38,8 @@ export default function NewPayments() {
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<any>(null);
+  const [editingPayment, setEditingPayment] = useState<any>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
     loan_id: "",
     amount: "",
@@ -477,6 +480,17 @@ export default function NewPayments() {
                         size="icon"
                         className="h-7 w-7"
                         onClick={() => {
+                          setEditingPayment(payment);
+                          setEditDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => {
                           setPaymentToDelete(payment);
                           setDeleteDialogOpen(true);
                         }}
@@ -551,6 +565,13 @@ export default function NewPayments() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {editingPayment && (
+        <EditPaymentDialog
+          payment={editingPayment}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+        />
+      )}
     </div>
   );
 }

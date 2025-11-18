@@ -29,6 +29,7 @@ import Reconciliation from "./pages/banking/Reconciliation";
 import BankRules from "./pages/banking/BankRules";
 import BRSReport from "./pages/banking/BRSReport";
 import AddBankAccount from "./pages/banking/AddBankAccount";
+import ActivityLog from "./pages/ActivityLog";
 import Expenses from "./pages/Expenses";
 import LoanComparison from "./pages/LoanComparison";
 import Settings from "./pages/Settings";
@@ -71,6 +72,7 @@ function AnimatedRoutes() {
         <Route path="/insights" element={<ProtectedRoute><Layout><PageTransition><NewInsights /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/documents" element={<ProtectedRoute><Layout><PageTransition><Documents /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Layout><PageTransition><Settings /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/activity-log" element={<ProtectedRoute><Layout><PageTransition><ActivityLog /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AnimatePresence>

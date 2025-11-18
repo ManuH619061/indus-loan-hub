@@ -15,6 +15,7 @@ import { formatINR } from "@/lib/currency";
 import { Plus, Upload, Download, Calendar, Sparkles, AlertCircle, TrendingUp, Pencil, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { EditTransactionDialog } from "@/components/EditTransactionDialog";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
 import { ResponsiveChartLegacy } from "@/components/ui/responsive-chart";
 import { ResponsiveTableSimple } from "@/components/ui/responsive-table";
@@ -59,6 +60,8 @@ export default function MonthlyExpenses() {
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchTransactions();
@@ -457,8 +460,19 @@ export default function MonthlyExpenses() {
                         <span className="font-medium text-destructive">
                           {formatINR(transaction.debit || 0)}
                         </span>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => {
+                            setEditingTransaction(transaction);
+                            setEditDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => {
@@ -494,6 +508,13 @@ export default function MonthlyExpenses() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {editingTransaction && (
+        <EditTransactionDialog
+          transaction={editingTransaction}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+        />
+      )}
     </div>
   );
 }
