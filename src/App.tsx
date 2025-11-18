@@ -18,6 +18,7 @@ import Documents from "./pages/Documents";
 import NewInsights from "./pages/NewInsights";
 import BudgetPlanner from "./pages/BudgetPlanner";
 import BudgetHistory from "./pages/BudgetHistory";
+import LoanComparison from "./pages/LoanComparison";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PageTransition from "./components/PageTransition";
@@ -41,6 +42,7 @@ function AnimatedRoutes() {
         <Route path="/payments" element={<ProtectedRoute><Layout><PageTransition><NewPayments /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/lenders" element={<ProtectedRoute><Layout><PageTransition><Lenders /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/lenders/:id" element={<ProtectedRoute><Layout><PageTransition><LenderDetail /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/loan-comparison" element={<ProtectedRoute><Layout><PageTransition><LoanComparison /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/insights" element={<ProtectedRoute><Layout><PageTransition><NewInsights /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/documents" element={<ProtectedRoute><Layout><PageTransition><Documents /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
