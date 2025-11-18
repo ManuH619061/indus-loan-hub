@@ -25,18 +25,11 @@ interface LayoutProps {
 }
 
 const navigation = [
-  { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Monthly Projection", href: "/monthly-projection", icon: CalendarClock },
-  { name: "Cash Flow", href: "/dashboard/cashflow", icon: TrendingUp },
-  { name: "Lenders", href: "/dashboard/lenders", icon: Building2 },
-  { name: "Risk & Alerts", href: "/dashboard/risk", icon: AlertCircle },
-  { name: "Payoff Simulator", href: "/dashboard/simulator", icon: Calculator },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Loans", href: "/loans", icon: Wallet },
   { name: "Payments", href: "/payments", icon: CreditCard },
-  { name: "Payment Analytics", href: "/analytics", icon: TrendingUp },
-  { name: "Debt Payoff Goals", href: "/goals", icon: Target },
-  { name: "Financial Health", href: "/financial-health", icon: Activity },
-  { name: "Lender Management", href: "/lenders", icon: Building2 },
+  { name: "Lenders", href: "/lenders", icon: Building2 },
+  { name: "Insights", href: "/insights", icon: TrendingUp },
   { name: "Documents", href: "/documents", icon: FileText },
 ];
 
