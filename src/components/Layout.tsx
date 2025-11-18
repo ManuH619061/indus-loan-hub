@@ -14,6 +14,7 @@ import {
   LogOut,
   Menu,
   CalendarClock,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -32,6 +33,7 @@ const navigation = [
   { name: "Loans", href: "/loans", icon: Wallet },
   { name: "Payments", href: "/payments", icon: CreditCard },
   { name: "Payment Analytics", href: "/analytics", icon: TrendingUp },
+  { name: "Debt Payoff Goals", href: "/goals", icon: Target },
   { name: "Lender Management", href: "/lenders", icon: Building2 },
   { name: "Documents", href: "/documents", icon: FileText },
 ];
