@@ -201,63 +201,63 @@ export default function NewPayments() {
   const prepaid = payments.filter(p => p.payment_type === "PART_PREPAY" || p.payment_type === "FULL_PREPAY").reduce((sum, p) => sum + p.amount, 0);
 
   return (
-    <div className="space-y-6 max-w-full overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-4 max-w-full overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
-          <p className="text-muted-foreground">Record and track all your loan payments</p>
+          <h1 className="text-2xl font-bold tracking-tight">Payments</h1>
+          <p className="text-sm text-muted-foreground">Record and track loan payments</p>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground">Total Paid</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{formatINR(totalPaid)}</p>
+          <CardContent className="pt-0">
+            <p className="text-lg font-bold">{formatINR(totalPaid)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">EMI Payments</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground">EMI Payments</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{formatINR(emiPaid)}</p>
+          <CardContent className="pt-0">
+            <p className="text-lg font-bold">{formatINR(emiPaid)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Prepayments</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground">Prepayments</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{formatINR(prepaid)}</p>
+          <CardContent className="pt-0">
+            <p className="text-lg font-bold">{formatINR(prepaid)}</p>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="record" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="record">Record Payment</TabsTrigger>
-          <TabsTrigger value="upcoming">
-            Upcoming ({upcomingEMIs.length})
+      <Tabs defaultValue="record" className="space-y-3">
+        <TabsList className="grid w-full grid-cols-5 h-9">
+          <TabsTrigger value="record" className="text-xs">Record</TabsTrigger>
+          <TabsTrigger value="upcoming" className="text-xs">
+            Upcoming
           </TabsTrigger>
-          <TabsTrigger value="overdue">
-            Overdue ({overdueEMIs.length})
-            {overdueEMIs.length > 0 && <Badge variant="destructive" className="ml-2">{overdueEMIs.length}</Badge>}
+          <TabsTrigger value="overdue" className="text-xs relative">
+            Overdue
+            {overdueEMIs.length > 0 && <Badge variant="destructive" className="ml-1 h-4 px-1 text-[10px]">{overdueEMIs.length}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="history" className="text-xs">History</TabsTrigger>
+          <TabsTrigger value="analytics" className="text-xs">Charts</TabsTrigger>
         </TabsList>
 
         <TabsContent value="record">
           <Card>
-            <CardHeader>
-              <CardTitle>Record New Payment</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Record New Payment</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <div className="grid gap-3 md:grid-cols-2">
                   <div>
                     <Label>Loan</Label>
                     <Select 
