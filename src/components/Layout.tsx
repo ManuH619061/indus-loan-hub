@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -7,15 +8,10 @@ import {
   Wallet,
   CreditCard,
   TrendingUp,
-  AlertCircle,
-  Calculator,
   Building2,
   FileText,
   LogOut,
   Menu,
-  CalendarClock,
-  Target,
-  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -53,14 +49,28 @@ export default function Layout({ children }: LayoutProps) {
             key={item.name}
             to={item.href}
             className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden",
               isActive
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >
-            <Icon className="h-4 w-4" />
-            {item.name}
+            {isActive && (
+              <motion.div
+                layoutId="activeNav"
+                className="absolute inset-0 bg-primary rounded-lg"
+                initial={false}
+                transition={{
+                  type: "spring",
+                  stiffness: 500,
+                  damping: 30,
+                }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-3">
+              <Icon className="h-4 w-4" />
+              {item.name}
+            </span>
           </Link>
         );
       })}

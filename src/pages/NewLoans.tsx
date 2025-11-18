@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { formatINR, formatPercent } from "@/lib/currency";
 import { Wallet, Plus, Building2, Calendar, TrendingUp, CreditCard, Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import QuickPaySheet from "@/components/QuickPaySheet";
+import FadeInStagger, { FadeInStaggerItem } from "@/components/FadeInStagger";
 
 export default function NewLoans() {
   const { user } = useAuth();
@@ -151,114 +153,121 @@ export default function NewLoans() {
           </div>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <FadeInStagger className="grid gap-4">
           {loans.map((loan) => {
             const logoUrl = loan.logo_url || loan.lenders?.logo_url;
             const initials = loan.loan_name.substring(0, 2).toUpperCase();
 
             return (
-              <Card key={loan.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
-                    <Avatar className="h-16 w-16">
-                      {logoUrl ? <AvatarImage src={logoUrl} alt={loan.loan_name} /> : null}
-                      <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
+              <FadeInStaggerItem key={loan.id}>
+                <motion.div
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Card className="hover:shadow-lg transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex items-start gap-4">
+                        <Avatar className="h-16 w-16">
+                          {logoUrl ? <AvatarImage src={logoUrl} alt={loan.loan_name} /> : null}
+                          <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <Link to={`/loans/${loan.id}`}>
-                            <h3 className="text-xl font-semibold hover:text-primary transition-colors">
-                              {loan.loan_name}
-                            </h3>
-                          </Link>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Building2 className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">
-                              {loan.lenders?.name || "No lender"}
-                            </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <Link to={`/loans/${loan.id}`}>
+                                <h3 className="text-xl font-semibold hover:text-primary transition-colors">
+                                  {loan.loan_name}
+                                </h3>
+                              </Link>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Building2 className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-sm text-muted-foreground">
+                                  {loan.lenders?.name || "No lender"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className={getStatusColor(loan.status)} variant="outline">
+                                {loan.status}
+                              </Badge>
+                              <Link to={`/loans/${loan.id}/edit`}>
+                                <Button variant="ghost" size="icon">
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => {
+                                  setLoanToDelete(loan);
+                                  setDeleteDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Outstanding</p>
+                              <p className="font-semibold">{formatINR(loan.outstanding)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Interest Rate</p>
+                              <p className="font-semibold">{formatPercent(loan.interest_rate_apy, 1)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">EMI Amount</p>
+                              <p className="font-semibold">{formatINR(loan.emi_amount)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Loan Type</p>
+                              <p className="font-semibold text-sm">{getLoanTypeLabel(loan.loan_type)}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-3 border-t">
+                            <div className="flex items-center gap-4 text-sm">
+                              {loan.nextDue && (
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-muted-foreground">
+                                    Next Due: {new Date(loan.nextDue).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedLoanForPay(loan);
+                                  setShowQuickPay(true);
+                                }}
+                                className="gap-2"
+                              >
+                                <CreditCard className="h-4 w-4" />
+                                Quick Pay
+                              </Button>
+                              <Link to={`/loans/${loan.id}`}>
+                                <Button size="sm">View Details</Button>
+                              </Link>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge className={getStatusColor(loan.status)} variant="outline">
-                            {loan.status}
-                          </Badge>
-                          <Link to={`/loans/${loan.id}/edit`}>
-                            <Button variant="ghost" size="icon">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => {
-                              setLoanToDelete(loan);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
                       </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Outstanding</p>
-                          <p className="font-semibold">{formatINR(loan.outstanding)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Interest Rate</p>
-                          <p className="font-semibold">{formatPercent(loan.interest_rate_apy, 1)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">EMI Amount</p>
-                          <p className="font-semibold">{formatINR(loan.emi_amount)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Loan Type</p>
-                          <p className="font-semibold text-sm">{getLoanTypeLabel(loan.loan_type)}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-3 border-t">
-                        <div className="flex items-center gap-4 text-sm">
-                          {loan.nextDue && (
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-muted-foreground">
-                                Next Due: {new Date(loan.nextDue).toLocaleDateString()}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              setSelectedLoanForPay(loan);
-                              setShowQuickPay(true);
-                            }}
-                            className="gap-2"
-                          >
-                            <CreditCard className="h-4 w-4" />
-                            Quick Pay
-                          </Button>
-                          <Link to={`/loans/${loan.id}`}>
-                            <Button size="sm">View Details</Button>
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </FadeInStaggerItem>
             );
           })}
-        </div>
+        </FadeInStagger>
       )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
