@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { Building2, Plus, ExternalLink, AlertCircle } from "lucide-react";
+import { Building2, Plus, ExternalLink, AlertCircle, ImagePlus } from "lucide-react";
 import { getCategoryLabel, getCategoryColor } from "@/lib/loan-apps-library";
+import AddLogoDialog from "./AddLogoDialog";
 
 interface LenderWithStats {
   id: string;
@@ -24,6 +25,8 @@ export default function MyLendersTab() {
   const navigate = useNavigate();
   const [lenders, setLenders] = useState<LenderWithStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [logoDialogOpen, setLogoDialogOpen] = useState(false);
+  const [selectedLender, setSelectedLender] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (user) fetchLendersWithStats();
@@ -110,28 +113,43 @@ export default function MyLendersTab() {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {lenders.map((lender) => (
-        <Card key={lender.id} className="hover:shadow-lg transition-shadow">
-          <CardHeader className="pb-3">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                {lender.logo_url ? (
-                  <img src={lender.logo_url} alt={lender.name} className="h-10 w-10 rounded object-contain bg-muted p-1" />
-                ) : (
-                  <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center">
-                    <Building2 className="h-6 w-6 text-primary" />
+    <>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {lenders.map((lender) => (
+          <Card key={lender.id} className="hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  {lender.logo_url ? (
+                    <img src={lender.logo_url} alt={lender.name} className="h-10 w-10 rounded object-contain bg-muted p-1" />
+                  ) : (
+                    <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center relative group">
+                      <Building2 className="h-6 w-6 text-primary" />
+                    </div>
+                  )}
+                  <div>
+                    <CardTitle className="text-lg">{lender.name}</CardTitle>
+                    <Badge variant="outline" className={`mt-1 ${getCategoryColor(lender.type)}`}>
+                      {getCategoryLabel(lender.type)}
+                    </Badge>
+                    {!lender.logo_url && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs mt-1"
+                        onClick={() => {
+                          setSelectedLender({ id: lender.id, name: lender.name });
+                          setLogoDialogOpen(true);
+                        }}
+                      >
+                        <ImagePlus className="h-3 w-3 mr-1" />
+                        Add Logo
+                      </Button>
+                    )}
                   </div>
-                )}
-                <div>
-                  <CardTitle className="text-lg">{lender.name}</CardTitle>
-                  <Badge variant="outline" className={`mt-1 ${getCategoryColor(lender.type)}`}>
-                    {getCategoryLabel(lender.type)}
-                  </Badge>
                 </div>
               </div>
-            </div>
-          </CardHeader>
+            </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -161,5 +179,16 @@ export default function MyLendersTab() {
         </Card>
       ))}
     </div>
+    
+    {selectedLender && (
+      <AddLogoDialog
+        open={logoDialogOpen}
+        onOpenChange={setLogoDialogOpen}
+        lenderId={selectedLender.id}
+        lenderName={selectedLender.name}
+        onLogoAdded={fetchLendersWithStats}
+      />
+    )}
+    </>
   );
 }
