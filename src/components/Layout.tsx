@@ -129,6 +129,11 @@ const navigation: NavItem[] = [
     href: "/documents", 
     icon: FileText 
   },
+  { 
+    name: "Settings", 
+    href: "/settings", 
+    icon: Settings 
+  },
 ];
 
 function AppSidebar() {
@@ -163,7 +168,7 @@ function AppSidebar() {
       <SidebarContent className="bg-background">
         <div className="flex flex-col h-full">
           {/* Logo / Brand */}
-          <div className="px-6 py-5 border-b border-border/40">
+          <div className="sticky top-0 z-10 px-6 py-5 border-b border-border/40 bg-background">
             <h2 className="text-lg font-semibold text-foreground">Finance Manager</h2>
           </div>
 
