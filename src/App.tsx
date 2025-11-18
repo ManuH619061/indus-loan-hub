@@ -31,7 +31,7 @@ import BRSReport from "./pages/banking/BRSReport";
 import AddBankAccount from "./pages/banking/AddBankAccount";
 import Expenses from "./pages/Expenses";
 import LoanComparison from "./pages/LoanComparison";
-import Layout from "./components/Layout";
+import { Layout } from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PageTransition from "./components/PageTransition";
 
