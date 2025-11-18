@@ -122,14 +122,14 @@ export default function NewLoans() {
   }
 
   return (
-    <div className="space-y-6 max-w-full overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-4 max-w-full overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Loans</h1>
-          <p className="text-muted-foreground">Manage all your loans in one place</p>
+          <h1 className="text-2xl font-bold tracking-tight">Loans</h1>
+          <p className="text-sm text-muted-foreground">Manage all your loans</p>
         </div>
         <Link to="/loans/new">
-          <Button className="gap-2 w-full sm:w-auto">
+          <Button size="sm" className="gap-2 w-full sm:w-auto">
             <Plus className="h-4 w-4" />
             Add Loan
           </Button>
@@ -153,7 +153,7 @@ export default function NewLoans() {
           </div>
         </Card>
       ) : (
-        <FadeInStagger className="grid gap-4">
+        <FadeInStagger className="grid gap-3">
           {loans.map((loan) => {
             const logoUrl = loan.logo_url || loan.lenders?.logo_url;
             const initials = loan.loan_name.substring(0, 2).toUpperCase();
@@ -161,82 +161,83 @@ export default function NewLoans() {
             return (
               <FadeInStaggerItem key={loan.id}>
                 <motion.div
-                  whileHover={{ scale: 1.01 }}
-                  transition={{ duration: 0.2 }}
+                  whileHover={{ scale: 1.005 }}
+                  transition={{ duration: 0.15 }}
                 >
-                  <Card className="hover:shadow-lg transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        <Avatar className="h-16 w-16">
+                  <Card className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Avatar className="h-12 w-12">
                           {logoUrl ? <AvatarImage src={logoUrl} alt={loan.loan_name} /> : null}
-                          <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                          <AvatarFallback className="bg-primary/10 text-primary text-sm">
                             {initials}
                           </AvatarFallback>
                         </Avatar>
 
                         <div className="flex-1 min-w-0">
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
                             <div className="min-w-0 flex-1">
                               <Link to={`/loans/${loan.id}`}>
-                                <h3 className="text-xl font-semibold hover:text-primary transition-colors truncate">
+                                <h3 className="text-base font-semibold hover:text-primary transition-colors truncate">
                                   {loan.loan_name}
                                 </h3>
                               </Link>
-                              <div className="flex items-center gap-2 mt-1">
+                              <div className="flex items-center gap-1.5 mt-0.5">
                                 <Building2 className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                <span className="text-sm text-muted-foreground truncate">
+                                <span className="text-xs text-muted-foreground truncate">
                                   {loan.lenders?.name || "No lender"}
                                 </span>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <Badge className={getStatusColor(loan.status)} variant="outline">
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Badge className={getStatusColor(loan.status)} variant="outline" style={{ fontSize: '10px', padding: '2px 6px' }}>
                                 {loan.status}
                               </Badge>
                               <Link to={`/loans/${loan.id}/edit`}>
-                                <Button variant="ghost" size="icon">
-                                  <Pencil className="h-4 w-4" />
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                  <Pencil className="h-3 w-3" />
                                 </Button>
                               </Link>
                               <Button 
                                 variant="ghost" 
                                 size="icon"
+                                className="h-7 w-7"
                                 onClick={() => {
                                   setLoanToDelete(loan);
                                   setDeleteDialogOpen(true);
                                 }}
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                             <div>
-                              <p className="text-xs text-muted-foreground mb-1">Outstanding</p>
-                              <p className="font-semibold">{formatINR(loan.outstanding)}</p>
+                              <p className="text-xs text-muted-foreground mb-0.5">Outstanding</p>
+                              <p className="text-sm font-bold">{formatINR(loan.outstanding)}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-muted-foreground mb-1">Interest Rate</p>
-                              <p className="font-semibold">{formatPercent(loan.interest_rate_apy, 1)}</p>
+                              <p className="text-xs text-muted-foreground mb-0.5">Interest Rate</p>
+                              <p className="text-sm font-bold">{formatPercent(loan.interest_rate_apy, 1)}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-muted-foreground mb-1">EMI Amount</p>
-                              <p className="font-semibold">{formatINR(loan.emi_amount)}</p>
+                              <p className="text-xs text-muted-foreground mb-0.5">EMI Amount</p>
+                              <p className="text-sm font-bold">{formatINR(loan.emi_amount)}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-muted-foreground mb-1">Loan Type</p>
-                              <p className="font-semibold text-sm">{getLoanTypeLabel(loan.loan_type)}</p>
+                              <p className="text-xs text-muted-foreground mb-0.5">Loan Type</p>
+                              <p className="text-xs font-semibold">{getLoanTypeLabel(loan.loan_type)}</p>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between pt-3 border-t">
-                            <div className="flex items-center gap-4 text-sm">
+                          <div className="flex items-center justify-between pt-2 border-t">
+                            <div className="flex items-center gap-2 text-xs">
                               {loan.nextDue && (
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3 text-muted-foreground" />
                                   <span className="text-muted-foreground">
-                                    Next Due: {new Date(loan.nextDue).toLocaleDateString()}
+                                    {new Date(loan.nextDue).toLocaleDateString()}
                                   </span>
                                 </div>
                               )}
@@ -249,13 +250,13 @@ export default function NewLoans() {
                                   setSelectedLoanForPay(loan);
                                   setShowQuickPay(true);
                                 }}
-                                className="gap-2"
+                                className="gap-1 h-7 text-xs px-2"
                               >
-                                <CreditCard className="h-4 w-4" />
-                                Quick Pay
+                                <CreditCard className="h-3 w-3" />
+                                Pay
                               </Button>
                               <Link to={`/loans/${loan.id}`}>
-                                <Button size="sm">View Details</Button>
+                                <Button size="sm" className="h-7 text-xs px-3">Details</Button>
                               </Link>
                             </div>
                           </div>
