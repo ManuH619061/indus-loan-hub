@@ -16,6 +16,15 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 
+const paymentSchema = z.object({
+  loan_id: z.string().min(1, "Loan is required"),
+  amount: z.number().positive("Amount must be positive").max(100000000, "Amount is too large"),
+  paid_on: z.string().min(1, "Payment date is required"),
+  payment_type: z.enum(["EMI", "PART_PREPAY", "FULL_PREPAY", "LATE_FEE", "OTHER_FEE"]),
+  source: z.enum(["UPI_PHONEPE", "UPI_GPAY", "UPI_PAYTM", "NETBANKING", "CARD", "CASH"]),
+  notes: z.string().max(500, "Notes must be less than 500 characters"),
+});
+
 export default function NewPayments() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -108,10 +117,24 @@ export default function NewPayments() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { error } = await supabase.from("payments").insert({
+      const validationData = {
         ...paymentForm,
         amount: parseFloat(paymentForm.amount),
-      } as any);
+      };
+
+      const result = paymentSchema.safeParse(validationData);
+      
+      if (!result.success) {
+        const errors = result.error.errors.map(e => e.message).join(", ");
+        toast({ 
+          variant: "destructive",
+          title: "Validation Error", 
+          description: errors
+        });
+        return;
+      }
+
+      const { error } = await supabase.from("payments").insert(result.data as any);
 
       if (error) throw error;
 
