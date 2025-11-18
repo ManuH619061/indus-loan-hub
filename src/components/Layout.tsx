@@ -154,7 +154,7 @@ function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-r border-border/40">
+    <Sidebar className="hidden md:flex border-r border-border/40">
       <SidebarContent>
         <div className="flex flex-col h-full">
           {/* Logo / Brand */}
@@ -325,10 +325,10 @@ function AppSidebar() {
 export function Layout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen={false}>
-      <div className="flex min-h-screen w-full">
+      <div className="flex min-h-screen w-full overflow-x-hidden">
         <AppSidebar />
-        <main className="flex-1 overflow-y-auto bg-background w-full">
-          <div className="container mx-auto p-3 sm:p-6 pb-20 md:pb-6">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background w-full max-w-full">
+          <div className="px-4 sm:px-6 py-3 sm:py-6 pb-20 md:pb-6 w-full max-w-full">
             {children}
           </div>
         </main>
