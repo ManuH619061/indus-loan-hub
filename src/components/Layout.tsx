@@ -26,6 +26,7 @@ import {
   DollarSign,
   LogOut,
   ChevronDown,
+  Menu,
 } from "lucide-react";
 import {
   Sidebar,
@@ -41,6 +42,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { useSidebar } from "@/components/ui/sidebar";
 
 interface NavItem {
   name: string;
@@ -154,7 +156,10 @@ function AppSidebar() {
   };
 
   return (
-    <Sidebar className="hidden md:flex border-r border-border/40">
+    <Sidebar 
+      className="border-r border-border/40"
+      collapsible="offcanvas"
+    >
       <SidebarContent>
         <div className="flex flex-col h-full">
           {/* Logo / Brand */}
@@ -322,12 +327,34 @@ function AppSidebar() {
   );
 }
 
+function MobileHeader() {
+  const { toggleSidebar } = useSidebar();
+  
+  return (
+    <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+      <div className="flex h-14 items-center gap-4 px-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleSidebar}
+          className="md:hidden"
+        >
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Toggle navigation menu</span>
+        </Button>
+        <h1 className="text-lg font-semibold">Money Manager</h1>
+      </div>
+    </header>
+  );
+}
+
 export function Layout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="flex min-h-screen w-full overflow-x-hidden">
         <AppSidebar />
         <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background w-full max-w-full">
+          <MobileHeader />
           <div className="px-4 sm:px-6 py-3 sm:py-6 pb-20 md:pb-6 w-full max-w-full">
             {children}
           </div>
