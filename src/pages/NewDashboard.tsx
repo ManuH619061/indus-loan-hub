@@ -181,22 +181,22 @@ export default function NewDashboard() {
   const progressPercent = totalProgress > 0 ? (payoffProgress.paid / totalProgress) * 100 : 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Your complete loan portfolio overview</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Your complete loan portfolio overview</p>
         </div>
         <Link to="/loans/new">
-          <Button className="gap-2">
+          <Button className="gap-2 w-full sm:w-auto">
             <Plus className="h-4 w-4" />
-            Add Loan
+            <span className="sm:inline">Add Loan</span>
           </Button>
         </Link>
       </div>
 
       {/* Key Metrics */}
-      <FadeInStagger className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <FadeInStagger className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <FadeInStaggerItem>
           <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -204,7 +204,7 @@ export default function NewDashboard() {
               <Wallet className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatINR(stats.totalOutstanding)}</div>
+              <div className="text-xl sm:text-2xl font-bold break-all">{formatINR(stats.totalOutstanding)}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 Across {stats.activeLoans} active {stats.activeLoans === 1 ? 'loan' : 'loans'}
               </p>
@@ -219,7 +219,7 @@ export default function NewDashboard() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatINR(stats.upcomingEMI)}</div>
+              <div className="text-xl sm:text-2xl font-bold break-all">{formatINR(stats.upcomingEMI)}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 {upcomingEMIs.length} payment{upcomingEMIs.length !== 1 ? 's' : ''} due
               </p>
@@ -234,7 +234,7 @@ export default function NewDashboard() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatPercent(stats.avgInterestRate, 1)}</div>
+              <div className="text-xl sm:text-2xl font-bold">{formatPercent(stats.avgInterestRate, 1)}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 Weighted average
               </p>
@@ -249,7 +249,7 @@ export default function NewDashboard() {
               <AlertCircle className={`h-4 w-4 ${stats.overdueCount > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.overdueCount + riskAlerts.length}</div>
+              <div className="text-xl sm:text-2xl font-bold">{stats.overdueCount + riskAlerts.length}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 {stats.overdueCount} overdue, {riskAlerts.length} warnings
               </p>
@@ -284,7 +284,7 @@ export default function NewDashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-3 sm:gap-6 md:grid-cols-2">
         {/* Upcoming EMIs */}
         <Card>
           <CardHeader>
