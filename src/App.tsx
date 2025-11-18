@@ -16,6 +16,7 @@ import Lenders from "./pages/Lenders";
 import LenderDetail from "./pages/LenderDetail";
 import Documents from "./pages/Documents";
 import NewInsights from "./pages/NewInsights";
+import BudgetPlanner from "./pages/BudgetPlanner";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PageTransition from "./components/PageTransition";
@@ -31,6 +32,7 @@ function AnimatedRoutes() {
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/dashboard" element={<ProtectedRoute><Layout><PageTransition><NewDashboard /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/budget-planner" element={<ProtectedRoute><Layout><PageTransition><BudgetPlanner /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/loans" element={<ProtectedRoute><Layout><PageTransition><NewLoans /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/loans/new" element={<ProtectedRoute><Layout><PageTransition><NewLoan /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/loans/:id" element={<ProtectedRoute><Layout><PageTransition><NewLoanDetail /></PageTransition></Layout></ProtectedRoute>} />
