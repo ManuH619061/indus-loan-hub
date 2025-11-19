@@ -9,6 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { formatINR, formatPercent } from "@/lib/currency";
 import { Wallet, Plus, Building2, Calendar, TrendingUp, CreditCard } from "lucide-react";
 import QuickPaySheet from "@/components/QuickPaySheet";
+import LoanOverviewCard from "@/components/LoanOverviewCard";
 
 export default function Loans() {
   const { user } = useAuth();
@@ -105,6 +106,8 @@ export default function Loans() {
           </Button>
         </Link>
       </div>
+
+      {loans.length > 0 && <LoanOverviewCard loans={loans} />}
 
       {loans.length === 0 ? (
         <Card className="text-center py-12">
