@@ -9,6 +9,7 @@ import { formatINR, formatPercent } from "@/lib/currency";
 import { ArrowLeft, Calendar, TrendingUp, Building2, CreditCard } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import QuickPaySheet from "@/components/QuickPaySheet";
+import PaymentTimeline from "@/components/PaymentTimeline";
 
 export default function LoanDetail() {
   const { id } = useParams();
@@ -264,9 +265,7 @@ export default function LoanDetail() {
               <CardTitle>Payment History</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground text-center py-8">
-                No payments recorded yet
-              </p>
+              <PaymentTimeline loanId={id!} />
             </CardContent>
           </Card>
         </TabsContent>
