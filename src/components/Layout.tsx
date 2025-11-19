@@ -13,6 +13,7 @@ import {
   FileText,
   LogOut,
   Menu,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -29,6 +30,7 @@ const navigation = [
   { name: "Payoff Simulator", href: "/dashboard/simulator", icon: Calculator },
   { name: "Loans", href: "/loans", icon: Wallet },
   { name: "Payments", href: "/payments", icon: CreditCard },
+  { name: "Bulk Upload", href: "/payments/bulk", icon: Upload },
   { name: "Lender Management", href: "/lenders", icon: Building2 },
   { name: "Documents", href: "/documents", icon: FileText },
 ];
