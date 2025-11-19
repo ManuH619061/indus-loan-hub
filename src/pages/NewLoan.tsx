@@ -1,260 +1,34 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowRight, Check, Upload, FileText, Loader2, Plus } from "lucide-react";
-import { calculateReducingEMI, calculateFlatEMI, generateAmortizationSchedule } from "@/lib/emi-calculator";
-import { formatINR, formatPercent } from "@/lib/currency";
-import { loanAppsLibrary } from "@/lib/loan-apps-library";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import SmartLenderSelector from "@/components/SmartLenderSelector";
-import { toast } from "sonner";
-import { z } from "zod";
-
-interface Lender {
-  id: string;
-  name: string;
-  type: string;
-  requires_sanction_letter: boolean;
-}
-
-const STEPS = [
-  { num: 1, title: "Loan Basics", desc: "Core information" },
-  { num: 2, title: "Fees & Rules", desc: "Charges & settings" },
-  { num: 3, title: "Documents", desc: "Upload files" },
-  { num: 4, title: "Preview", desc: "Review & confirm" },
-];
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { calculateReducingEMI, generateAmortizationSchedule } from "@/lib/emi-calculator";
 
 export default function NewLoan() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [lenders, setLenders] = useState<Lender[]>([]);
-  const [newLenderOpen, setNewLenderOpen] = useState(false);
-  const [documentFile, setDocumentFile] = useState<File | null>(null);
-  
   const [formData, setFormData] = useState({
-    lender_id: "",
     loan_name: "",
-    loan_type: "PERSONAL" as const,
     principal_amount: "",
-    disbursed_on: new Date().toISOString().split("T")[0],
     tenure_months: "",
     interest_rate_apy: "",
-    rate_type: "REDUCING" as const,
-    compounding: "MONTHLY" as const,
-    billing_day: "5",
+    disbursed_on: new Date().toISOString().split("T")[0],
     due_day: "5",
-    processing_fee: "0",
-    insurance_fee: "0",
-    gst_on_fees: "0",
-    other_upfront_costs: "0",
-    auto_debit: false,
-    recast_mode: "REDUCE_TENURE" as const,
-    preferred_method: "",
-    remarks: "",
+    rate_type: "REDUCING" as const,
+    loan_type: "PERSONAL" as const,
   });
 
-  const [newLenderData, setNewLenderData] = useState({
-    name: "",
-    type: "BANK" as const,
-    requires_sanction_letter: true,
-  });
-
-  useEffect(() => {
-    fetchLenders();
-    
-    // Check for pre-selected lender from URL
-    const params = new URLSearchParams(window.location.search);
-    const lenderId = params.get("lender");
-    if (lenderId) {
-      setFormData((prev) => ({ ...prev, lender_id: lenderId }));
-    }
-  }, [user]);
-
-  const fetchLenders = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("lenders")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("name");
-    if (data) setLenders(data);
-  };
-
-  const handleLenderChange = async (value: string) => {
-    if (value === "__add_custom__") {
-      setNewLenderOpen(true);
-      return;
-    }
-
-    // Check if it's from library
-    if (value.startsWith("library:")) {
-      const appId = value.replace("library:", "");
-      const app = loanAppsLibrary.find((a) => a.id === appId);
-      
-      if (app && user) {
-        // Check if lender already exists
-        const { data: existingLender } = await supabase
-          .from("lenders")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("name", app.name)
-          .maybeSingle();
-
-        if (existingLender) {
-          setFormData({ ...formData, lender_id: existingLender.id });
-        } else {
-          // Create new lender from library
-          const lenderType = 
-            app.category === "INSTANT_LOAN" ? "OTHER" as const :
-            app.category === "SALARY_ADVANCE" ? "OTHER" as const :
-            app.category === "CREDIT_CARD" ? "CARD" as const :
-            app.category as "BANK" | "NBFC" | "OTHER";
-
-          const { data: newLender } = await supabase
-            .from("lenders")
-            .insert([{
-              user_id: user.id,
-              name: app.name,
-              type: lenderType,
-              logo_url: app.logo_url,
-              website: app.website,
-              app_link: app.app_link,
-              upi_vpa: app.upi_vpa,
-              notes: app.description,
-            }] as any)
-            .select()
-            .single();
-
-          if (newLender) {
-            setLenders([...lenders, newLender]);
-            setFormData({ ...formData, lender_id: newLender.id });
-            toast({ title: "Lender added from library!" });
-          }
-        }
-      }
-    } else {
-      setFormData({ ...formData, lender_id: value });
-    }
-  };
-
-  const handleAddLender = async () => {
-    if (!user || !newLenderData.name) return;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("lenders")
-        .insert({ ...newLenderData, user_id: user.id })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      setLenders([...lenders, data]);
-      setFormData({ ...formData, lender_id: data.id });
-      setNewLenderOpen(false);
-      setNewLenderData({ name: "", type: "BANK", requires_sanction_letter: true });
-      toast({ title: "Lender added successfully!" });
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const validateStep = (step: number): boolean => {
-    switch (step) {
-      case 1:
-        if (!formData.lender_id || !formData.loan_name || !formData.principal_amount || 
-            !formData.tenure_months || !formData.interest_rate_apy) {
-          toast({ variant: "destructive", title: "Please fill all required fields" });
-          return false;
-        }
-        return true;
-      case 2:
-        return true;
-      case 3:
-        const selectedLender = lenders.find(l => l.id === formData.lender_id);
-        if (selectedLender?.requires_sanction_letter && !documentFile) {
-          toast({ variant: "destructive", title: "Sanction letter is required for this lender" });
-          return false;
-        }
-        return true;
-      default:
-        return true;
-    }
-  };
-
-  const nextStep = () => {
-    if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(4, prev + 1));
-    }
-  };
-
-  const prevStep = () => {
-    setCurrentStep(prev => Math.max(1, prev - 1));
-  };
-
-  const calculateEMI = () => {
-    const principal = parseFloat(formData.principal_amount);
-    const rate = parseFloat(formData.interest_rate_apy);
-    const tenure = parseInt(formData.tenure_months);
-    
-    if (!principal || !rate || !tenure) return 0;
-    
-    return formData.rate_type === "REDUCING"
-      ? calculateReducingEMI(principal, rate, tenure)
-      : calculateFlatEMI(principal, rate, tenure);
-  };
-
-  const getPreviewSchedule = () => {
-    const principal = parseFloat(formData.principal_amount);
-    const rate = parseFloat(formData.interest_rate_apy);
-    const tenure = parseInt(formData.tenure_months);
-    
-    if (!principal || !rate || !tenure) return [];
-    
-    const schedule = generateAmortizationSchedule(
-      principal,
-      rate,
-      tenure,
-      new Date(formData.disbursed_on),
-      parseInt(formData.due_day),
-      formData.rate_type
-    );
-    
-    return schedule.slice(0, 12);
-  };
-
-  const loanSchema = z.object({
-    principal_amount: z.number().positive("Principal must be positive").max(100000000, "Principal too large"),
-    interest_rate_apy: z.number().min(0.1, "Interest rate must be at least 0.1%").max(100, "Interest rate cannot exceed 100%"),
-    tenure_months: z.number().int().min(1, "Tenure must be at least 1 month").max(600, "Tenure cannot exceed 50 years"),
-    loan_name: z.string().min(1, "Loan name is required").max(100, "Loan name too long"),
-    processing_fee: z.number().min(0, "Fee cannot be negative").max(1000000, "Fee too large"),
-    insurance_fee: z.number().min(0, "Fee cannot be negative").max(1000000, "Fee too large"),
-    gst_on_fees: z.number().min(0, "GST cannot be negative").max(1000000, "GST too large"),
-    other_upfront_costs: z.number().min(0, "Cost cannot be negative").max(1000000, "Cost too large"),
-    billing_day: z.number().int().min(1, "Day must be 1-31").max(31, "Day must be 1-31"),
-    due_day: z.number().int().min(1, "Day must be 1-31").max(31, "Day must be 1-31"),
-  });
-
-  const handleSubmit = async () => {
-    if (!user) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
 
     try {
@@ -262,53 +36,18 @@ export default function NewLoan() {
       const rate = parseFloat(formData.interest_rate_apy);
       const tenure = parseInt(formData.tenure_months);
       
-      // Validate inputs
-      const validationResult = loanSchema.safeParse({
-        principal_amount: principal,
-        interest_rate_apy: rate,
-        tenure_months: tenure,
-        loan_name: formData.loan_name,
-        processing_fee: parseFloat(formData.processing_fee),
-        insurance_fee: parseFloat(formData.insurance_fee),
-        gst_on_fees: parseFloat(formData.gst_on_fees),
-        other_upfront_costs: parseFloat(formData.other_upfront_costs),
-        billing_day: parseInt(formData.billing_day),
-        due_day: parseInt(formData.due_day),
-      });
-
-      if (!validationResult.success) {
-        const errorMsg = validationResult.error.errors[0].message;
-        toast({ variant: "destructive", title: "Validation Error", description: errorMsg });
-        return;
-      }
-
-      const emi = calculateEMI();
+      const emi = calculateReducingEMI(principal, rate, tenure);
 
       const { data: loan, error: loanError } = await supabase
         .from("loans")
         .insert({
-          user_id: user.id,
-          lender_id: formData.lender_id,
-          loan_name: formData.loan_name,
-          loan_type: formData.loan_type,
+          user_id: user?.id,
+          ...formData,
           principal_amount: principal,
-          disbursed_on: formData.disbursed_on,
           tenure_months: tenure,
           interest_rate_apy: rate,
-          rate_type: formData.rate_type,
-          compounding: formData.compounding,
           emi_amount: emi,
-          billing_day: parseInt(formData.billing_day),
           due_day: parseInt(formData.due_day),
-          processing_fee: parseFloat(formData.processing_fee),
-          insurance_fee: parseFloat(formData.insurance_fee),
-          gst_on_fees: parseFloat(formData.gst_on_fees),
-          other_upfront_costs: parseFloat(formData.other_upfront_costs),
-          auto_debit: formData.auto_debit,
-          recast_mode: formData.recast_mode,
-          preferred_method: formData.preferred_method || null,
-          remarks: formData.remarks || null,
-          status: "ACTIVE",
         })
         .select()
         .single();
@@ -343,109 +82,112 @@ export default function NewLoan() {
 
       if (amortError) throw amortError;
 
-      if (documentFile) {
-        const filePath = `${user.id}/${loan.id}/${Date.now()}_${documentFile.name}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from("loan-documents")
-          .upload(filePath, documentFile);
-
-        if (uploadError) throw uploadError;
-
-        await supabase.from("documents").insert({
-          loan_id: loan.id,
-          doc_type: "SANCTION_LETTER",
-          label: "Sanction Letter",
-          file_url: filePath,
-          file_name: documentFile.name,
-          file_size: documentFile.size,
-          added_on: new Date().toISOString(),
-        });
-      }
-
       toast({ title: "Loan created successfully!" });
       navigate(`/loans/${loan.id}`);
     } catch (error: any) {
-      console.error("Error creating loan:", error);
       toast({ variant: "destructive", title: "Error", description: error.message });
     } finally {
       setLoading(false);
     }
   };
 
-  const selectedLender = lenders.find(l => l.id === formData.lender_id);
-  const previewEMI = calculateEMI();
-  const previewSchedule = getPreviewSchedule();
-
   return (
-    <div className="max-w-4xl mx-auto space-y-6 p-4">
+    <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate("/loans")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
           <h1 className="text-3xl font-bold">Add New Loan</h1>
-          <p className="text-muted-foreground">Create a new loan with complete details</p>
+          <p className="text-muted-foreground">Enter your loan details</p>
         </div>
-      </div>
-
-      <div className="flex items-center justify-between">
-        {STEPS.map((step, idx) => (
-          <div key={step.num} className="flex items-center flex-1">
-            <div className="flex flex-col items-center flex-1">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-                  currentStep >= step.num
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background border-muted-foreground/30"
-                }`}
-              >
-                {currentStep > step.num ? <Check className="h-5 w-5" /> : step.num}
-              </div>
-              <div className="text-center mt-2">
-                <p className="text-sm font-medium">{step.title}</p>
-                <p className="text-xs text-muted-foreground">{step.desc}</p>
-              </div>
-            </div>
-            {idx < STEPS.length - 1 && (
-              <div
-                className={`h-0.5 flex-1 mx-2 ${
-                  currentStep > step.num ? "bg-primary" : "bg-muted-foreground/30"
-                }`}
-              />
-            )}
-          </div>
-        ))}
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>{STEPS[currentStep - 1].title}</CardTitle>
-          <CardDescription>{STEPS[currentStep - 1].desc}</CardDescription>
+          <CardTitle>Loan Information</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Lender *</Label>
-                <SmartLenderSelector
-                  value={formData.lender_id}
-                  onChange={handleLenderChange}
-                  onAddCustom={() => setNewLenderOpen(true)}
-                />
-              </div>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="loan_name">Loan Name *</Label>
+              <Input
+                id="loan_name"
+                required
+                value={formData.loan_name}
+                onChange={(e) => setFormData({ ...formData, loan_name: e.target.value })}
+                placeholder="e.g., HDFC Personal Loan"
+              />
+            </div>
 
+            <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Loan Name *</Label>
+                <Label htmlFor="principal_amount">Principal Amount (₹) *</Label>
                 <Input
-                  value={formData.loan_name}
-                  onChange={(e) => setFormData({ ...formData, loan_name: e.target.value })}
-                  placeholder="e.g., Personal Loan - Home Renovation"
+                  id="principal_amount"
+                  type="number"
+                  required
+                  value={formData.principal_amount}
+                  onChange={(e) => setFormData({ ...formData, principal_amount: e.target.value })}
+                  placeholder="100000"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Loan Type *</Label>
+                <Label htmlFor="tenure_months">Tenure (Months) *</Label>
+                <Input
+                  id="tenure_months"
+                  type="number"
+                  required
+                  value={formData.tenure_months}
+                  onChange={(e) => setFormData({ ...formData, tenure_months: e.target.value })}
+                  placeholder="24"
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="interest_rate_apy">Interest Rate (% p.a.) *</Label>
+                <Input
+                  id="interest_rate_apy"
+                  type="number"
+                  step="0.01"
+                  required
+                  value={formData.interest_rate_apy}
+                  onChange={(e) => setFormData({ ...formData, interest_rate_apy: e.target.value })}
+                  placeholder="14.00"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="due_day">EMI Due Day *</Label>
+                <Input
+                  id="due_day"
+                  type="number"
+                  min="1"
+                  max="31"
+                  required
+                  value={formData.due_day}
+                  onChange={(e) => setFormData({ ...formData, due_day: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="disbursed_on">Disbursed On *</Label>
+                <Input
+                  id="disbursed_on"
+                  type="date"
+                  required
+                  value={formData.disbursed_on}
+                  onChange={(e) => setFormData({ ...formData, disbursed_on: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="loan_type">Loan Type *</Label>
                 <Select
                   value={formData.loan_type}
                   onValueChange={(value: any) => setFormData({ ...formData, loan_type: value })}
@@ -456,386 +198,21 @@ export default function NewLoan() {
                   <SelectContent>
                     <SelectItem value="PERSONAL">Personal Loan</SelectItem>
                     <SelectItem value="CREDIT_CARD_CONVERSION">Credit Card EMI</SelectItem>
-                    <SelectItem value="CONSUMER_DURABLE">Consumer Durable</SelectItem>
                     <SelectItem value="EDUCATION">Education Loan</SelectItem>
                     <SelectItem value="VEHICLE">Vehicle Loan</SelectItem>
-                    <SelectItem value="HOME_TOPUP">Home Top-up</SelectItem>
+                    <SelectItem value="HOME_TOPUP">Home Loan Top-up</SelectItem>
                     <SelectItem value="OTHER">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Principal Amount (₹) *</Label>
-                  <Input
-                    type="number"
-                    value={formData.principal_amount}
-                    onChange={(e) => setFormData({ ...formData, principal_amount: e.target.value })}
-                    placeholder="100000"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Disbursed On *</Label>
-                  <Input
-                    type="date"
-                    value={formData.disbursed_on}
-                    onChange={(e) => setFormData({ ...formData, disbursed_on: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Tenure (Months) *</Label>
-                  <Input
-                    type="number"
-                    value={formData.tenure_months}
-                    onChange={(e) => setFormData({ ...formData, tenure_months: e.target.value })}
-                    placeholder="12"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Interest Rate (% p.a.) *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.interest_rate_apy}
-                    onChange={(e) => setFormData({ ...formData, interest_rate_apy: e.target.value })}
-                    placeholder="12.50"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Rate Type *</Label>
-                  <Select
-                    value={formData.rate_type}
-                    onValueChange={(value: any) => setFormData({ ...formData, rate_type: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="REDUCING">Reducing Balance</SelectItem>
-                      <SelectItem value="FLAT">Flat Rate</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Compounding *</Label>
-                  <Select
-                    value={formData.compounding}
-                    onValueChange={(value: any) => setFormData({ ...formData, compounding: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MONTHLY">Monthly</SelectItem>
-                      <SelectItem value="DAILY">Daily</SelectItem>
-                      <SelectItem value="QUARTERLY">Quarterly</SelectItem>
-                      <SelectItem value="ANNUAL">Annual</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Billing Day *</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={formData.billing_day}
-                    onChange={(e) => setFormData({ ...formData, billing_day: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Due Day *</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={formData.due_day}
-                    onChange={(e) => setFormData({ ...formData, due_day: e.target.value })}
-                  />
-                </div>
-              </div>
             </div>
-          )}
 
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Processing Fee (₹)</Label>
-                  <Input
-                    type="number"
-                    value={formData.processing_fee}
-                    onChange={(e) => setFormData({ ...formData, processing_fee: e.target.value })}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Insurance Fee (₹)</Label>
-                  <Input
-                    type="number"
-                    value={formData.insurance_fee}
-                    onChange={(e) => setFormData({ ...formData, insurance_fee: e.target.value })}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>GST on Fees (₹)</Label>
-                  <Input
-                    type="number"
-                    value={formData.gst_on_fees}
-                    onChange={(e) => setFormData({ ...formData, gst_on_fees: e.target.value })}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Other Upfront Costs (₹)</Label>
-                  <Input
-                    type="number"
-                    value={formData.other_upfront_costs}
-                    onChange={(e) => setFormData({ ...formData, other_upfront_costs: e.target.value })}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Recast Mode (for prepayments)</Label>
-                <Select
-                  value={formData.recast_mode}
-                  onValueChange={(value: any) => setFormData({ ...formData, recast_mode: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="REDUCE_TENURE">Reduce Tenure</SelectItem>
-                    <SelectItem value="REDUCE_EMI">Reduce EMI</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Preferred Payment Method</Label>
-                <Input
-                  value={formData.preferred_method}
-                  onChange={(e) => setFormData({ ...formData, preferred_method: e.target.value })}
-                  placeholder="e.g., UPI, Net Banking, Auto-debit"
-                />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={formData.auto_debit}
-                  onCheckedChange={(checked) => setFormData({ ...formData, auto_debit: checked })}
-                />
-                <Label>Auto-debit Enabled</Label>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Remarks</Label>
-                <Textarea
-                  value={formData.remarks}
-                  onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                  placeholder="Any additional notes about this loan"
-                  rows={3}
-                />
-              </div>
-            </div>
-          )}
-
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              {selectedLender?.requires_sanction_letter && (
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                  <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                    ⚠️ Sanction letter is mandatory for {selectedLender.name}
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label>
-                  Sanction Letter {selectedLender?.requires_sanction_letter && "*"}
-                </Label>
-                <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                  {documentFile ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <FileText className="h-8 w-8 text-primary" />
-                      <div>
-                        <p className="font-medium">{documentFile.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {(documentFile.size / 1024).toFixed(2)} KB
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDocumentFile(null)}
-                          className="mt-2"
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Upload sanction letter (PDF, JPG, PNG)
-                      </p>
-                      <Input
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) setDocumentFile(file);
-                        }}
-                        className="max-w-xs mx-auto"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 4 && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-lg">Loan Details</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Lender:</span>
-                      <span className="font-medium">{selectedLender?.name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Loan Name:</span>
-                      <span className="font-medium">{formData.loan_name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Principal:</span>
-                      <span className="font-medium">{formatINR(parseFloat(formData.principal_amount))}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tenure:</span>
-                      <span className="font-medium">{formData.tenure_months} months</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Interest Rate:</span>
-                      <span className="font-medium">{formatPercent(parseFloat(formData.interest_rate_apy))}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-lg">EMI Calculation</h3>
-                  <div className="p-4 bg-primary/10 rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-1">Monthly EMI</p>
-                    <p className="text-3xl font-bold">{formatINR(previewEMI)}</p>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Total Fees:</span>
-                      <span className="font-medium">
-                        {formatINR(
-                          parseFloat(formData.processing_fee) +
-                          parseFloat(formData.insurance_fee) +
-                          parseFloat(formData.gst_on_fees) +
-                          parseFloat(formData.other_upfront_costs)
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Rate Type:</span>
-                      <Badge variant="outline">{formData.rate_type}</Badge>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="font-semibold text-lg">Amortization Schedule (First 12 Months)</h3>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-16">Month</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead className="text-right">EMI</TableHead>
-                        <TableHead className="text-right">Interest</TableHead>
-                        <TableHead className="text-right">Principal</TableHead>
-                        <TableHead className="text-right">Balance</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {previewSchedule.map((row) => (
-                        <TableRow key={row.periodNo}>
-                          <TableCell className="font-medium">{row.periodNo}</TableCell>
-                          <TableCell>{row.dueOn.toLocaleDateString()}</TableCell>
-                          <TableCell className="text-right">{formatINR(row.scheduledEmi)}</TableCell>
-                          <TableCell className="text-right">{formatINR(row.interestComponent)}</TableCell>
-                          <TableCell className="text-right">{formatINR(row.principalComponent)}</TableCell>
-                          <TableCell className="text-right">{formatINR(row.closingPrincipal)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-                {parseInt(formData.tenure_months) > 12 && (
-                  <p className="text-sm text-muted-foreground text-center">
-                    Showing first 12 months of {formData.tenure_months} months total
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : "Create Loan"}
+            </Button>
+          </form>
         </CardContent>
       </Card>
-
-      <div className="flex justify-between">
-        <Button
-          variant="outline"
-          onClick={prevStep}
-          disabled={currentStep === 1 || loading}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Previous
-        </Button>
-        
-        {currentStep < 4 ? (
-          <Button onClick={nextStep}>
-            Next
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        ) : (
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              <>
-                <Check className="h-4 w-4 mr-2" />
-                Create Loan
-              </>
-            )}
-          </Button>
-        )}
-      </div>
     </div>
   );
 }

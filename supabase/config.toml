@@ -1,7 +1,1 @@
 project_id = "mhhskwckcxoeqtkeduoz"
-
-[functions.fetch-lender-details]
-verify_jwt = true
-
-[functions.debt-advisor]
-verify_jwt = true
