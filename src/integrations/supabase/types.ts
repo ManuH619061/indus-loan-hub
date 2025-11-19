@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action_type: string
+          changes: Json | null
+          created_at: string
+          entity_id: string
+          entity_name: string | null
+          entity_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          changes?: Json | null
+          created_at?: string
+          entity_id: string
+          entity_name?: string | null
+          entity_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string
+          entity_name?: string | null
+          entity_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       amortization_rows: {
         Row: {
           closing_principal: number
@@ -69,6 +102,281 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      bank_accounts: {
+        Row: {
+          account_number_full: string | null
+          account_number_masked: string
+          account_type: string
+          bank_name: string
+          book_balance: number
+          branch: string | null
+          created_at: string
+          icon_url: string | null
+          id: string
+          ifsc_code: string | null
+          is_active: boolean
+          last_imported_at: string | null
+          last_reconciled_at: string | null
+          notes: string | null
+          statement_balance: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_number_full?: string | null
+          account_number_masked: string
+          account_type?: string
+          bank_name: string
+          book_balance?: number
+          branch?: string | null
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          ifsc_code?: string | null
+          is_active?: boolean
+          last_imported_at?: string | null
+          last_reconciled_at?: string | null
+          notes?: string | null
+          statement_balance?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_number_full?: string | null
+          account_number_masked?: string
+          account_type?: string
+          bank_name?: string
+          book_balance?: number
+          branch?: string | null
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          ifsc_code?: string | null
+          is_active?: boolean
+          last_imported_at?: string | null
+          last_reconciled_at?: string | null
+          notes?: string | null
+          statement_balance?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      bank_rules: {
+        Row: {
+          action_category: string | null
+          action_loan_id: string | null
+          action_subcategory: string | null
+          action_type: string
+          bank_account_id: string | null
+          condition_field: string
+          condition_type: string
+          condition_value: string
+          created_at: string
+          id: string
+          is_active: boolean
+          priority: number
+          rule_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_category?: string | null
+          action_loan_id?: string | null
+          action_subcategory?: string | null
+          action_type: string
+          bank_account_id?: string | null
+          condition_field: string
+          condition_type: string
+          condition_value: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          priority?: number
+          rule_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_category?: string | null
+          action_loan_id?: string | null
+          action_subcategory?: string | null
+          action_type?: string
+          bank_account_id?: string | null
+          condition_field?: string
+          condition_type?: string
+          condition_value?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          priority?: number
+          rule_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_rules_action_loan_id_fkey"
+            columns: ["action_loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_rules_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_statement_entries: {
+        Row: {
+          balance: number | null
+          bank_account_id: string
+          category: string | null
+          created_at: string
+          credit: number | null
+          debit: number | null
+          id: string
+          import_id: string | null
+          is_emi: boolean | null
+          is_transfer: boolean | null
+          loan_id: string | null
+          matched_transaction_id: string | null
+          narration: string
+          notes: string | null
+          reference: string | null
+          status: string
+          subcategory: string | null
+          transaction_date: string
+          updated_at: string
+          user_id: string
+          value_date: string | null
+        }
+        Insert: {
+          balance?: number | null
+          bank_account_id: string
+          category?: string | null
+          created_at?: string
+          credit?: number | null
+          debit?: number | null
+          id?: string
+          import_id?: string | null
+          is_emi?: boolean | null
+          is_transfer?: boolean | null
+          loan_id?: string | null
+          matched_transaction_id?: string | null
+          narration: string
+          notes?: string | null
+          reference?: string | null
+          status?: string
+          subcategory?: string | null
+          transaction_date: string
+          updated_at?: string
+          user_id: string
+          value_date?: string | null
+        }
+        Update: {
+          balance?: number | null
+          bank_account_id?: string
+          category?: string | null
+          created_at?: string
+          credit?: number | null
+          debit?: number | null
+          id?: string
+          import_id?: string | null
+          is_emi?: boolean | null
+          is_transfer?: boolean | null
+          loan_id?: string | null
+          matched_transaction_id?: string | null
+          narration?: string
+          notes?: string | null
+          reference?: string | null
+          status?: string
+          subcategory?: string | null
+          transaction_date?: string
+          updated_at?: string
+          user_id?: string
+          value_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_statement_entries_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_entries_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "bank_statement_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_entries_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_entries_matched_transaction_id_fkey"
+            columns: ["matched_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_statement_imports: {
+        Row: {
+          bank_type: string
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          failed_rows: number
+          file_name: string
+          file_size: number | null
+          id: string
+          status: string
+          successful_rows: number
+          total_rows: number
+          user_id: string
+        }
+        Insert: {
+          bank_type: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          failed_rows?: number
+          file_name: string
+          file_size?: number | null
+          id?: string
+          status?: string
+          successful_rows?: number
+          total_rows?: number
+          user_id: string
+        }
+        Update: {
+          bank_type?: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          failed_rows?: number
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          status?: string
+          successful_rows?: number
+          total_rows?: number
+          user_id?: string
+        }
+        Relationships: []
       }
       charges: {
         Row: {
@@ -160,6 +468,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "documents_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goals: {
+        Row: {
+          created_at: string
+          goal_type: string
+          id: string
+          loan_id: string | null
+          monthly_extra_payment: number | null
+          notes: string | null
+          target_amount: number | null
+          target_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          goal_type: string
+          id?: string
+          loan_id?: string | null
+          monthly_extra_payment?: number | null
+          notes?: string | null
+          target_amount?: number | null
+          target_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          goal_type?: string
+          id?: string
+          loan_id?: string | null
+          monthly_extra_payment?: number | null
+          notes?: string | null
+          target_amount?: number | null
+          target_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_loan_id_fkey"
             columns: ["loan_id"]
             isOneToOne: false
             referencedRelation: "loans"
@@ -368,6 +723,96 @@ export type Database = {
           },
         ]
       }
+      monthly_budgets: {
+        Row: {
+          created_at: string | null
+          eating_out: number | null
+          eating_out_limit: number | null
+          extra_emi_amount: number | null
+          food: number | null
+          food_limit: number | null
+          id: string
+          insurance: number | null
+          month_year: string
+          notes: string | null
+          other_income: number | null
+          other_variable: number | null
+          rent: number | null
+          salary: number | null
+          savings_investments: number | null
+          school: number | null
+          shopping: number | null
+          shopping_limit: number | null
+          side_income: number | null
+          strategy: string | null
+          subscriptions: number | null
+          transport: number | null
+          travel: number | null
+          travel_limit: number | null
+          updated_at: string | null
+          user_id: string
+          utilities: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          eating_out?: number | null
+          eating_out_limit?: number | null
+          extra_emi_amount?: number | null
+          food?: number | null
+          food_limit?: number | null
+          id?: string
+          insurance?: number | null
+          month_year: string
+          notes?: string | null
+          other_income?: number | null
+          other_variable?: number | null
+          rent?: number | null
+          salary?: number | null
+          savings_investments?: number | null
+          school?: number | null
+          shopping?: number | null
+          shopping_limit?: number | null
+          side_income?: number | null
+          strategy?: string | null
+          subscriptions?: number | null
+          transport?: number | null
+          travel?: number | null
+          travel_limit?: number | null
+          updated_at?: string | null
+          user_id: string
+          utilities?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          eating_out?: number | null
+          eating_out_limit?: number | null
+          extra_emi_amount?: number | null
+          food?: number | null
+          food_limit?: number | null
+          id?: string
+          insurance?: number | null
+          month_year?: string
+          notes?: string | null
+          other_income?: number | null
+          other_variable?: number | null
+          rent?: number | null
+          salary?: number | null
+          savings_investments?: number | null
+          school?: number | null
+          shopping?: number | null
+          shopping_limit?: number | null
+          side_income?: number | null
+          strategy?: string | null
+          subscriptions?: number | null
+          transport?: number | null
+          travel?: number | null
+          travel_limit?: number | null
+          updated_at?: string | null
+          user_id?: string
+          utilities?: number | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -475,6 +920,7 @@ export type Database = {
           currency: string | null
           email: string
           id: string
+          monthly_income: number | null
           name: string | null
           timezone: string | null
           updated_at: string | null
@@ -484,6 +930,7 @@ export type Database = {
           currency?: string | null
           email: string
           id: string
+          monthly_income?: number | null
           name?: string | null
           timezone?: string | null
           updated_at?: string | null
@@ -493,6 +940,7 @@ export type Database = {
           currency?: string | null
           email?: string
           id?: string
+          monthly_income?: number | null
           name?: string | null
           timezone?: string | null
           updated_at?: string | null
@@ -534,6 +982,70 @@ export type Database = {
           },
         ]
       }
+      reconciliation_matches: {
+        Row: {
+          bank_account_id: string
+          bank_entry_id: string
+          created_at: string
+          id: string
+          match_confidence: number | null
+          match_type: string
+          matched_at: string
+          matched_by: string | null
+          notes: string | null
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          bank_account_id: string
+          bank_entry_id: string
+          created_at?: string
+          id?: string
+          match_confidence?: number | null
+          match_type: string
+          matched_at?: string
+          matched_by?: string | null
+          notes?: string | null
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          bank_account_id?: string
+          bank_entry_id?: string
+          created_at?: string
+          id?: string
+          match_confidence?: number | null
+          match_type?: string
+          matched_at?: string
+          matched_by?: string | null
+          notes?: string | null
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliation_matches_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_matches_bank_entry_id_fkey"
+            columns: ["bank_entry_id"]
+            isOneToOne: false
+            referencedRelation: "bank_statement_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_matches_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           color: string | null
@@ -557,6 +1069,86 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      transactions: {
+        Row: {
+          account_name: string | null
+          account_type: string | null
+          balance: number | null
+          bank_type: string
+          category: string
+          created_at: string
+          credit: number | null
+          debit: number | null
+          id: string
+          import_id: string | null
+          is_emi: boolean | null
+          is_transfer: boolean | null
+          loan_id: string | null
+          narration: string
+          notes: string | null
+          reference: string | null
+          subcategory: string | null
+          transaction_date: string
+          updated_at: string
+          user_id: string
+          value_date: string | null
+        }
+        Insert: {
+          account_name?: string | null
+          account_type?: string | null
+          balance?: number | null
+          bank_type: string
+          category?: string
+          created_at?: string
+          credit?: number | null
+          debit?: number | null
+          id?: string
+          import_id?: string | null
+          is_emi?: boolean | null
+          is_transfer?: boolean | null
+          loan_id?: string | null
+          narration: string
+          notes?: string | null
+          reference?: string | null
+          subcategory?: string | null
+          transaction_date: string
+          updated_at?: string
+          user_id: string
+          value_date?: string | null
+        }
+        Update: {
+          account_name?: string | null
+          account_type?: string | null
+          balance?: number | null
+          bank_type?: string
+          category?: string
+          created_at?: string
+          credit?: number | null
+          debit?: number | null
+          id?: string
+          import_id?: string | null
+          is_emi?: boolean | null
+          is_transfer?: boolean | null
+          loan_id?: string | null
+          narration?: string
+          notes?: string | null
+          reference?: string | null
+          subcategory?: string | null
+          transaction_date?: string
+          updated_at?: string
+          user_id?: string
+          value_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -584,7 +1176,17 @@ export type Database = {
         | "VEHICLE"
         | "HOME_TOPUP"
         | "OTHER"
-      payment_source: "UPI" | "NETBANKING" | "CASH" | "CARD" | "ACH" | "OTHER"
+      payment_source:
+        | "UPI"
+        | "NETBANKING"
+        | "CASH"
+        | "CARD"
+        | "ACH"
+        | "OTHER"
+        | "UPI_PHONEPE"
+        | "UPI_GPAY"
+        | "UPI_PAYTM"
+        | "APP_NAVI"
       payment_type:
         | "EMI"
         | "FULL_PREPAY"
@@ -742,7 +1344,18 @@ export const Constants = {
         "HOME_TOPUP",
         "OTHER",
       ],
-      payment_source: ["UPI", "NETBANKING", "CASH", "CARD", "ACH", "OTHER"],
+      payment_source: [
+        "UPI",
+        "NETBANKING",
+        "CASH",
+        "CARD",
+        "ACH",
+        "OTHER",
+        "UPI_PHONEPE",
+        "UPI_GPAY",
+        "UPI_PAYTM",
+        "APP_NAVI",
+      ],
       payment_type: [
         "EMI",
         "FULL_PREPAY",
