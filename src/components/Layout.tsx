@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -7,16 +8,14 @@ import {
   Wallet,
   CreditCard,
   TrendingUp,
-  AlertCircle,
-  Calculator,
   Building2,
   FileText,
   LogOut,
   Menu,
-  Upload,
   BarChart3,
-  TrendingDown,
-  CalendarRange,
+  Scale,
+  Upload,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -26,18 +25,35 @@ interface LayoutProps {
 }
 
 const navigation = [
-  { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Cash Flow", href: "/dashboard/cashflow", icon: TrendingUp },
-  { name: "Lenders", href: "/dashboard/lenders", icon: Building2 },
-  { name: "Risk & Alerts", href: "/dashboard/risk", icon: AlertCircle },
-  { name: "Payoff Simulator", href: "/dashboard/simulator", icon: Calculator },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { 
+    name: "Budget", 
+    icon: TrendingUp,
+    children: [
+      { name: "Budget Planner", href: "/budget-planner", icon: TrendingUp },
+      { name: "Monthly Expenses", href: "/budget/monthly-expenses", icon: Receipt },
+      { name: "Budget History", href: "/budget-history", icon: BarChart3 },
+      { name: "Future Cash-Flow", href: "/budget/future-cashflow", icon: TrendingUp },
+      { name: "Savings & Goals", href: "/budget/savings-goals", icon: TrendingUp },
+      { name: "Budget Reports", href: "/budget/reports", icon: FileText },
+    ]
+  },
+  { 
+    name: "Banking & BRS", 
+    icon: Building2,
+    children: [
+      { name: "Bank Accounts", href: "/banking/accounts", icon: Building2 },
+      { name: "Reconciliation", href: "/banking/reconcile", icon: Scale },
+      { name: "Automation Rules", href: "/banking/rules", icon: FileText },
+      { name: "BRS Report", href: "/banking/brs-report", icon: BarChart3 },
+      { name: "Transactions", href: "/expenses", icon: Receipt },
+    ]
+  },
   { name: "Loans", href: "/loans", icon: Wallet },
   { name: "Payments", href: "/payments", icon: CreditCard },
-  { name: "Bulk Upload", href: "/payments/bulk", icon: Upload },
-  { name: "Analytics", href: "/payments/analytics", icon: BarChart3 },
-  { name: "Savings Calculator", href: "/payments/savings-calculator", icon: TrendingDown },
-  { name: "Payment Forecast", href: "/payments/forecast", icon: CalendarRange },
-  { name: "Lender Management", href: "/lenders", icon: Building2 },
+  { name: "Lenders", href: "/lenders", icon: Building2 },
+  { name: "Loan Comparison", href: "/loan-comparison", icon: Scale },
+  { name: "Insights", href: "/insights", icon: FileText },
   { name: "Documents", href: "/documents", icon: FileText },
 ];
 
@@ -55,20 +71,83 @@ export default function Layout({ children }: LayoutProps) {
     <>
       {navigation.map((item) => {
         const Icon = item.icon;
+        
+        if ('children' in item && item.children) {
+          const isAnyChildActive = item.children.some(child => location.pathname === child.href);
+          
+          return (
+            <div key={item.name} className="space-y-1">
+              <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-muted-foreground">
+                <Icon className="h-4 w-4" />
+                <span>{item.name}</span>
+              </div>
+              <div className="ml-4 space-y-1 border-l-2 border-muted pl-2">
+                {item.children.map((child) => {
+                  const ChildIcon = child.icon;
+                  const isActive = location.pathname === child.href;
+                  return (
+                    <Link
+                      key={child.name}
+                      to={child.href}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden",
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      {isActive && (
+                        <motion.div
+                          layoutId="activeNav"
+                          className="absolute inset-0 bg-primary rounded-lg"
+                          initial={false}
+                          transition={{
+                            type: "spring",
+                            stiffness: 500,
+                            damping: 30,
+                          }}
+                        />
+                      )}
+                      <span className="relative z-10 flex items-center gap-3">
+                        <ChildIcon className="h-4 w-4" />
+                        {child.name}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        }
+        
         const isActive = location.pathname === item.href;
         return (
           <Link
             key={item.name}
             to={item.href}
             className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden",
               isActive
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >
-            <Icon className="h-4 w-4" />
-            {item.name}
+            {isActive && (
+              <motion.div
+                layoutId="activeNav"
+                className="absolute inset-0 bg-primary rounded-lg"
+                initial={false}
+                transition={{
+                  type: "spring",
+                  stiffness: 500,
+                  damping: 30,
+                }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-3">
+              <Icon className="h-4 w-4" />
+              {item.name}
+            </span>
           </Link>
         );
       })}
