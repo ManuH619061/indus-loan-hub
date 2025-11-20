@@ -18,6 +18,7 @@ import Documents from "./pages/Documents";
 import BulkPayments from "./pages/BulkPayments";
 import PaymentAnalytics from "./pages/PaymentAnalytics";
 import InterestSavingsCalculator from "./pages/InterestSavingsCalculator";
+import PaymentForecast from "./pages/PaymentForecast";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -42,6 +43,7 @@ const App = () => (
           <Route path="/payments/bulk" element={<ProtectedRoute><Layout><BulkPayments /></Layout></ProtectedRoute>} />
           <Route path="/payments/analytics" element={<ProtectedRoute><Layout><PaymentAnalytics /></Layout></ProtectedRoute>} />
           <Route path="/payments/savings-calculator" element={<ProtectedRoute><Layout><InterestSavingsCalculator /></Layout></ProtectedRoute>} />
+          <Route path="/payments/forecast" element={<ProtectedRoute><Layout><PaymentForecast /></Layout></ProtectedRoute>} />
           <Route path="/lenders" element={<ProtectedRoute><Layout><Lenders /></Layout></ProtectedRoute>} />
           <Route path="/lenders/:id" element={<ProtectedRoute><Layout><LenderDetail /></Layout></ProtectedRoute>} />
           <Route path="/documents" element={<ProtectedRoute><Layout><Documents /></Layout></ProtectedRoute>} />
