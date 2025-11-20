@@ -16,6 +16,7 @@ import LendersDashboard from "./pages/LendersDashboard";
 import LenderDetail from "./pages/LenderDetail";
 import Documents from "./pages/Documents";
 import BulkPayments from "./pages/BulkPayments";
+import PaymentAnalytics from "./pages/PaymentAnalytics";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -38,6 +39,7 @@ const App = () => (
           <Route path="/loans/:id" element={<ProtectedRoute><Layout><LoanDetail /></Layout></ProtectedRoute>} />
           <Route path="/payments" element={<ProtectedRoute><Layout><Payments /></Layout></ProtectedRoute>} />
           <Route path="/payments/bulk" element={<ProtectedRoute><Layout><BulkPayments /></Layout></ProtectedRoute>} />
+          <Route path="/payments/analytics" element={<ProtectedRoute><Layout><PaymentAnalytics /></Layout></ProtectedRoute>} />
           <Route path="/lenders" element={<ProtectedRoute><Layout><Lenders /></Layout></ProtectedRoute>} />
           <Route path="/lenders/:id" element={<ProtectedRoute><Layout><LenderDetail /></Layout></ProtectedRoute>} />
           <Route path="/documents" element={<ProtectedRoute><Layout><Documents /></Layout></ProtectedRoute>} />
