@@ -15,6 +15,7 @@ import {
   Menu,
   Upload,
   BarChart3,
+  TrendingDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -33,6 +34,7 @@ const navigation = [
   { name: "Payments", href: "/payments", icon: CreditCard },
   { name: "Bulk Upload", href: "/payments/bulk", icon: Upload },
   { name: "Analytics", href: "/payments/analytics", icon: BarChart3 },
+  { name: "Savings Calculator", href: "/payments/savings-calculator", icon: TrendingDown },
   { name: "Lender Management", href: "/lenders", icon: Building2 },
   { name: "Documents", href: "/documents", icon: FileText },
 ];
