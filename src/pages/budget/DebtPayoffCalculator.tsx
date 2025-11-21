@@ -33,6 +33,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 export default function DebtPayoffCalculator() {
   const { toast } = useToast();
@@ -374,6 +388,305 @@ export default function DebtPayoffCalculator() {
                       </p>
                     </AlertDescription>
                   </Alert>
+                </CardContent>
+              </Card>
+
+              {/* Visual Charts Section */}
+              <div className="grid gap-6 lg:grid-cols-2">
+                {/* Interest Comparison Bar Chart */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Total Interest Comparison</CardTitle>
+                    <CardDescription>Compare interest paid across strategies</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart
+                        data={[
+                          {
+                            name: 'Minimum Only',
+                            interest: results.minPaymentOnly.totalInterestPaid,
+                            months: results.minPaymentOnly.totalMonths,
+                          },
+                          {
+                            name: 'Avalanche',
+                            interest: results.avalanche.totalInterestPaid,
+                            months: results.avalanche.totalMonths,
+                          },
+                          {
+                            name: 'Snowball',
+                            interest: results.snowball.totalInterestPaid,
+                            months: results.snowball.totalMonths,
+                          },
+                        ]}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="name" className="text-xs" />
+                        <YAxis 
+                          tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
+                          className="text-xs"
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="rounded-lg border bg-background p-3 shadow-lg">
+                                  <p className="font-semibold">{payload[0].payload.name}</p>
+                                  <p className="text-sm text-destructive">
+                                    Interest: {formatINR(payload[0].value as number)}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Duration: {payload[0].payload.months} months
+                                  </p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar dataKey="interest" fill="hsl(var(--destructive))" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Payoff Timeline Comparison */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Payoff Timeline</CardTitle>
+                    <CardDescription>Months to become debt-free</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart
+                        data={[
+                          {
+                            name: 'Minimum Only',
+                            months: results.minPaymentOnly.totalMonths,
+                            years: (results.minPaymentOnly.totalMonths / 12).toFixed(1),
+                          },
+                          {
+                            name: 'Avalanche',
+                            months: results.avalanche.totalMonths,
+                            years: (results.avalanche.totalMonths / 12).toFixed(1),
+                          },
+                          {
+                            name: 'Snowball',
+                            months: results.snowball.totalMonths,
+                            years: (results.snowball.totalMonths / 12).toFixed(1),
+                          },
+                        ]}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="name" className="text-xs" />
+                        <YAxis 
+                          label={{ value: 'Months', angle: -90, position: 'insideLeft' }}
+                          className="text-xs"
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="rounded-lg border bg-background p-3 shadow-lg">
+                                  <p className="font-semibold">{payload[0].payload.name}</p>
+                                  <p className="text-sm text-primary">
+                                    {payload[0].value} months ({payload[0].payload.years} years)
+                                  </p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar dataKey="months" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Debt Paydown Timeline Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Debt Paydown Timeline</CardTitle>
+                  <CardDescription>
+                    Track how your total debt decreases over time with each strategy
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <AreaChart
+                      data={(() => {
+                        const maxMonths = Math.max(
+                          results.avalanche.totalMonths,
+                          results.snowball.totalMonths,
+                          Math.min(results.minPaymentOnly.totalMonths, 120) // Cap minimum at 120 months for display
+                        );
+                        
+                        return Array.from({ length: maxMonths }, (_, i) => {
+                          const month = i + 1;
+                          const avalancheData = results.avalanche.monthlySchedule[i];
+                          const snowballData = results.snowball.monthlySchedule[i];
+                          const minData = results.minPaymentOnly.monthlySchedule[i];
+                          
+                          return {
+                            month,
+                            avalanche: avalancheData?.remainingDebt || 0,
+                            snowball: snowballData?.remainingDebt || 0,
+                            minimum: minData?.remainingDebt || 0,
+                          };
+                        });
+                      })()}
+                      margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <defs>
+                        <linearGradient id="colorAvalanche" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0.1}/>
+                        </linearGradient>
+                        <linearGradient id="colorSnowball" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
+                        </linearGradient>
+                        <linearGradient id="colorMinimum" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.05}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="month" 
+                        label={{ value: 'Month', position: 'insideBottom', offset: -5 }}
+                        className="text-xs"
+                      />
+                      <YAxis 
+                        tickFormatter={(value) => `₹${(value / 100000).toFixed(1)}L`}
+                        label={{ value: 'Remaining Debt', angle: -90, position: 'insideLeft' }}
+                        className="text-xs"
+                      />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="rounded-lg border bg-background p-3 shadow-lg">
+                                <p className="font-semibold mb-2">Month {payload[0].payload.month}</p>
+                                {payload.map((entry: any, index: number) => (
+                                  <p key={index} className="text-sm" style={{ color: entry.color }}>
+                                    {entry.name}: {formatINR(entry.value)}
+                                  </p>
+                                ))}
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Legend />
+                      <Area
+                        type="monotone"
+                        dataKey="minimum"
+                        name="Minimum Payment"
+                        stroke="hsl(var(--muted-foreground))"
+                        fill="url(#colorMinimum)"
+                        strokeWidth={2}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="snowball"
+                        name="Snowball"
+                        stroke="hsl(var(--primary))"
+                        fill="url(#colorSnowball)"
+                        strokeWidth={2}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="avalanche"
+                        name="Avalanche"
+                        stroke="hsl(var(--success))"
+                        fill="url(#colorAvalanche)"
+                        strokeWidth={2}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Individual Loan Balance Progression */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Individual Loan Progression (Avalanche)</CardTitle>
+                  <CardDescription>
+                    See how each loan balance decreases over time with the avalanche strategy
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <LineChart
+                      data={(() => {
+                        const colors = [
+                          'hsl(var(--chart-1))',
+                          'hsl(var(--chart-2))',
+                          'hsl(var(--chart-3))',
+                          'hsl(var(--chart-4))',
+                          'hsl(var(--chart-5))',
+                        ];
+                        
+                        return results.avalanche.monthlySchedule.map((monthData, idx) => {
+                          const dataPoint: any = { month: monthData.month };
+                          monthData.loans.forEach((loan, loanIdx) => {
+                            dataPoint[loan.loanName] = loan.remainingBalance;
+                          });
+                          return dataPoint;
+                        });
+                      })()}
+                      margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="month" 
+                        label={{ value: 'Month', position: 'insideBottom', offset: -5 }}
+                        className="text-xs"
+                      />
+                      <YAxis 
+                        tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
+                        label={{ value: 'Balance', angle: -90, position: 'insideLeft' }}
+                        className="text-xs"
+                      />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="rounded-lg border bg-background p-3 shadow-lg max-h-64 overflow-auto">
+                                <p className="font-semibold mb-2">Month {payload[0].payload.month}</p>
+                                {payload.map((entry: any, index: number) => (
+                                  entry.value > 0 && (
+                                    <p key={index} className="text-sm" style={{ color: entry.color }}>
+                                      {entry.name}: {formatINR(entry.value)}
+                                    </p>
+                                  )
+                                ))}
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Legend />
+                      {loans.map((loan, idx) => (
+                        <Line
+                          key={loan.id}
+                          type="monotone"
+                          dataKey={loan.loan_name}
+                          name={loan.loan_name}
+                          stroke={`hsl(var(--chart-${(idx % 5) + 1}))`}
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
 
