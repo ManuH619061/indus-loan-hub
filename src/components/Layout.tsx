@@ -35,6 +35,7 @@ const navigation = [
       { name: "Budget History", href: "/budget-history", icon: BarChart3 },
       { name: "Future Cash-Flow", href: "/budget/future-cashflow", icon: TrendingUp },
       { name: "Savings & Goals", href: "/budget/savings-goals", icon: TrendingUp },
+      { name: "Debt Payoff Calculator", href: "/budget/debt-optimizer", icon: Scale },
       { name: "Budget Reports", href: "/budget/reports", icon: FileText },
     ]
   },
