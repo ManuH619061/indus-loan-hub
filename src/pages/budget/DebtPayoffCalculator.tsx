@@ -46,6 +46,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
 
 export default function DebtPayoffCalculator() {
@@ -428,17 +429,36 @@ export default function DebtPayoffCalculator() {
                           className="text-xs"
                         />
                         <Tooltip
+                          cursor={{ fill: 'hsl(var(--muted) / 0.2)' }}
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              const savingsVsMin = results.minPaymentOnly.totalInterestPaid - (data.interest as number);
                               return (
-                                <div className="rounded-lg border bg-background p-3 shadow-lg">
-                                  <p className="font-semibold">{payload[0].payload.name}</p>
-                                  <p className="text-sm text-destructive">
-                                    Interest: {formatINR(payload[0].value as number)}
-                                  </p>
-                                  <p className="text-sm text-muted-foreground">
-                                    Duration: {payload[0].payload.months} months
-                                  </p>
+                                <div className="rounded-lg border bg-background p-4 shadow-xl min-w-[250px]">
+                                  <p className="font-bold text-lg mb-2">{data.name}</p>
+                                  <div className="space-y-1">
+                                    <div className="flex justify-between gap-4">
+                                      <span className="text-sm text-muted-foreground">Total Interest:</span>
+                                      <span className="text-sm font-semibold text-destructive">
+                                        {formatINR(data.interest)}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between gap-4">
+                                      <span className="text-sm text-muted-foreground">Duration:</span>
+                                      <span className="text-sm font-semibold">
+                                        {data.months} months ({(data.months / 12).toFixed(1)} years)
+                                      </span>
+                                    </div>
+                                    {savingsVsMin > 0 && (
+                                      <div className="flex justify-between gap-4 pt-2 border-t mt-2">
+                                        <span className="text-sm text-success">Savings vs Minimum:</span>
+                                        <span className="text-sm font-bold text-success">
+                                          {formatINR(savingsVsMin)}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               );
                             }
@@ -486,14 +506,36 @@ export default function DebtPayoffCalculator() {
                           className="text-xs"
                         />
                         <Tooltip
+                          cursor={{ fill: 'hsl(var(--muted) / 0.2)' }}
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              const monthsSaved = results.minPaymentOnly.totalMonths - (data.months as number);
                               return (
-                                <div className="rounded-lg border bg-background p-3 shadow-lg">
-                                  <p className="font-semibold">{payload[0].payload.name}</p>
-                                  <p className="text-sm text-primary">
-                                    {payload[0].value} months ({payload[0].payload.years} years)
-                                  </p>
+                                <div className="rounded-lg border bg-background p-4 shadow-xl min-w-[250px]">
+                                  <p className="font-bold text-lg mb-2">{data.name}</p>
+                                  <div className="space-y-1">
+                                    <div className="flex justify-between gap-4">
+                                      <span className="text-sm text-muted-foreground">Payoff Time:</span>
+                                      <span className="text-sm font-semibold text-primary">
+                                        {data.months} months
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between gap-4">
+                                      <span className="text-sm text-muted-foreground">In Years:</span>
+                                      <span className="text-sm font-semibold">
+                                        {data.years} years
+                                      </span>
+                                    </div>
+                                    {monthsSaved > 0 && (
+                                      <div className="flex justify-between gap-4 pt-2 border-t mt-2">
+                                        <span className="text-sm text-success">Time Saved:</span>
+                                        <span className="text-sm font-bold text-success">
+                                          {monthsSaved} months
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               );
                             }
@@ -567,16 +609,60 @@ export default function DebtPayoffCalculator() {
                         className="text-xs"
                       />
                       <Tooltip
+                        cursor={{ strokeDasharray: '3 3' }}
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
+                            const monthNum = payload[0].payload.month;
+                            const avalancheData = results.avalanche.monthlySchedule[monthNum - 1];
+                            const snowballData = results.snowball.monthlySchedule[monthNum - 1];
+                            const minData = results.minPaymentOnly.monthlySchedule[monthNum - 1];
+                            
                             return (
-                              <div className="rounded-lg border bg-background p-3 shadow-lg">
-                                <p className="font-semibold mb-2">Month {payload[0].payload.month}</p>
-                                {payload.map((entry: any, index: number) => (
-                                  <p key={index} className="text-sm" style={{ color: entry.color }}>
-                                    {entry.name}: {formatINR(entry.value)}
-                                  </p>
-                                ))}
+                              <div className="rounded-lg border bg-background p-4 shadow-xl min-w-[300px]">
+                                <div className="border-b pb-2 mb-2">
+                                  <p className="font-bold text-lg">Month {monthNum}</p>
+                                  {avalancheData && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {new Date(avalancheData.date).toLocaleDateString('en-IN', { 
+                                        month: 'short', 
+                                        year: 'numeric' 
+                                      })}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="space-y-3">
+                                  {payload.map((entry: any, index: number) => {
+                                    const isAvalanche = entry.dataKey === 'avalanche';
+                                    const isSnowball = entry.dataKey === 'snowball';
+                                    const monthData = isAvalanche ? avalancheData : isSnowball ? snowballData : minData;
+                                    
+                                    return entry.value > 0 ? (
+                                      <div key={index} className="space-y-1">
+                                        <p className="text-sm font-semibold" style={{ color: entry.color }}>
+                                          {entry.name}
+                                        </p>
+                                        <div className="pl-2 space-y-0.5 text-xs">
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Remaining:</span>
+                                            <span className="font-medium">{formatINR(entry.value)}</span>
+                                          </div>
+                                          {monthData && (
+                                            <>
+                                              <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Payment:</span>
+                                                <span className="font-medium">{formatINR(monthData.totalPayment)}</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Interest:</span>
+                                                <span className="text-destructive">{formatINR(monthData.totalInterest)}</span>
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ) : null;
+                                  })}
+                                </div>
                               </div>
                             );
                           }
@@ -655,18 +741,70 @@ export default function DebtPayoffCalculator() {
                         className="text-xs"
                       />
                       <Tooltip
+                        cursor={{ strokeDasharray: '3 3' }}
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
+                            const monthNum = payload[0].payload.month;
+                            const monthData = results.avalanche.monthlySchedule[monthNum - 1];
+                            
                             return (
-                              <div className="rounded-lg border bg-background p-3 shadow-lg max-h-64 overflow-auto">
-                                <p className="font-semibold mb-2">Month {payload[0].payload.month}</p>
-                                {payload.map((entry: any, index: number) => (
-                                  entry.value > 0 && (
-                                    <p key={index} className="text-sm" style={{ color: entry.color }}>
-                                      {entry.name}: {formatINR(entry.value)}
+                              <div className="rounded-lg border bg-background p-4 shadow-xl max-w-[350px]">
+                                <div className="border-b pb-2 mb-3">
+                                  <p className="font-bold text-lg">Month {monthNum}</p>
+                                  {monthData && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {new Date(monthData.date).toLocaleDateString('en-IN', { 
+                                        month: 'long', 
+                                        year: 'numeric' 
+                                      })}
                                     </p>
-                                  )
-                                ))}
+                                  )}
+                                </div>
+                                <div className="space-y-2 max-h-64 overflow-auto">
+                                  {payload.map((entry: any, index: number) => {
+                                    if (entry.value <= 0) return null;
+                                    
+                                    const loanData = monthData?.loans.find(l => l.loanName === entry.name);
+                                    
+                                    return (
+                                      <div key={index} className="border-l-2 pl-2" style={{ borderColor: entry.color }}>
+                                        <p className="text-sm font-semibold mb-1" style={{ color: entry.color }}>
+                                          {entry.name}
+                                        </p>
+                                        <div className="space-y-0.5 text-xs">
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Balance:</span>
+                                            <span className="font-medium">{formatINR(entry.value)}</span>
+                                          </div>
+                                          {loanData && (
+                                            <>
+                                              <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Payment:</span>
+                                                <span className="font-medium">{formatINR(loanData.payment)}</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Interest:</span>
+                                                <span className="text-destructive">{formatINR(loanData.interestPaid)}</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Principal:</span>
+                                                <span className="text-success">{formatINR(loanData.principalPaid)}</span>
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                {monthData && (
+                                  <div className="border-t pt-2 mt-3">
+                                    <div className="flex justify-between text-sm font-semibold">
+                                      <span>Total Payment:</span>
+                                      <span>{formatINR(monthData.totalPayment)}</span>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             );
                           }
