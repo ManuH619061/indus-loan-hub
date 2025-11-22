@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatINR } from "@/lib/currency";
@@ -21,7 +23,10 @@ import {
   DollarSign, 
   AlertCircle,
   ArrowRight,
-  Loader2
+  Loader2,
+  Sliders,
+  Play,
+  RefreshCw
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -53,13 +58,22 @@ export default function DebtPayoffCalculator() {
   const { toast } = useToast();
   const [loans, setLoans] = useState<LoanForOptimization[]>([]);
   const [loading, setLoading] = useState(true);
-  const [calculating, setCalculating] = useState(false);
   const [extraPayment, setExtraPayment] = useState(5000);
-  const [results, setResults] = useState<ReturnType<typeof compareStrategies> | null>(null);
+  const [whatIfMode, setWhatIfMode] = useState(false);
+  const [scenarioPayment, setScenarioPayment] = useState(5000);
+  const [compareScenarios, setCompareScenarios] = useState(false);
+  const [scenario2Payment, setScenario2Payment] = useState(10000);
 
   useEffect(() => {
     fetchLoans();
   }, []);
+
+  // Auto-calculate in What-If mode
+  useEffect(() => {
+    if (loans.length > 0 && whatIfMode) {
+      setScenarioPayment(extraPayment);
+    }
+  }, [whatIfMode, loans, extraPayment]);
 
   const fetchLoans = async () => {
     try {
@@ -110,7 +124,21 @@ export default function DebtPayoffCalculator() {
     }
   };
 
-  const handleCalculate = () => {
+  // Memoized results for real-time calculation
+  const results = useMemo(() => {
+    if (loans.length === 0) return null;
+    if (whatIfMode) {
+      return compareStrategies(loans, scenarioPayment);
+    }
+    return null;
+  }, [loans, scenarioPayment, whatIfMode]);
+
+  const scenario2Results = useMemo(() => {
+    if (loans.length === 0 || !compareScenarios) return null;
+    return compareStrategies(loans, scenario2Payment);
+  }, [loans, scenario2Payment, compareScenarios]);
+
+  const handleActivateWhatIf = () => {
     if (loans.length === 0) {
       toast({
         title: "No active loans",
@@ -119,13 +147,14 @@ export default function DebtPayoffCalculator() {
       });
       return;
     }
+    setWhatIfMode(true);
+    setScenarioPayment(extraPayment);
+  };
 
-    setCalculating(true);
-    setTimeout(() => {
-      const comparison = compareStrategies(loans, extraPayment);
-      setResults(comparison);
-      setCalculating(false);
-    }, 500);
+  const handleResetScenarios = () => {
+    setScenarioPayment(5000);
+    setScenario2Payment(10000);
+    setCompareScenarios(false);
   };
 
   const renderStrategyCard = (strategy: PayoffStrategy, icon: any, color: string) => {
@@ -308,50 +337,234 @@ export default function DebtPayoffCalculator() {
             </Card>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Configure Extra Payment</CardTitle>
-              <CardDescription>
-                How much extra can you pay each month towards debt?
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-end gap-4">
-                <div className="flex-1">
-                  <Label htmlFor="extraPayment">Extra Monthly Payment</Label>
-                  <Input
-                    id="extraPayment"
-                    type="number"
-                    value={extraPayment}
-                    onChange={(e) => setExtraPayment(Number(e.target.value))}
-                    min={0}
-                    step={1000}
-                    className="mt-1"
-                  />
+          {!whatIfMode ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Configure Extra Payment</CardTitle>
+                <CardDescription>
+                  How much extra can you pay each month towards debt?
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-end gap-4">
+                  <div className="flex-1">
+                    <Label htmlFor="extraPayment">Extra Monthly Payment</Label>
+                    <Input
+                      id="extraPayment"
+                      type="number"
+                      value={extraPayment}
+                      onChange={(e) => setExtraPayment(Number(e.target.value))}
+                      min={0}
+                      step={1000}
+                      className="mt-1"
+                    />
+                  </div>
+                  <Button onClick={handleActivateWhatIf} className="gap-2">
+                    <Play className="h-4 w-4" />
+                    Start What-If Scenarios
+                  </Button>
                 </div>
-                <Button onClick={handleCalculate} disabled={calculating} className="gap-2">
-                  {calculating ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Calculating...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-4 w-4" />
-                      Calculate Strategies
-                    </>
-                  )}
-                </Button>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <AlertCircle className="h-4 w-4" />
-                <p>Total monthly payment: {formatINR(totalMinEMI + extraPayment)}</p>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <AlertCircle className="h-4 w-4" />
+                  <p>Total monthly payment: {formatINR(totalMinEMI + extraPayment)}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-primary">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sliders className="h-5 w-5 text-primary" />
+                    <CardTitle>What-If Scenarios</CardTitle>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleResetScenarios}
+                      className="gap-1"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Reset
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setWhatIfMode(false)}
+                    >
+                      Exit
+                    </Button>
+                  </div>
+                </div>
+                <CardDescription>
+                  Adjust the slider to see real-time changes in your debt payoff strategy
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-semibold">Scenario 1: Extra Monthly Payment</Label>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold text-primary">{formatINR(scenarioPayment)}</span>
+                      <span className="text-sm text-muted-foreground">/month</span>
+                    </div>
+                  </div>
+                  <Slider
+                    value={[scenarioPayment]}
+                    onValueChange={(value) => setScenarioPayment(value[0])}
+                    min={0}
+                    max={50000}
+                    step={500}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>₹0</span>
+                    <span>₹25,000</span>
+                    <span>₹50,000</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <AlertCircle className="h-4 w-4" />
+                    <p>Total monthly payment: {formatINR(totalMinEMI + scenarioPayment)}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 pt-2 border-t">
+                  <Switch
+                    id="compare-mode"
+                    checked={compareScenarios}
+                    onCheckedChange={setCompareScenarios}
+                  />
+                  <Label htmlFor="compare-mode" className="cursor-pointer">
+                    Compare with second scenario
+                  </Label>
+                </div>
+
+                {compareScenarios && (
+                  <div className="space-y-4 pt-2 border-t">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-semibold">Scenario 2: Alternative Payment</Label>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-bold text-success">{formatINR(scenario2Payment)}</span>
+                        <span className="text-sm text-muted-foreground">/month</span>
+                      </div>
+                    </div>
+                    <Slider
+                      value={[scenario2Payment]}
+                      onValueChange={(value) => setScenario2Payment(value[0])}
+                      min={0}
+                      max={50000}
+                      step={500}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>₹0</span>
+                      <span>₹25,000</span>
+                      <span>₹50,000</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <AlertCircle className="h-4 w-4" />
+                      <p>Total monthly payment: {formatINR(totalMinEMI + scenario2Payment)}</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {results && (
             <>
+              {compareScenarios && scenario2Results && (
+                <Card className="bg-muted/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ArrowRight className="h-5 w-5" />
+                      Scenario Comparison
+                    </CardTitle>
+                    <CardDescription>
+                      Compare the impact of different extra payment amounts
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2 p-4 rounded-lg border-2 border-primary bg-background">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-lg">Scenario 1</h3>
+                          <Badge variant="outline" className="text-primary border-primary">
+                            {formatINR(scenarioPayment)}/mo
+                          </Badge>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Debt-Free (Avalanche):</span>
+                            <span className="font-semibold">{results.avalanche.totalMonths} months</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Total Interest:</span>
+                            <span className="font-semibold text-destructive">{formatINR(results.avalanche.totalInterestPaid)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Savings vs Min:</span>
+                            <span className="font-semibold text-success">
+                              {formatINR(results.minPaymentOnly.totalInterestPaid - results.avalanche.totalInterestPaid)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 p-4 rounded-lg border-2 border-success bg-background">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-lg">Scenario 2</h3>
+                          <Badge variant="outline" className="text-success border-success">
+                            {formatINR(scenario2Payment)}/mo
+                          </Badge>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Debt-Free (Avalanche):</span>
+                            <span className="font-semibold">{scenario2Results.avalanche.totalMonths} months</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Total Interest:</span>
+                            <span className="font-semibold text-destructive">{formatINR(scenario2Results.avalanche.totalInterestPaid)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Savings vs Min:</span>
+                            <span className="font-semibold text-success">
+                              {formatINR(scenario2Results.minPaymentOnly.totalInterestPaid - scenario2Results.avalanche.totalInterestPaid)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Alert className="mt-4">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Difference</AlertTitle>
+                      <AlertDescription className="space-y-1 mt-2">
+                        <p>
+                          • Scenario 2 saves an additional{' '}
+                          <strong className="text-success">
+                            {formatINR(results.avalanche.totalInterestPaid - scenario2Results.avalanche.totalInterestPaid)}
+                          </strong>{' '}
+                          in interest
+                        </p>
+                        <p>
+                          • Scenario 2 makes you debt-free{' '}
+                          <strong className="text-primary">
+                            {results.avalanche.totalMonths - scenario2Results.avalanche.totalMonths} months
+                          </strong>{' '}
+                          faster
+                        </p>
+                        <p>
+                          • Extra monthly investment: {formatINR(scenario2Payment - scenarioPayment)}
+                        </p>
+                      </AlertDescription>
+                    </Alert>
+                  </CardContent>
+                </Card>
+              )}
+
               <div className="grid gap-6 md:grid-cols-2">
                 {renderStrategyCard(results.avalanche, TrendingDown, "text-success")}
                 {renderStrategyCard(results.snowball, Target, "text-primary")}
@@ -381,7 +594,7 @@ export default function DebtPayoffCalculator() {
                         <strong className="text-primary">{results.insights.timeDifference} months</strong> faster
                       </p>
                       <p>
-                        • With <strong>{formatINR(extraPayment)}/month</strong> extra payment, you'll save{' '}
+                        • With <strong>{formatINR(scenarioPayment)}/month</strong> extra payment, you'll save{' '}
                         <strong className="text-success">
                           {formatINR(results.minPaymentOnly.totalInterestPaid - results.avalanche.totalInterestPaid)}
                         </strong>{' '}
