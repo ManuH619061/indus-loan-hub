@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import NewDashboard from "./pages/NewDashboard";
 import NewLoans from "./pages/NewLoans";
 import NewLoan from "./pages/NewLoan";
+import EditLoan from "./pages/EditLoan";
 import NewLoanDetail from "./pages/NewLoanDetail";
 import NewPayments from "./pages/NewPayments";
 import Lenders from "./pages/Lenders";
@@ -64,6 +65,7 @@ function AnimatedRoutes() {
         <Route path="/expenses" element={<ProtectedRoute><Layout><PageTransition><Expenses /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/loans" element={<ProtectedRoute><Layout><PageTransition><NewLoans /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/loans/new" element={<ProtectedRoute><Layout><PageTransition><NewLoan /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/loans/:id/edit" element={<ProtectedRoute><Layout><PageTransition><EditLoan /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/loans/:id" element={<ProtectedRoute><Layout><PageTransition><NewLoanDetail /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/payments" element={<ProtectedRoute><Layout><PageTransition><NewPayments /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/lenders" element={<ProtectedRoute><Layout><PageTransition><Lenders /></PageTransition></Layout></ProtectedRoute>} />
