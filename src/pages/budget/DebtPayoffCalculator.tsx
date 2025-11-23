@@ -7,6 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatINR } from "@/lib/currency";
@@ -26,7 +35,10 @@ import {
   Loader2,
   Sliders,
   Play,
-  RefreshCw
+  RefreshCw,
+  Save,
+  Bookmark,
+  Trash2
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -63,9 +75,16 @@ export default function DebtPayoffCalculator() {
   const [scenarioPayment, setScenarioPayment] = useState(5000);
   const [compareScenarios, setCompareScenarios] = useState(false);
   const [scenario2Payment, setScenario2Payment] = useState(10000);
+  
+  // Saved scenarios state
+  const [savedScenarios, setSavedScenarios] = useState<any[]>([]);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [scenarioName, setScenarioName] = useState("");
+  const [savingScenario, setSavingScenario] = useState(false);
 
   useEffect(() => {
     fetchLoans();
+    fetchSavedScenarios();
   }, []);
 
   // Auto-calculate in What-If mode
@@ -74,6 +93,128 @@ export default function DebtPayoffCalculator() {
       setScenarioPayment(extraPayment);
     }
   }, [whatIfMode, loans, extraPayment]);
+
+  const fetchSavedScenarios = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('goal_type', 'debt_payoff_scenario')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setSavedScenarios(data || []);
+    } catch (error) {
+      console.error('Error fetching saved scenarios:', error);
+    }
+  };
+
+  const handleSaveScenario = async () => {
+    if (!scenarioName.trim()) {
+      toast({
+        title: "Name required",
+        description: "Please enter a name for this scenario",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSavingScenario(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const scenarioData = {
+        name: scenarioName,
+        scenarioPayment,
+        compareScenarios,
+        scenario2Payment: compareScenarios ? scenario2Payment : null,
+        savedAt: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('goals')
+        .insert({
+          user_id: user.id,
+          goal_type: 'debt_payoff_scenario',
+          monthly_extra_payment: scenarioPayment,
+          notes: JSON.stringify(scenarioData)
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Scenario saved",
+        description: `"${scenarioName}" has been saved successfully`
+      });
+
+      setScenarioName("");
+      setSaveDialogOpen(false);
+      fetchSavedScenarios();
+    } catch (error) {
+      console.error('Error saving scenario:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save scenario",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingScenario(false);
+    }
+  };
+
+  const handleLoadScenario = (scenario: any) => {
+    try {
+      const data = JSON.parse(scenario.notes);
+      setScenarioPayment(data.scenarioPayment);
+      setCompareScenarios(data.compareScenarios || false);
+      if (data.scenario2Payment) {
+        setScenario2Payment(data.scenario2Payment);
+      }
+      setWhatIfMode(true);
+      
+      toast({
+        title: "Scenario loaded",
+        description: `"${data.name}" has been loaded`
+      });
+    } catch (error) {
+      console.error('Error loading scenario:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load scenario",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteScenario = async (scenarioId: string, scenarioName: string) => {
+    try {
+      const { error } = await supabase
+        .from('goals')
+        .delete()
+        .eq('id', scenarioId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Scenario deleted",
+        description: `"${scenarioName}" has been removed`
+      });
+
+      fetchSavedScenarios();
+    } catch (error) {
+      console.error('Error deleting scenario:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete scenario",
+        variant: "destructive"
+      });
+    }
+  };
 
   const fetchLoans = async () => {
     try {
@@ -305,9 +446,73 @@ export default function DebtPayoffCalculator() {
             Add some active loans to start optimizing your debt payoff strategy.
           </AlertDescription>
         </Alert>
-      ) : (
-        <>
-          <div className="grid gap-4 md:grid-cols-3">
+          ) : (
+            <>
+              {savedScenarios.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Bookmark className="h-5 w-5 text-primary" />
+                      <CardTitle>Saved Scenarios</CardTitle>
+                    </div>
+                    <CardDescription>
+                      Load previously saved what-if scenarios to compare strategies
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                      {savedScenarios.map((scenario) => {
+                        const data = JSON.parse(scenario.notes);
+                        return (
+                          <Card key={scenario.id} className="relative">
+                            <CardContent className="pt-6">
+                              <div className="space-y-3">
+                                <div>
+                                  <h4 className="font-semibold">{data.name}</h4>
+                                  <p className="text-xs text-muted-foreground">
+                                    Saved {new Date(data.savedAt).toLocaleDateString('en-IN')}
+                                  </p>
+                                </div>
+                                <div className="space-y-1 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Extra Payment:</span>
+                                    <span className="font-medium">{formatINR(data.scenarioPayment)}</span>
+                                  </div>
+                                  {data.compareScenarios && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Scenario 2:</span>
+                                      <span className="font-medium">{formatINR(data.scenario2Payment)}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    className="flex-1 gap-1"
+                                    onClick={() => handleLoadScenario(scenario)}
+                                  >
+                                    <Play className="h-3 w-3" />
+                                    Load
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDeleteScenario(scenario.id, data.name)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Outstanding Debt</CardTitle>
@@ -379,6 +584,74 @@ export default function DebtPayoffCalculator() {
                     <CardTitle>What-If Scenarios</CardTitle>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="default" 
+                          size="sm"
+                          className="gap-1"
+                        >
+                          <Save className="h-3 w-3" />
+                          Save Scenario
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Save What-If Scenario</DialogTitle>
+                          <DialogDescription>
+                            Give this scenario a name to track and compare different payoff strategies over time
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="scenario-name">Scenario Name</Label>
+                            <Input
+                              id="scenario-name"
+                              placeholder="e.g., Aggressive Payoff Plan"
+                              value={scenarioName}
+                              onChange={(e) => setScenarioName(e.target.value)}
+                            />
+                          </div>
+                          <div className="rounded-lg bg-muted p-3 space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Extra Payment:</span>
+                              <span className="font-medium">{formatINR(scenarioPayment)}</span>
+                            </div>
+                            {compareScenarios && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Scenario 2 Payment:</span>
+                                <span className="font-medium">{formatINR(scenario2Payment)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setSaveDialogOpen(false)}
+                            disabled={savingScenario}
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={handleSaveScenario}
+                            disabled={savingScenario || !scenarioName.trim()}
+                          >
+                            {savingScenario ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="h-4 w-4 mr-2" />
+                                Save Scenario
+                              </>
+                            )}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                     <Button 
                       variant="outline" 
                       size="sm"
