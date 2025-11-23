@@ -239,13 +239,26 @@ export default function NewLoan() {
   };
 
   const handleSubmit = async () => {
-    if (!user) return;
+    if (!user) {
+      toast({ 
+        variant: "destructive", 
+        title: "Authentication required", 
+        description: "Please log in to create a loan" 
+      });
+      return;
+    }
+    
     setLoading(true);
 
     try {
       const principal = parseFloat(formData.principal_amount);
       const rate = parseFloat(formData.interest_rate_apy);
       const tenure = parseInt(formData.tenure_months);
+      
+      if (!principal || !rate || !tenure) {
+        throw new Error("Please fill in all required fields");
+      }
+      
       const emi = calculateEMI();
 
       const { data: loan, error: loanError } = await supabase
