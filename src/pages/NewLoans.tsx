@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { Wallet, Plus, Building2, Calendar, TrendingUp, CreditCard, Pencil, Trash2 } from "lucide-react";
+import { Wallet, Plus, Building2, Calendar, TrendingUp, CreditCard, Pencil, Trash2, CheckSquare, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import QuickPaySheet from "@/components/QuickPaySheet";
 import FadeInStagger, { FadeInStaggerItem } from "@/components/FadeInStagger";
@@ -23,6 +25,10 @@ export default function NewLoans() {
   const [showQuickPay, setShowQuickPay] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [loanToDelete, setLoanToDelete] = useState<any>(null);
+  const [selectedLoans, setSelectedLoans] = useState<Set<string>>(new Set());
+  const [bulkActionDialogOpen, setBulkActionDialogOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState<"delete" | "status">("delete");
+  const [bulkStatus, setBulkStatus] = useState<"ACTIVE" | "CLOSED" | "DEFAULTED">("ACTIVE");
 
   useEffect(() => {
     if (user) {
@@ -111,6 +117,60 @@ export default function NewLoans() {
     }
   };
 
+  const toggleSelectLoan = (loanId: string) => {
+    setSelectedLoans((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(loanId)) {
+        newSet.delete(loanId);
+      } else {
+        newSet.add(loanId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedLoans.size === loans.length) {
+      setSelectedLoans(new Set());
+    } else {
+      setSelectedLoans(new Set(loans.map((l) => l.id)));
+    }
+  };
+
+  const handleBulkAction = async () => {
+    if (selectedLoans.size === 0) return;
+
+    try {
+      if (bulkAction === "delete") {
+        const { error } = await supabase
+          .from("loans")
+          .delete()
+          .in("id", Array.from(selectedLoans));
+
+        if (error) throw error;
+        toast({ title: `Successfully deleted ${selectedLoans.size} loan(s)` });
+      } else if (bulkAction === "status") {
+        const { error } = await supabase
+          .from("loans")
+          .update({ status: bulkStatus })
+          .in("id", Array.from(selectedLoans));
+
+        if (error) throw error;
+        toast({ title: `Successfully updated ${selectedLoans.size} loan(s) status` });
+      }
+
+      setSelectedLoans(new Set());
+      setBulkActionDialogOpen(false);
+      fetchLoans();
+    } catch (error: any) {
+      toast({
+        title: "Error performing bulk action",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
@@ -136,6 +196,56 @@ export default function NewLoans() {
         </Link>
       </div>
 
+      {selectedLoans.size > 0 && (
+        <Card className="border-primary bg-primary/5">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <CheckSquare className="h-5 w-5 text-primary" />
+                <span className="font-medium">
+                  {selectedLoans.size} loan(s) selected
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedLoans(new Set())}
+                  className="gap-2"
+                >
+                  <X className="h-4 w-4" />
+                  Clear
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={bulkAction} onValueChange={(val: any) => setBulkAction(val)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select action" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="delete">Delete Loans</SelectItem>
+                    <SelectItem value="status">Update Status</SelectItem>
+                  </SelectContent>
+                </Select>
+                {bulkAction === "status" && (
+                  <Select value={bulkStatus} onValueChange={(val) => setBulkStatus(val as "ACTIVE" | "CLOSED" | "DEFAULTED")}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ACTIVE">Active</SelectItem>
+                      <SelectItem value="CLOSED">Closed</SelectItem>
+                      <SelectItem value="DEFAULTED">Defaulted</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                <Button onClick={() => setBulkActionDialogOpen(true)}>
+                  Apply Action
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {loans.length === 0 ? (
         <Card className="p-12">
           <div className="text-center space-y-4">
@@ -153,21 +263,43 @@ export default function NewLoans() {
           </div>
         </Card>
       ) : (
-        <FadeInStagger className="grid gap-4">
-          {loans.map((loan) => {
-            const logoUrl = loan.logo_url || loan.lenders?.logo_url;
-            const initials = loan.loan_name.substring(0, 2).toUpperCase();
+        <>
+          {loans.length > 0 && (
+            <div className="flex items-center gap-2 mb-2">
+              <Checkbox
+                id="select-all"
+                checked={selectedLoans.size === loans.length && loans.length > 0}
+                onCheckedChange={toggleSelectAll}
+              />
+              <label
+                htmlFor="select-all"
+                className="text-sm font-medium cursor-pointer select-none"
+              >
+                Select All
+              </label>
+            </div>
+          )}
+          <FadeInStagger className="grid gap-4">
+            {loans.map((loan) => {
+              const logoUrl = loan.logo_url || loan.lenders?.logo_url;
+              const initials = loan.loan_name.substring(0, 2).toUpperCase();
+              const isSelected = selectedLoans.has(loan.id);
 
-            return (
-              <FadeInStaggerItem key={loan.id}>
-                <motion.div
-                  whileHover={{ scale: 1.01 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Card className="hover:shadow-lg transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        <Avatar className="h-16 w-16">
+              return (
+                <FadeInStaggerItem key={loan.id}>
+                  <motion.div
+                    whileHover={{ scale: 1.01 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Card className={`hover:shadow-lg transition-shadow ${isSelected ? "ring-2 ring-primary" : ""}`}>
+                      <CardContent className="p-6">
+                        <div className="flex items-start gap-4">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSelectLoan(loan.id)}
+                            className="mt-5"
+                          />
+                          <Avatar className="h-16 w-16">
                           {logoUrl ? <AvatarImage src={logoUrl} alt={loan.loan_name} /> : null}
                           <AvatarFallback className="bg-primary/10 text-primary text-lg">
                             {initials}
@@ -264,10 +396,11 @@ export default function NewLoans() {
                     </CardContent>
                   </Card>
                 </motion.div>
-              </FadeInStaggerItem>
-            );
-          })}
-        </FadeInStagger>
+                </FadeInStaggerItem>
+              );
+            })}
+          </FadeInStagger>
+        </>
       )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -282,6 +415,30 @@ export default function NewLoans() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkActionDialogOpen} onOpenChange={setBulkActionDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {bulkAction === "delete" ? "Delete Loans" : "Update Loan Status"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkAction === "delete"
+                ? `Are you sure you want to delete ${selectedLoans.size} loan(s)? This action cannot be undone and will also delete all associated payments and documents.`
+                : `Are you sure you want to update ${selectedLoans.size} loan(s) status to ${bulkStatus}?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkAction}
+              className={bulkAction === "delete" ? "bg-destructive text-destructive-foreground" : ""}
+            >
+              {bulkAction === "delete" ? "Delete" : "Update"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
