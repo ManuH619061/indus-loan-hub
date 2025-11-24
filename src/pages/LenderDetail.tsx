@@ -125,10 +125,27 @@ export default function LenderDetail() {
   };
 
   const handleEdit = async () => {
+    if (!formData.name.trim()) {
+      toast({ title: "Validation Error", description: "Name is required", variant: "destructive" });
+      return;
+    }
+
     try {
+      // Convert empty strings to null for optional fields
+      const updateData = {
+        name: formData.name.trim(),
+        app_display_name: formData.app_display_name.trim() || null,
+        type: formData.type as "BANK" | "NBFC" | "CARD" | "FRIEND" | "OTHER",
+        contact: formData.contact.trim() || null,
+        website: formData.website.trim() || null,
+        upi_vpa: formData.upi_vpa.trim() || null,
+        app_link: formData.app_link.trim() || null,
+        notes: formData.notes.trim() || null,
+      };
+
       const { error } = await supabase
         .from("lenders")
-        .update(formData as any)
+        .update(updateData)
         .eq("id", id);
 
       if (error) throw error;
@@ -448,6 +465,7 @@ export default function LenderDetail() {
                     <SelectItem value="NBFC">NBFC</SelectItem>
                     <SelectItem value="CARD">Credit Card</SelectItem>
                     <SelectItem value="FRIEND">Friend/Family</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
