@@ -28,7 +28,14 @@ export default function Lenders() {
   });
 
   const handleAddCustomLender = async () => {
-    if (!user || !customLenderData.name) return;
+    if (!user || !customLenderData.name.trim()) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Lender name is required", 
+        variant: "destructive" 
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -36,13 +43,13 @@ export default function Lenders() {
         .from("lenders")
         .insert([{
           user_id: user.id,
-          name: customLenderData.name,
+          name: customLenderData.name.trim(),
           type: customLenderData.type,
-          logo_url: customLenderData.logo_url || null,
-          website: customLenderData.website || null,
-          contact: customLenderData.contact || null,
-          notes: customLenderData.notes || null,
-        }] as any)
+          logo_url: customLenderData.logo_url.trim() || null,
+          website: customLenderData.website.trim() || null,
+          contact: customLenderData.contact.trim() || null,
+          notes: customLenderData.notes.trim() || null,
+        }])
         .select()
         .single();
 
