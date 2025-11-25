@@ -28,7 +28,17 @@ export default function Lenders() {
   });
 
   const handleAddCustomLender = async () => {
-    if (!user || !customLenderData.name.trim()) {
+    if (!user) {
+      toast({ 
+        title: "Authentication Error", 
+        description: "Please log in to add a lender", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    const trimmedName = customLenderData.name?.trim();
+    if (!trimmedName) {
       toast({ 
         title: "Validation Error", 
         description: "Lender name is required", 
@@ -39,22 +49,31 @@ export default function Lenders() {
 
     setLoading(true);
     try {
+      // Prepare data with proper null handling
+      const insertData = {
+        user_id: user.id,
+        name: trimmedName,
+        type: customLenderData.type,
+        logo_url: customLenderData.logo_url?.trim() || null,
+        website: customLenderData.website?.trim() || null,
+        contact: customLenderData.contact?.trim() || null,
+        notes: customLenderData.notes?.trim() || null,
+      };
+
+      console.log('Inserting lender data:', insertData);
+
       const { data, error } = await supabase
         .from("lenders")
-        .insert([{
-          user_id: user.id,
-          name: customLenderData.name.trim(),
-          type: customLenderData.type,
-          logo_url: customLenderData.logo_url.trim() || null,
-          website: customLenderData.website.trim() || null,
-          contact: customLenderData.contact.trim() || null,
-          notes: customLenderData.notes.trim() || null,
-        }])
+        .insert([insertData])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Lender insert error:', error);
+        throw error;
+      }
 
+      console.log('Lender created successfully:', data);
       toast({ title: "Custom lender added successfully!" });
       setCustomLenderOpen(false);
       setCustomLenderData({ name: "", type: "BANK", logo_url: "", website: "", contact: "", notes: "" });
@@ -62,7 +81,12 @@ export default function Lenders() {
       // Redirect to add loan with this lender
       navigate(`/loans/new?lender=${data.id}`);
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      console.error('Error adding lender:', error);
+      toast({ 
+        variant: "destructive", 
+        title: "Failed to add lender", 
+        description: error.message || "Please try again" 
+      });
     } finally {
       setLoading(false);
     }
