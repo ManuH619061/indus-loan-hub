@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, DragEvent } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Link2, Upload, Loader2 } from "lucide-react";
+import { Link2, Upload, Loader2, ImageIcon } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AddLogoDialogProps {
   open: boolean;
@@ -24,10 +25,15 @@ export default function AddLogoDialog({
   onLogoAdded,
 }: AddLogoDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [logoUrl, setLogoUrl] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [fetchingFavicon, setFetchingFavicon] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFetchFavicon = async () => {
     if (!websiteUrl) return;
@@ -46,6 +52,51 @@ export default function AddLogoDialog({
       });
     } finally {
       setFetchingFavicon(false);
+    }
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile || !user) {
+      toast({ variant: "destructive", title: "Please select a file" });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${user.id}/${lenderId}-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("lender-logos")
+        .upload(fileName, selectedFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("lender-logos")
+        .getPublicUrl(fileName);
+
+      const { error: updateError } = await supabase
+        .from("lenders")
+        .update({ logo_url: publicUrl })
+        .eq("id", lenderId);
+
+      if (updateError) throw updateError;
+
+      toast({ title: "Logo uploaded successfully!" });
+      onLogoAdded();
+      onOpenChange(false);
+      setSelectedFile(null);
+      setLogoUrl("");
+      setWebsiteUrl("");
+    } catch (error: any) {
+      toast({ 
+        variant: "destructive", 
+        title: "Upload failed", 
+        description: error.message 
+      });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -80,17 +131,114 @@ export default function AddLogoDialog({
     }
   };
 
+  const handleDrag = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith("image/")) {
+        setSelectedFile(file);
+        setLogoUrl(URL.createObjectURL(file));
+      } else {
+        toast({ variant: "destructive", title: "Please upload an image file" });
+      }
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.type.startsWith("image/")) {
+        setSelectedFile(file);
+        setLogoUrl(URL.createObjectURL(file));
+      } else {
+        toast({ variant: "destructive", title: "Please upload an image file" });
+      }
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add Logo for {lenderName}</DialogTitle>
         </DialogHeader>
-        <Tabs defaultValue="url" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs defaultValue="upload" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="upload">Upload</TabsTrigger>
             <TabsTrigger value="url">From URL</TabsTrigger>
             <TabsTrigger value="fetch">Fetch from Website</TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="upload" className="space-y-4">
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                dragActive 
+                  ? "border-primary bg-primary/5" 
+                  : "border-border hover:border-primary/50"
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <ImageIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground mb-2">
+                Drag & drop your logo here, or click to browse
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Supports: PNG, JPG, JPEG, WEBP (Max 5MB)
+              </p>
+            </div>
+            
+            {selectedFile && logoUrl && (
+              <>
+                <div className="flex justify-center p-4 bg-muted rounded-lg">
+                  <img 
+                    src={logoUrl} 
+                    alt="Logo preview" 
+                    className="h-16 w-16 object-contain"
+                  />
+                </div>
+                <p className="text-sm text-center text-muted-foreground">
+                  {selectedFile.name}
+                </p>
+                <Button onClick={handleFileUpload} disabled={uploading} className="w-full">
+                  {uploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Logo
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
+          </TabsContent>
           
           <TabsContent value="url" className="space-y-4">
             <div className="space-y-2">
