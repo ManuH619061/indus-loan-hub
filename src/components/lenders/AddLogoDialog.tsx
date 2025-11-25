@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Link2, Upload, Loader2, ImageIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import ImageCropper from "./ImageCropper";
 
 interface AddLogoDialogProps {
   open: boolean;
@@ -33,6 +34,8 @@ export default function AddLogoDialog({
   const [fetchingFavicon, setFetchingFavicon] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFetchFavicon = async () => {
@@ -55,20 +58,34 @@ export default function AddLogoDialog({
     }
   };
 
+  const handleCropComplete = (blob: Blob) => {
+    setCroppedBlob(blob);
+    setShowCropper(false);
+    
+    // Create preview URL for the cropped image
+    const previewUrl = URL.createObjectURL(blob);
+    setLogoUrl(previewUrl);
+  };
+
+  const handleCancelCrop = () => {
+    setShowCropper(false);
+    setSelectedFile(null);
+    setLogoUrl("");
+  };
+
   const handleFileUpload = async () => {
-    if (!selectedFile || !user) {
-      toast({ variant: "destructive", title: "Please select a file" });
+    if (!croppedBlob || !user) {
+      toast({ variant: "destructive", title: "Please crop the image first" });
       return;
     }
 
     setUploading(true);
     try {
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${user.id}/${lenderId}-${Date.now()}.${fileExt}`;
+      const fileName = `${user.id}/${lenderId}-${Date.now()}.png`;
 
       const { error: uploadError } = await supabase.storage
         .from("lender-logos")
-        .upload(fileName, selectedFile, { upsert: true });
+        .upload(fileName, croppedBlob, { upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -87,6 +104,7 @@ export default function AddLogoDialog({
       onLogoAdded();
       onOpenChange(false);
       setSelectedFile(null);
+      setCroppedBlob(null);
       setLogoUrl("");
       setWebsiteUrl("");
     } catch (error: any) {
@@ -151,6 +169,7 @@ export default function AddLogoDialog({
       if (file.type.startsWith("image/")) {
         setSelectedFile(file);
         setLogoUrl(URL.createObjectURL(file));
+        setShowCropper(true);
       } else {
         toast({ variant: "destructive", title: "Please upload an image file" });
       }
@@ -163,6 +182,7 @@ export default function AddLogoDialog({
       if (file.type.startsWith("image/")) {
         setSelectedFile(file);
         setLogoUrl(URL.createObjectURL(file));
+        setShowCropper(true);
       } else {
         toast({ variant: "destructive", title: "Please upload an image file" });
       }
@@ -183,59 +203,85 @@ export default function AddLogoDialog({
           </TabsList>
           
           <TabsContent value="upload" className="space-y-4">
-            <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                dragActive 
-                  ? "border-primary bg-primary/5" 
-                  : "border-border hover:border-primary/50"
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              <ImageIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground mb-2">
-                Drag & drop your logo here, or click to browse
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Supports: PNG, JPG, JPEG, WEBP (Max 5MB)
-              </p>
-            </div>
+            {!showCropper && !croppedBlob && (
+              <div
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                  dragActive 
+                    ? "border-primary bg-primary/5" 
+                    : "border-border hover:border-primary/50"
+                }`}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <ImageIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground mb-2">
+                  Drag & drop your logo here, or click to browse
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Supports: PNG, JPG, JPEG, WEBP • Will be resized to 256×256px
+                </p>
+              </div>
+            )}
             
-            {selectedFile && logoUrl && (
+            {showCropper && logoUrl && (
+              <ImageCropper
+                imageSrc={logoUrl}
+                onCropComplete={handleCropComplete}
+                onCancel={handleCancelCrop}
+              />
+            )}
+            
+            {croppedBlob && logoUrl && !showCropper && (
               <>
                 <div className="flex justify-center p-4 bg-muted rounded-lg">
                   <img 
                     src={logoUrl} 
                     alt="Logo preview" 
-                    className="h-16 w-16 object-contain"
+                    className="h-32 w-32 object-contain"
                   />
                 </div>
                 <p className="text-sm text-center text-muted-foreground">
-                  {selectedFile.name}
+                  Logo cropped and ready to upload (256×256px)
                 </p>
-                <Button onClick={handleFileUpload} disabled={uploading} className="w-full">
-                  {uploading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload Logo
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => {
+                      setShowCropper(true);
+                      setCroppedBlob(null);
+                    }} 
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Re-crop
+                  </Button>
+                  <Button 
+                    onClick={handleFileUpload} 
+                    disabled={uploading} 
+                    className="flex-1"
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Logo
+                      </>
+                    )}
+                  </Button>
+                </div>
               </>
             )}
           </TabsContent>
