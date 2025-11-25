@@ -28,13 +28,20 @@ export default function AddCustomLenderDialog({
   onSubmit,
   loading,
 }: AddCustomLenderDialogProps) {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && lenderData.name.trim() && !loading) {
+      e.preventDefault();
+      onSubmit();
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add Custom Lender</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-4" onKeyPress={handleKeyPress}>
           <div className="space-y-2">
             <Label>Lender Name *</Label>
             <Input
