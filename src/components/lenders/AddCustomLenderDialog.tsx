@@ -3,6 +3,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { loanAppsLibrary } from "@/lib/loan-apps-library";
+import { useState } from "react";
+import { Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface AddCustomLenderDialogProps {
   open: boolean;
@@ -28,11 +34,42 @@ export default function AddCustomLenderDialog({
   onSubmit,
   loading,
 }: AddCustomLenderDialogProps) {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState(loanAppsLibrary);
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && lenderData.name.trim() && !loading) {
       e.preventDefault();
       onSubmit();
     }
+  };
+
+  const handleNameChange = (value: string) => {
+    onDataChange({ ...lenderData, name: value });
+    
+    // Filter suggestions based on input
+    if (value.trim().length > 0) {
+      const filtered = loanAppsLibrary.filter(app =>
+        app.name.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredSuggestions(filtered);
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setFilteredSuggestions(loanAppsLibrary);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionSelect = (appName: string) => {
+    const selectedApp = loanAppsLibrary.find(app => app.name === appName);
+    if (selectedApp) {
+      onDataChange({
+        ...lenderData,
+        name: selectedApp.name,
+        website: selectedApp.website || lenderData.website,
+      });
+    }
+    setShowSuggestions(false);
   };
 
   return (
@@ -44,11 +81,49 @@ export default function AddCustomLenderDialog({
         <div className="space-y-4" onKeyPress={handleKeyPress}>
           <div className="space-y-2">
             <Label>Lender Name *</Label>
-            <Input
-              value={lenderData.name}
-              onChange={(e) => onDataChange({ ...lenderData, name: e.target.value })}
-              placeholder="e.g., Local Credit Union"
-            />
+            <Popover open={showSuggestions} onOpenChange={setShowSuggestions}>
+              <PopoverTrigger asChild>
+                <div className="relative">
+                  <Input
+                    value={lenderData.name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    onFocus={() => {
+                      if (lenderData.name.trim().length > 0 && filteredSuggestions.length > 0) {
+                        setShowSuggestions(true);
+                      }
+                    }}
+                    placeholder="e.g., Local Credit Union"
+                  />
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandList>
+                    <CommandEmpty>No lenders found.</CommandEmpty>
+                    <CommandGroup heading="Popular Loan Apps">
+                      {filteredSuggestions.slice(0, 8).map((app) => (
+                        <CommandItem
+                          key={app.id}
+                          value={app.name}
+                          onSelect={() => handleSuggestionSelect(app.name)}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              lenderData.name === app.name ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span>{app.name}</span>
+                            <span className="text-xs text-muted-foreground">{app.category}</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="space-y-2">
             <Label>Type *</Label>
