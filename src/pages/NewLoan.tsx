@@ -177,9 +177,28 @@ export default function NewLoan() {
   const validateStep = (step: number): boolean => {
     switch (step) {
       case 1:
-        if (!formData.lender_id || !formData.loan_name || !formData.principal_amount || 
-            !formData.tenure_months || !formData.interest_rate_apy) {
-          toast({ variant: "destructive", title: "Please fill all required fields" });
+        if (!formData.lender_id) {
+          toast({ variant: "destructive", title: "Validation Error", description: "Please select a lender" });
+          return false;
+        }
+        if (!formData.loan_name?.trim()) {
+          toast({ variant: "destructive", title: "Validation Error", description: "Please enter a loan name" });
+          return false;
+        }
+        if (!formData.principal_amount || parseFloat(formData.principal_amount) <= 0) {
+          toast({ variant: "destructive", title: "Validation Error", description: "Please enter a valid principal amount" });
+          return false;
+        }
+        if (!formData.tenure_months || parseInt(formData.tenure_months) <= 0) {
+          toast({ variant: "destructive", title: "Validation Error", description: "Please enter a valid tenure" });
+          return false;
+        }
+        if (!formData.interest_rate_apy || parseFloat(formData.interest_rate_apy) <= 0) {
+          toast({ variant: "destructive", title: "Validation Error", description: "Please enter a valid interest rate" });
+          return false;
+        }
+        if (!formData.disbursed_on) {
+          toast({ variant: "destructive", title: "Validation Error", description: "Please select a disbursement date" });
           return false;
         }
         return true;
@@ -261,6 +280,12 @@ export default function NewLoan() {
       
       const emi = calculateEMI();
 
+      console.log("Creating loan with data:", {
+        user_id: user.id,
+        lender_id: formData.lender_id,
+        loan_name: formData.loan_name,
+      });
+
       const { data: loan, error: loanError } = await supabase
         .from("loans")
         .insert({
@@ -290,7 +315,12 @@ export default function NewLoan() {
         .select()
         .single();
 
-      if (loanError) throw loanError;
+      if (loanError) {
+        console.error("Loan creation error:", loanError);
+        throw loanError;
+      }
+
+      console.log("Loan created successfully:", loan);
 
       const schedule = generateAmortizationSchedule(
         principal,
@@ -340,8 +370,15 @@ export default function NewLoan() {
         });
       }
 
-      toast({ title: "Loan created successfully!" });
-      navigate(`/loans/${loan.id}`);
+      toast({ 
+        title: "Loan created successfully!",
+        description: "Redirecting to loan details..."
+      });
+      
+      // Small delay to ensure database replication
+      setTimeout(() => {
+        navigate(`/loans/${loan.id}`);
+      }, 500);
     } catch (error: any) {
       console.error("Error creating loan:", error);
       toast({ variant: "destructive", title: "Error", description: error.message });
