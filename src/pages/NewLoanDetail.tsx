@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { ArrowLeft, Calendar, TrendingUp, Building2, CreditCard, Target, Calculator, FileText } from "lucide-react";
+import { ArrowLeft, Calendar, TrendingUp, Building2, CreditCard, Target, Calculator, FileText, Copy } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import QuickPaySheet from "@/components/QuickPaySheet";
 import AIDebtAdvisor from "@/components/AIDebtAdvisor";
@@ -111,6 +111,33 @@ export default function NewLoanDetail() {
           <h1 className="text-3xl font-bold">{loan.loan_name}</h1>
           <p className="text-muted-foreground">{loan.lenders?.name}</p>
         </div>
+        <Button 
+          variant="outline"
+          onClick={() => {
+            const loanData = encodeURIComponent(JSON.stringify({
+              lender_id: loan.lender_id,
+              loan_name: loan.loan_name,
+              principal_amount: loan.principal_amount,
+              tenure_months: loan.tenure_months,
+              interest_rate_apy: loan.interest_rate_apy,
+              rate_type: loan.rate_type,
+              compounding: loan.compounding,
+              loan_type: loan.loan_type,
+              processing_fee: loan.processing_fee,
+              insurance_fee: loan.insurance_fee,
+              gst_on_fees: loan.gst_on_fees,
+              other_upfront_costs: loan.other_upfront_costs,
+              recast_mode: loan.recast_mode,
+              auto_debit: loan.auto_debit,
+              preferred_method: loan.preferred_method,
+            }));
+            navigate(`/loans/new?duplicate=${loanData}`);
+          }} 
+          className="gap-2"
+        >
+          <Copy className="h-4 w-4" />
+          Duplicate
+        </Button>
         <Button onClick={() => setShowQuickPay(true)} className="gap-2">
           <CreditCard className="h-4 w-4" />
           Quick Pay
