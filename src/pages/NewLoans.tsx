@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { Wallet, Plus, Building2, Calendar, TrendingUp, CreditCard, Pencil, Trash2, CheckSquare, X } from "lucide-react";
+import { Wallet, Plus, Building2, Calendar, TrendingUp, CreditCard, Pencil, Trash2, CheckSquare, X, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import QuickPaySheet from "@/components/QuickPaySheet";
 import FadeInStagger, { FadeInStaggerItem } from "@/components/FadeInStagger";
@@ -19,6 +19,7 @@ import FadeInStagger, { FadeInStaggerItem } from "@/components/FadeInStagger";
 export default function NewLoans() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [loans, setLoans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLoanForPay, setSelectedLoanForPay] = useState<any>(null);
@@ -325,6 +326,32 @@ export default function NewLoans() {
                               <Badge className={getStatusColor(loan.status)} variant="outline">
                                 {loan.status}
                               </Badge>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => {
+                                  const loanData = encodeURIComponent(JSON.stringify({
+                                    lender_id: loan.lender_id,
+                                    loan_name: loan.loan_name,
+                                    principal_amount: loan.principal_amount,
+                                    tenure_months: loan.tenure_months,
+                                    interest_rate_apy: loan.interest_rate_apy,
+                                    rate_type: loan.rate_type,
+                                    compounding: loan.compounding,
+                                    loan_type: loan.loan_type,
+                                    processing_fee: loan.processing_fee,
+                                    insurance_fee: loan.insurance_fee,
+                                    gst_on_fees: loan.gst_on_fees,
+                                    other_upfront_costs: loan.other_upfront_costs,
+                                    recast_mode: loan.recast_mode,
+                                    auto_debit: loan.auto_debit,
+                                    preferred_method: loan.preferred_method,
+                                  }));
+                                  navigate(`/loans/new?duplicate=${loanData}`);
+                                }}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
                               <Link to={`/loans/${loan.id}/edit`}>
                                 <Button variant="ghost" size="icon">
                                   <Pencil className="h-4 w-4" />

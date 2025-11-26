@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ const STEPS = [
 export default function NewLoan() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   
   const [currentStep, setCurrentStep] = useState(1);
@@ -81,7 +82,39 @@ export default function NewLoan() {
     if (lenderId) {
       setFormData((prev) => ({ ...prev, lender_id: lenderId }));
     }
-  }, [user]);
+
+    // Pre-fill form if duplicating a loan
+    const duplicateParam = searchParams.get('duplicate');
+    if (duplicateParam) {
+      try {
+        const loanData = JSON.parse(decodeURIComponent(duplicateParam));
+        setFormData(prev => ({
+          ...prev,
+          lender_id: loanData.lender_id || "",
+          loan_name: `${loanData.loan_name || ""} (Copy)`,
+          principal_amount: loanData.principal_amount || "",
+          tenure_months: loanData.tenure_months || "",
+          interest_rate_apy: loanData.interest_rate_apy || "",
+          rate_type: loanData.rate_type || "REDUCING",
+          compounding: loanData.compounding || "MONTHLY",
+          loan_type: loanData.loan_type || "PERSONAL",
+          processing_fee: loanData.processing_fee || "0",
+          insurance_fee: loanData.insurance_fee || "0",
+          gst_on_fees: loanData.gst_on_fees || "0",
+          other_upfront_costs: loanData.other_upfront_costs || "0",
+          recast_mode: loanData.recast_mode || "REDUCE_TENURE",
+          auto_debit: loanData.auto_debit || false,
+          preferred_method: loanData.preferred_method || "",
+        }));
+        toast({ 
+          title: "Loan duplicated", 
+          description: "Review and update the details before saving" 
+        });
+      } catch (error) {
+        console.error("Error parsing duplicate loan data:", error);
+      }
+    }
+  }, [user, searchParams]);
 
   const fetchLenders = async () => {
     if (!user) return;
