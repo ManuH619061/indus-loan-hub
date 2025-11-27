@@ -405,13 +405,13 @@ export default function NewLoan() {
 
       toast({ 
         title: "Loan created successfully!",
-        description: "Redirecting to loan details..."
+        description: "Your loan has been saved to the database"
       });
       
-      // Small delay to ensure database replication
+      // Navigate to dashboard to see the new loan
       setTimeout(() => {
-        navigate(`/loans/${loan.id}`);
-      }, 500);
+        navigate(`/dashboard`);
+      }, 800);
     } catch (error: any) {
       console.error("Error creating loan:", error);
       toast({ variant: "destructive", title: "Error", description: error.message });

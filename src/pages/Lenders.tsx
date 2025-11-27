@@ -74,12 +74,15 @@ export default function Lenders() {
       }
 
       console.log('Lender created successfully:', data);
-      toast({ title: "Custom lender added successfully!" });
+      toast({ 
+        title: "Lender added successfully!",
+        description: "Your lender has been saved to the database"
+      });
       setCustomLenderOpen(false);
       setCustomLenderData({ name: "", type: "BANK", logo_url: "", website: "", contact: "", notes: "" });
       
-      // Redirect to add loan with this lender
-      navigate(`/loans/new?lender=${data.id}`);
+      // Stay on lenders page to show the updated list
+      // User can then navigate to add loan if needed
     } catch (error: any) {
       console.error('Error adding lender:', error);
       toast({ 
