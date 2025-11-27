@@ -857,59 +857,242 @@ export default function NewLoan() {
 
           {currentStep === 4 && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-lg">Loan Details</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Lender:</span>
-                      <span className="font-medium">{selectedLender?.name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Loan Name:</span>
-                      <span className="font-medium">{formData.loan_name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Principal:</span>
-                      <span className="font-medium">{formatINR(parseFloat(formData.principal_amount))}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tenure:</span>
-                      <span className="font-medium">{formData.tenure_months} months</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Interest Rate:</span>
-                      <span className="font-medium">{formatPercent(parseFloat(formData.interest_rate_apy))}</span>
-                    </div>
-                  </div>
-                </div>
+              {/* Validation Summary Card */}
+              <Card className="border-2 border-primary/20 bg-primary/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Check className="h-5 w-5 text-green-500" />
+                    Loan Summary - Ready for Submission
+                  </CardTitle>
+                  <CardDescription>Review all details before creating your loan</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Basic Information */}
+                  <div>
+                    <h4 className="font-semibold text-sm text-muted-foreground mb-3 uppercase tracking-wide">Basic Information</h4>
+                    <div className="grid gap-3">
+                      <div className="flex items-center justify-between p-3 bg-background rounded-lg">
+                        <div className="flex items-center gap-3">
+                          {fieldValidation.lender_id && <Check className="h-4 w-4 text-green-500 flex-shrink-0" />}
+                          <div>
+                            <p className="text-sm font-medium">Lender</p>
+                            <p className="text-xs text-muted-foreground">{selectedLender?.name || 'Not selected'}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-3 bg-background rounded-lg">
+                        <div className="flex items-center gap-3">
+                          {fieldValidation.loan_name && <Check className="h-4 w-4 text-green-500 flex-shrink-0" />}
+                          <div>
+                            <p className="text-sm font-medium">Loan Name</p>
+                            <p className="text-xs text-muted-foreground">{formData.loan_name || 'Not provided'}</p>
+                          </div>
+                        </div>
+                      </div>
 
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-lg">EMI Calculation</h3>
-                  <div className="p-4 bg-primary/10 rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-1">Monthly EMI</p>
-                    <p className="text-3xl font-bold">{formatINR(previewEMI)}</p>
+                      <div className="flex items-center justify-between p-3 bg-background rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium">Loan Type</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formData.loan_type === 'PERSONAL' ? 'Personal Loan' :
+                               formData.loan_type === 'CREDIT_CARD_CONVERSION' ? 'Credit Card EMI' :
+                               formData.loan_type === 'CONSUMER_DURABLE' ? 'Consumer Durable' :
+                               formData.loan_type === 'EDUCATION' ? 'Education Loan' :
+                               formData.loan_type === 'VEHICLE' ? 'Vehicle Loan' :
+                               formData.loan_type === 'HOME_TOPUP' ? 'Home Top-up' : 'Other'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Total Fees:</span>
-                      <span className="font-medium">
-                        {formatINR(
-                          parseFloat(formData.processing_fee) +
-                          parseFloat(formData.insurance_fee) +
-                          parseFloat(formData.gst_on_fees) +
-                          parseFloat(formData.other_upfront_costs)
+
+                  {/* Financial Details */}
+                  <div>
+                    <h4 className="font-semibold text-sm text-muted-foreground mb-3 uppercase tracking-wide">Financial Details</h4>
+                    <div className="grid gap-3">
+                      <div className="flex items-center justify-between p-3 bg-background rounded-lg">
+                        <div className="flex items-center gap-3">
+                          {fieldValidation.principal_amount && <Check className="h-4 w-4 text-green-500 flex-shrink-0" />}
+                          <div>
+                            <p className="text-sm font-medium">Principal Amount</p>
+                            <p className="text-xs text-muted-foreground">{formatINR(parseFloat(formData.principal_amount) || 0)}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                          {fieldValidation.tenure_months && <Check className="h-4 w-4 text-green-500 flex-shrink-0" />}
+                          <div>
+                            <p className="text-sm font-medium">Tenure</p>
+                            <p className="text-xs text-muted-foreground">{formData.tenure_months} months</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                          {fieldValidation.interest_rate_apy && <Check className="h-4 w-4 text-green-500 flex-shrink-0" />}
+                          <div>
+                            <p className="text-sm font-medium">Interest Rate</p>
+                            <p className="text-xs text-muted-foreground">{formatPercent(parseFloat(formData.interest_rate_apy) || 0)}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
+                        <div className="flex items-center gap-3">
+                          <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-semibold">Monthly EMI</p>
+                            <p className="text-xs text-muted-foreground">Calculated based on your inputs</p>
+                          </div>
+                        </div>
+                        <p className="text-xl font-bold text-primary">{formatINR(previewEMI)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dates & Schedule */}
+                  <div>
+                    <h4 className="font-semibold text-sm text-muted-foreground mb-3 uppercase tracking-wide">Dates & Schedule</h4>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                        {fieldValidation.disbursed_on && <Check className="h-4 w-4 text-green-500 flex-shrink-0" />}
+                        <div>
+                          <p className="text-sm font-medium">Disbursed On</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(formData.disbursed_on).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                        {fieldValidation.billing_day && <Check className="h-4 w-4 text-green-500 flex-shrink-0" />}
+                        <div>
+                          <p className="text-sm font-medium">Billing Day</p>
+                          <p className="text-xs text-muted-foreground">Day {formData.billing_day}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                        {fieldValidation.due_day && <Check className="h-4 w-4 text-green-500 flex-shrink-0" />}
+                        <div>
+                          <p className="text-sm font-medium">Due Day</p>
+                          <p className="text-xs text-muted-foreground">Day {formData.due_day}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Additional Settings */}
+                  <div>
+                    <h4 className="font-semibold text-sm text-muted-foreground mb-3 uppercase tracking-wide">Additional Settings</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                        <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium">Rate Type</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formData.rate_type === 'REDUCING' ? 'Reducing Balance' : 'Flat Rate'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                        <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium">Compounding</p>
+                          <p className="text-xs text-muted-foreground capitalize">{formData.compounding.toLowerCase()}</p>
+                        </div>
+                      </div>
+
+                      {formData.auto_debit && (
+                        <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                          <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium">Auto-debit</p>
+                            <p className="text-xs text-muted-foreground">Enabled</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {formData.preferred_method && (
+                        <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                          <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium">Payment Method</p>
+                            <p className="text-xs text-muted-foreground">{formData.preferred_method}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Fees Summary */}
+                  {(parseFloat(formData.processing_fee) > 0 || 
+                    parseFloat(formData.insurance_fee) > 0 || 
+                    parseFloat(formData.gst_on_fees) > 0 || 
+                    parseFloat(formData.other_upfront_costs) > 0) && (
+                    <div>
+                      <h4 className="font-semibold text-sm text-muted-foreground mb-3 uppercase tracking-wide">Fees & Charges</h4>
+                      <div className="space-y-2 p-3 bg-background rounded-lg">
+                        {parseFloat(formData.processing_fee) > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Processing Fee</span>
+                            <span className="font-medium">{formatINR(parseFloat(formData.processing_fee))}</span>
+                          </div>
                         )}
-                      </span>
+                        {parseFloat(formData.insurance_fee) > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Insurance Fee</span>
+                            <span className="font-medium">{formatINR(parseFloat(formData.insurance_fee))}</span>
+                          </div>
+                        )}
+                        {parseFloat(formData.gst_on_fees) > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">GST on Fees</span>
+                            <span className="font-medium">{formatINR(parseFloat(formData.gst_on_fees))}</span>
+                          </div>
+                        )}
+                        {parseFloat(formData.other_upfront_costs) > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Other Costs</span>
+                            <span className="font-medium">{formatINR(parseFloat(formData.other_upfront_costs))}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-sm font-semibold pt-2 border-t">
+                          <span>Total Fees</span>
+                          <span>{formatINR(
+                            parseFloat(formData.processing_fee) +
+                            parseFloat(formData.insurance_fee) +
+                            parseFloat(formData.gst_on_fees) +
+                            parseFloat(formData.other_upfront_costs)
+                          )}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Rate Type:</span>
-                      <Badge variant="outline">{formData.rate_type}</Badge>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                  )}
 
+                  {documentFile && (
+                    <div>
+                      <h4 className="font-semibold text-sm text-muted-foreground mb-3 uppercase tracking-wide">Documents</h4>
+                      <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                        <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <FileText className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="text-sm font-medium">{documentFile.name}</p>
+                          <p className="text-xs text-muted-foreground">{(documentFile.size / 1024).toFixed(2)} KB</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Amortization Schedule */}
               <div className="space-y-3">
                 <h3 className="font-semibold text-lg">Amortization Schedule (First 12 Months)</h3>
                 <div className="border rounded-lg overflow-hidden">
