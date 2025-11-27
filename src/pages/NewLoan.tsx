@@ -45,6 +45,18 @@ export default function NewLoan() {
   const [newLenderOpen, setNewLenderOpen] = useState(false);
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   
+  // Real-time validation state
+  const [fieldValidation, setFieldValidation] = useState({
+    lender_id: false,
+    loan_name: false,
+    principal_amount: false,
+    tenure_months: false,
+    interest_rate_apy: false,
+    disbursed_on: false,
+    billing_day: false,
+    due_day: false,
+  });
+  
   const [formData, setFormData] = useState({
     lender_id: "",
     loan_name: "",
@@ -72,6 +84,44 @@ export default function NewLoan() {
     type: "BANK" as const,
     requires_sanction_letter: true,
   });
+
+  // Validation functions
+  const validateField = (field: string, value: any) => {
+    switch (field) {
+      case 'lender_id':
+        return !!value;
+      case 'loan_name':
+        return !!value?.trim();
+      case 'principal_amount':
+        return value && parseFloat(value) > 0;
+      case 'tenure_months':
+        return value && parseInt(value) > 0;
+      case 'interest_rate_apy':
+        return value && parseFloat(value) > 0;
+      case 'disbursed_on':
+        return !!value;
+      case 'billing_day':
+        const billingDay = parseInt(value);
+        return billingDay >= 1 && billingDay <= 31;
+      case 'due_day':
+        const dueDay = parseInt(value);
+        return dueDay >= 1 && dueDay <= 31;
+      default:
+        return false;
+    }
+  };
+
+  const updateFormData = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Update validation status
+    if (field in fieldValidation) {
+      setFieldValidation(prev => ({
+        ...prev,
+        [field]: validateField(field, value)
+      }));
+    }
+  };
 
   useEffect(() => {
     fetchLenders();
@@ -147,7 +197,7 @@ export default function NewLoan() {
           .maybeSingle();
 
         if (existingLender) {
-          setFormData({ ...formData, lender_id: existingLender.id });
+          updateFormData('lender_id', existingLender.id);
         } else {
           // Create new lender from library
           const lenderType = 
@@ -173,13 +223,13 @@ export default function NewLoan() {
 
           if (newLender) {
             setLenders([...lenders, newLender]);
-            setFormData({ ...formData, lender_id: newLender.id });
+            updateFormData('lender_id', newLender.id);
             toast({ title: "Lender added from library!" });
           }
         }
       }
     } else {
-      setFormData({ ...formData, lender_id: value });
+      updateFormData('lender_id', value);
     }
   };
 
@@ -475,20 +525,31 @@ export default function NewLoan() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Lender *</Label>
-                <SmartLenderSelector
-                  value={formData.lender_id}
-                  onChange={handleLenderChange}
-                  onAddCustom={() => setNewLenderOpen(true)}
-                />
+                <div className="relative">
+                  <SmartLenderSelector
+                    value={formData.lender_id}
+                    onChange={handleLenderChange}
+                    onAddCustom={() => setNewLenderOpen(true)}
+                  />
+                  {fieldValidation.lender_id && (
+                    <Check className="absolute right-10 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500 pointer-events-none z-10" />
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">
                 <Label>Loan Name *</Label>
-                <Input
-                  value={formData.loan_name}
-                  onChange={(e) => setFormData({ ...formData, loan_name: e.target.value })}
-                  placeholder="e.g., Personal Loan - Home Renovation"
-                />
+                <div className="relative">
+                  <Input
+                    value={formData.loan_name}
+                    onChange={(e) => updateFormData('loan_name', e.target.value)}
+                    placeholder="e.g., Personal Loan - Home Renovation"
+                    className={fieldValidation.loan_name ? "pr-10" : ""}
+                  />
+                  {fieldValidation.loan_name && (
+                    <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -515,42 +576,66 @@ export default function NewLoan() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Principal Amount (₹) *</Label>
-                  <Input
-                    type="number"
-                    value={formData.principal_amount}
-                    onChange={(e) => setFormData({ ...formData, principal_amount: e.target.value })}
-                    placeholder="100000"
-                  />
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      value={formData.principal_amount}
+                      onChange={(e) => updateFormData('principal_amount', e.target.value)}
+                      placeholder="100000"
+                      className={fieldValidation.principal_amount ? "pr-10" : ""}
+                    />
+                    {fieldValidation.principal_amount && (
+                      <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Disbursed On *</Label>
-                  <Input
-                    type="date"
-                    value={formData.disbursed_on}
-                    onChange={(e) => setFormData({ ...formData, disbursed_on: e.target.value })}
-                  />
+                  <div className="relative">
+                    <Input
+                      type="date"
+                      value={formData.disbursed_on}
+                      onChange={(e) => updateFormData('disbursed_on', e.target.value)}
+                      className={fieldValidation.disbursed_on ? "pr-10" : ""}
+                    />
+                    {fieldValidation.disbursed_on && (
+                      <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
+                    )}
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Tenure (Months) *</Label>
-                  <Input
-                    type="number"
-                    value={formData.tenure_months}
-                    onChange={(e) => setFormData({ ...formData, tenure_months: e.target.value })}
-                    placeholder="12"
-                  />
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      value={formData.tenure_months}
+                      onChange={(e) => updateFormData('tenure_months', e.target.value)}
+                      placeholder="12"
+                      className={fieldValidation.tenure_months ? "pr-10" : ""}
+                    />
+                    {fieldValidation.tenure_months && (
+                      <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Interest Rate (% p.a.) *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.interest_rate_apy}
-                    onChange={(e) => setFormData({ ...formData, interest_rate_apy: e.target.value })}
-                    placeholder="12.50"
-                  />
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.interest_rate_apy}
+                      onChange={(e) => updateFormData('interest_rate_apy', e.target.value)}
+                      placeholder="12.50"
+                      className={fieldValidation.interest_rate_apy ? "pr-10" : ""}
+                    />
+                    {fieldValidation.interest_rate_apy && (
+                      <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -592,23 +677,35 @@ export default function NewLoan() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Billing Day *</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={formData.billing_day}
-                    onChange={(e) => setFormData({ ...formData, billing_day: e.target.value })}
-                  />
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={formData.billing_day}
+                      onChange={(e) => updateFormData('billing_day', e.target.value)}
+                      className={fieldValidation.billing_day ? "pr-10" : ""}
+                    />
+                    {fieldValidation.billing_day && (
+                      <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Due Day *</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={formData.due_day}
-                    onChange={(e) => setFormData({ ...formData, due_day: e.target.value })}
-                  />
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={formData.due_day}
+                      onChange={(e) => updateFormData('due_day', e.target.value)}
+                      className={fieldValidation.due_day ? "pr-10" : ""}
+                    />
+                    {fieldValidation.due_day && (
+                      <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
