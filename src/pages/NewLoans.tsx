@@ -34,6 +34,27 @@ export default function NewLoans() {
   useEffect(() => {
     if (user) {
       fetchLoans();
+
+      // Subscribe to real-time changes for loans
+      const channel = supabase
+        .channel('loans-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'loans',
+          },
+          () => {
+            // Refetch loans on any change
+            fetchLoans();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
