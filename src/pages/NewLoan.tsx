@@ -455,7 +455,7 @@ export default function NewLoan() {
 
       toast({ 
         title: "Loan created successfully!",
-        description: "Your loan has been saved to the database"
+        description: "EMI schedule, interest calculations, and all loan data have been generated."
       });
       
       // Navigate to dashboard to see the new loan

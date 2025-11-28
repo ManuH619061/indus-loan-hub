@@ -45,9 +45,9 @@ export default function NewDashboard() {
     if (user) {
       fetchDashboardData();
 
-      // Subscribe to real-time changes for loans
+      // Subscribe to real-time changes for loans and amortization
       const channel = supabase
-        .channel('dashboard-loans-changes')
+        .channel('dashboard-changes')
         .on(
           'postgres_changes',
           {
@@ -57,6 +57,30 @@ export default function NewDashboard() {
           },
           () => {
             // Refetch dashboard data on any loan change
+            fetchDashboardData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'amortization_rows',
+          },
+          () => {
+            // Refetch dashboard data when amortization changes
+            fetchDashboardData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'payments',
+          },
+          () => {
+            // Refetch dashboard data when payments change
             fetchDashboardData();
           }
         )

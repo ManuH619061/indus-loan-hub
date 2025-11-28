@@ -15,6 +15,7 @@ import { Wallet, Plus, Building2, Calendar, TrendingUp, CreditCard, Pencil, Tras
 import { useToast } from "@/hooks/use-toast";
 import QuickPaySheet from "@/components/QuickPaySheet";
 import FadeInStagger, { FadeInStaggerItem } from "@/components/FadeInStagger";
+import { deleteLoan } from "@/lib/loan-service";
 
 export default function NewLoans() {
   const { user } = useAuth();
@@ -35,9 +36,9 @@ export default function NewLoans() {
     if (user) {
       fetchLoans();
 
-      // Subscribe to real-time changes for loans
+      // Subscribe to real-time changes for loans and amortization
       const channel = supabase
-        .channel('loans-changes')
+        .channel('loans-list-changes')
         .on(
           'postgres_changes',
           {
@@ -47,6 +48,18 @@ export default function NewLoans() {
           },
           () => {
             // Refetch loans on any change
+            fetchLoans();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'amortization_rows',
+          },
+          () => {
+            // Refetch loans when amortization changes
             fetchLoans();
           }
         )
@@ -119,14 +132,14 @@ export default function NewLoans() {
     if (!loanToDelete) return;
     
     try {
-      const { error } = await supabase
-        .from("loans")
-        .delete()
-        .eq("id", loanToDelete.id);
+      const result = await deleteLoan(loanToDelete.id);
 
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error);
 
-      toast({ title: "Loan deleted successfully" });
+      toast({ 
+        title: "Loan deleted successfully",
+        description: "All related data has been removed"
+      });
       setDeleteDialogOpen(false);
       setLoanToDelete(null);
       fetchLoans();
@@ -164,13 +177,19 @@ export default function NewLoans() {
 
     try {
       if (bulkAction === "delete") {
-        const { error } = await supabase
-          .from("loans")
-          .delete()
-          .in("id", Array.from(selectedLoans));
-
-        if (error) throw error;
-        toast({ title: `Successfully deleted ${selectedLoans.size} loan(s)` });
+        // Delete each loan properly with cascade
+        const deletePromises = Array.from(selectedLoans).map(id => deleteLoan(id));
+        const results = await Promise.all(deletePromises);
+        
+        const failedCount = results.filter(r => !r.success).length;
+        if (failedCount > 0) {
+          throw new Error(`Failed to delete ${failedCount} loan(s)`);
+        }
+        
+        toast({ 
+          title: `Successfully deleted ${selectedLoans.size} loan(s)`,
+          description: "All related data has been removed"
+        });
       } else if (bulkAction === "status") {
         const { error } = await supabase
           .from("loans")
