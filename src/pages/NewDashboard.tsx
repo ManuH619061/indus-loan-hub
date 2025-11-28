@@ -44,6 +44,27 @@ export default function NewDashboard() {
   useEffect(() => {
     if (user) {
       fetchDashboardData();
+
+      // Subscribe to real-time changes for loans
+      const channel = supabase
+        .channel('dashboard-loans-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'loans',
+          },
+          () => {
+            // Refetch dashboard data on any loan change
+            fetchDashboardData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
