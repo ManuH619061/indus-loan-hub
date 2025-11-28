@@ -35,6 +35,26 @@ export default function NewPayments() {
   useEffect(() => {
     if (user) {
       fetchData();
+
+      // Subscribe to real-time changes for payments
+      const channel = supabase
+        .channel('payments-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'payments',
+          },
+          () => {
+            fetchData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
