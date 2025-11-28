@@ -1,6 +1,6 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -16,6 +16,7 @@ import {
   Scale,
   Upload,
   Receipt,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -27,7 +28,8 @@ interface LayoutProps {
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { 
-    name: "Budget", 
+    name: "Budget Manager", 
+    key: "budget",
     icon: TrendingUp,
     children: [
       { name: "Budget Planner", href: "/budget-planner", icon: TrendingUp },
@@ -40,7 +42,8 @@ const navigation = [
     ]
   },
   { 
-    name: "Banking & BRS", 
+    name: "Bank Manager", 
+    key: "banking",
     icon: Building2,
     children: [
       { name: "Bank Accounts", href: "/banking/accounts", icon: Building2 },
@@ -62,6 +65,17 @@ export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    budget: true,
+    banking: true,
+  });
+
+  const toggleSection = (key: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -73,50 +87,74 @@ export default function Layout({ children }: LayoutProps) {
       {navigation.map((item) => {
         const Icon = item.icon;
         
-        if ('children' in item && item.children) {
+        if ('children' in item && item.children && 'key' in item) {
           const isAnyChildActive = item.children.some(child => location.pathname === child.href);
+          const isExpanded = expandedSections[item.key as string] ?? true;
           
           return (
             <div key={item.name} className="space-y-1">
-              <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-muted-foreground">
-                <Icon className="h-4 w-4" />
-                <span>{item.name}</span>
-              </div>
-              <div className="ml-4 space-y-1 border-l-2 border-muted pl-2">
-                {item.children.map((child) => {
-                  const ChildIcon = child.icon;
-                  const isActive = location.pathname === child.href;
-                  return (
-                    <Link
-                      key={child.name}
-                      to={child.href}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden",
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )}
-                    >
-                      {isActive && (
-                        <motion.div
-                          layoutId="activeNav"
-                          className="absolute inset-0 bg-primary rounded-lg"
-                          initial={false}
-                          transition={{
-                            type: "spring",
-                            stiffness: 500,
-                            damping: 30,
-                          }}
-                        />
-                      )}
-                      <span className="relative z-10 flex items-center gap-3">
-                        <ChildIcon className="h-4 w-4" />
-                        {child.name}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
+              <button
+                onClick={() => toggleSection(item.key as string)}
+                className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className="h-4 w-4" />
+                  <span>{item.name}</span>
+                </div>
+                <ChevronDown 
+                  className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    isExpanded ? "rotate-0" : "-rotate-90"
+                  )} 
+                />
+              </button>
+              <AnimatePresence initial={false}>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="ml-4 space-y-1 border-l-2 border-muted pl-2">
+                      {item.children.map((child) => {
+                        const ChildIcon = child.icon;
+                        const isActive = location.pathname === child.href;
+                        return (
+                          <Link
+                            key={child.name}
+                            to={child.href}
+                            className={cn(
+                              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden",
+                              isActive
+                                ? "bg-primary text-primary-foreground"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                          >
+                            {isActive && (
+                              <motion.div
+                                layoutId="activeNav"
+                                className="absolute inset-0 bg-primary rounded-lg"
+                                initial={false}
+                                transition={{
+                                  type: "spring",
+                                  stiffness: 500,
+                                  damping: 30,
+                                }}
+                              />
+                            )}
+                            <span className="relative z-10 flex items-center gap-3">
+                              <ChildIcon className="h-4 w-4" />
+                              {child.name}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           );
         }
