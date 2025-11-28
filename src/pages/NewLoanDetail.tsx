@@ -24,6 +24,39 @@ export default function NewLoanDetail() {
   useEffect(() => {
     if (id) {
       fetchLoanDetail();
+
+      // Subscribe to real-time changes for this specific loan
+      const channel = supabase
+        .channel(`loan-detail-${id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'loans',
+            filter: `id=eq.${id}`,
+          },
+          () => {
+            fetchLoanDetail();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'amortization_rows',
+            filter: `loan_id=eq.${id}`,
+          },
+          () => {
+            fetchLoanDetail();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [id]);
 
