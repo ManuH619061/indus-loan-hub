@@ -29,7 +29,40 @@ export default function MyLendersTab() {
   const [selectedLender, setSelectedLender] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
-    if (user) fetchLendersWithStats();
+    if (user) {
+      fetchLendersWithStats();
+
+      // Subscribe to real-time changes for lenders
+      const channel = supabase
+        .channel('my-lenders-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'lenders',
+          },
+          () => {
+            fetchLendersWithStats();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'loans',
+          },
+          () => {
+            fetchLendersWithStats();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user]);
 
   const fetchLendersWithStats = async () => {

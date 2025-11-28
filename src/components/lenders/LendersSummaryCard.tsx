@@ -15,7 +15,29 @@ export default function LendersSummaryCard() {
   });
 
   useEffect(() => {
-    if (user) fetchSummary();
+    if (user) {
+      fetchSummary();
+
+      // Subscribe to real-time changes for loans (affects summary)
+      const channel = supabase
+        .channel('lenders-summary-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'loans',
+          },
+          () => {
+            fetchSummary();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user]);
 
   const fetchSummary = async () => {
