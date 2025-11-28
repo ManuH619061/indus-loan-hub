@@ -85,6 +85,25 @@ export default function DebtPayoffCalculator() {
   useEffect(() => {
     fetchLoans();
     fetchSavedScenarios();
+
+    // Subscribe to real-time changes for loans and amortization
+    const channel = supabase
+      .channel('debt-payoff-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'loans' },
+        () => fetchLoans()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'amortization_rows' },
+        () => fetchLoans()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Auto-calculate in What-If mode

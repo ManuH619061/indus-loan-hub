@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,9 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Loader2, Save, AlertCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { 
+  updateLoanWithRecalculation, 
+  validateLoanFields, 
+  calculateLoanEMI,
+  type LoanData 
+} from "@/lib/loan-service";
 
 export default function EditLoan() {
   const { id } = useParams();
@@ -21,6 +28,9 @@ export default function EditLoan() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [lenders, setLenders] = useState<any[]>([]);
+  const [originalLoan, setOriginalLoan] = useState<LoanData | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [calculatedEmi, setCalculatedEmi] = useState<number | null>(null);
   
   const [formData, setFormData] = useState({
     lender_id: "",
@@ -45,6 +55,25 @@ export default function EditLoan() {
     remarks: "",
     status: "ACTIVE",
   });
+
+  // Recalculate EMI when core fields change
+  const recalculatePreviewEMI = useCallback(() => {
+    const principal = parseFloat(formData.principal_amount);
+    const rate = parseFloat(formData.interest_rate_apy);
+    const tenure = parseInt(formData.tenure_months);
+    const rateType = formData.rate_type as 'REDUCING' | 'FLAT';
+
+    if (principal > 0 && rate >= 0 && tenure > 0) {
+      const emi = calculateLoanEMI(principal, rate, tenure, rateType);
+      setCalculatedEmi(emi);
+    } else {
+      setCalculatedEmi(null);
+    }
+  }, [formData.principal_amount, formData.interest_rate_apy, formData.tenure_months, formData.rate_type]);
+
+  useEffect(() => {
+    recalculatePreviewEMI();
+  }, [recalculatePreviewEMI]);
 
   useEffect(() => {
     if (user && id) {
@@ -72,6 +101,18 @@ export default function EditLoan() {
         .single();
 
       if (error) throw error;
+
+      setOriginalLoan({
+        id: data.id,
+        user_id: data.user_id,
+        principal_amount: data.principal_amount,
+        interest_rate_apy: data.interest_rate_apy,
+        tenure_months: data.tenure_months,
+        disbursed_on: data.disbursed_on,
+        due_day: data.due_day || new Date(data.disbursed_on).getDate(),
+        rate_type: data.rate_type as 'REDUCING' | 'FLAT',
+        emi_amount: data.emi_amount,
+      });
 
       setFormData({
         lender_id: data.lender_id || "",
@@ -107,40 +148,58 @@ export default function EditLoan() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !id) return;
+    if (!user || !id || !originalLoan) return;
 
+    // Validate required fields
+    const validation = validateLoanFields(formData);
+    if (!validation.valid) {
+      setValidationErrors(validation.errors);
+      toast({ 
+        variant: "destructive", 
+        title: "Validation Error", 
+        description: "Please fix all required fields before saving" 
+      });
+      return;
+    }
+
+    setValidationErrors([]);
     setSaving(true);
+
     try {
-      const { error } = await supabase
-        .from("loans")
-        .update({
-          lender_id: formData.lender_id || null,
-          loan_name: formData.loan_name,
-          loan_type: formData.loan_type as any,
-          principal_amount: parseFloat(formData.principal_amount),
-          disbursed_on: formData.disbursed_on,
-          tenure_months: parseInt(formData.tenure_months),
-          interest_rate_apy: parseFloat(formData.interest_rate_apy),
-          rate_type: formData.rate_type as any,
-          compounding: formData.compounding as any,
-          emi_amount: formData.emi_amount ? parseFloat(formData.emi_amount) : null,
-          billing_day: formData.billing_day ? parseInt(formData.billing_day) : null,
-          due_day: formData.due_day ? parseInt(formData.due_day) : null,
-          processing_fee: parseFloat(formData.processing_fee),
-          insurance_fee: parseFloat(formData.insurance_fee),
-          gst_on_fees: parseFloat(formData.gst_on_fees),
-          other_upfront_costs: parseFloat(formData.other_upfront_costs),
-          auto_debit: formData.auto_debit,
-          recast_mode: formData.recast_mode as any,
-          preferred_method: formData.preferred_method || null,
-          remarks: formData.remarks || null,
-          status: formData.status as any,
-        })
-        .eq("id", id);
+      const updates = {
+        lender_id: formData.lender_id || null,
+        loan_name: formData.loan_name,
+        loan_type: formData.loan_type as any,
+        principal_amount: parseFloat(formData.principal_amount),
+        disbursed_on: formData.disbursed_on,
+        tenure_months: parseInt(formData.tenure_months),
+        interest_rate_apy: parseFloat(formData.interest_rate_apy),
+        rate_type: formData.rate_type as 'REDUCING' | 'FLAT',
+        compounding: formData.compounding as any,
+        emi_amount: formData.emi_amount ? parseFloat(formData.emi_amount) : undefined,
+        billing_day: formData.billing_day ? parseInt(formData.billing_day) : null,
+        due_day: formData.due_day ? parseInt(formData.due_day) : null,
+        processing_fee: parseFloat(formData.processing_fee),
+        insurance_fee: parseFloat(formData.insurance_fee),
+        gst_on_fees: parseFloat(formData.gst_on_fees),
+        other_upfront_costs: parseFloat(formData.other_upfront_costs),
+        auto_debit: formData.auto_debit,
+        recast_mode: formData.recast_mode as any,
+        preferred_method: formData.preferred_method || null,
+        remarks: formData.remarks || null,
+        status: formData.status as any,
+      };
 
-      if (error) throw error;
+      const result = await updateLoanWithRecalculation(id, updates, originalLoan);
 
-      toast({ title: "Loan updated successfully!" });
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      toast({ 
+        title: "Loan Updated Successfully!", 
+        description: "EMI schedule and all calculations have been recalculated."
+      });
       navigate(`/loans/${id}`);
     } catch (error: any) {
       console.error("Error updating loan:", error);
@@ -166,9 +225,22 @@ export default function EditLoan() {
         </Button>
         <div>
           <h1 className="text-3xl font-bold">Edit Loan</h1>
-          <p className="text-muted-foreground">Update loan details</p>
+          <p className="text-muted-foreground">Update loan details - all calculations will be recalculated automatically</p>
         </div>
       </div>
+
+      {validationErrors.length > 0 && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <ul className="list-disc list-inside">
+              {validationErrors.map((error, i) => (
+                <li key={i}>{error}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <form onSubmit={handleSubmit}>
         <Card>
@@ -295,7 +367,13 @@ export default function EditLoan() {
                     type="number"
                     value={formData.emi_amount}
                     onChange={(e) => setFormData({ ...formData, emi_amount: e.target.value })}
+                    placeholder={calculatedEmi ? `Calculated: ₹${calculatedEmi.toLocaleString('en-IN')}` : "Auto-calculated"}
                   />
+                  {calculatedEmi && !formData.emi_amount && (
+                    <p className="text-xs text-muted-foreground">
+                      Will use calculated EMI: ₹{calculatedEmi.toLocaleString('en-IN')}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Rate Type *</Label>
@@ -311,6 +389,31 @@ export default function EditLoan() {
                       <SelectItem value="FLAT">Flat Rate</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Due Day</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="28"
+                    value={formData.due_day}
+                    onChange={(e) => setFormData({ ...formData, due_day: e.target.value })}
+                    placeholder="Day of month (1-28)"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Billing Day</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="28"
+                    value={formData.billing_day}
+                    onChange={(e) => setFormData({ ...formData, billing_day: e.target.value })}
+                    placeholder="Day of month (1-28)"
+                  />
                 </div>
               </div>
 
@@ -337,12 +440,12 @@ export default function EditLoan() {
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Saving...
+                    Recalculating...
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4" />
-                    Save Changes
+                    Save & Recalculate
                   </>
                 )}
               </Button>

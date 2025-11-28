@@ -37,6 +37,32 @@ export default function FutureCashFlow() {
 
   useEffect(() => {
     generateForecast();
+
+    // Subscribe to real-time changes for loans and amortization
+    if (user) {
+      const channel = supabase
+        .channel('cashflow-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'loans' },
+          () => generateForecast()
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'amortization_rows' },
+          () => generateForecast()
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'monthly_budgets' },
+          () => generateForecast()
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user, forecastMonths]);
 
   const generateForecast = async () => {

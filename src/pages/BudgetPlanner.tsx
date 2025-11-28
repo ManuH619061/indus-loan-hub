@@ -89,6 +89,27 @@ export default function BudgetPlanner() {
 
   useEffect(() => {
     fetchData();
+
+    // Subscribe to real-time changes for loans
+    if (user) {
+      const channel = supabase
+        .channel('budget-planner-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'loans' },
+          () => fetchData()
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'amortization_rows' },
+          () => fetchData()
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user, selectedMonth]);
 
   const fetchData = async () => {
