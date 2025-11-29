@@ -19,7 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 // Hook for swipe-to-open gesture
 function useSwipeToOpen(onOpen: () => void, edgeThreshold = 30, minSwipeDistance = 50) {
@@ -279,17 +279,18 @@ export default function Layout({ children }: LayoutProps) {
       {/* Mobile Header - Larger and more app-like */}
       <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 safe-top">
         <div className="flex h-16 md:h-14 items-center px-4 md:px-6">
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu Button - Always visible on mobile */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="md:hidden h-12 w-12 touch-target mr-2"
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <Menu className="h-7 w-7" />
+          </Button>
+
+          {/* Mobile Drawer */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild className="md:hidden">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-12 w-12 touch-target"
-              >
-                <Menu className="h-7 w-7" />
-              </Button>
-            </SheetTrigger>
             <SheetContent 
               side="left" 
               className="w-[85vw] max-w-[320px] p-0 border-r-0"
@@ -303,11 +304,14 @@ export default function Layout({ children }: LayoutProps) {
                     </div>
                     <span className="font-bold text-xl">Loan Tracker</span>
                   </div>
-                  <SheetClose asChild>
-                    <Button variant="ghost" size="icon" className="h-11 w-11 touch-target">
-                      <X className="h-6 w-6" />
-                    </Button>
-                  </SheetClose>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-11 w-11 touch-target"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <X className="h-6 w-6" />
+                  </Button>
                 </div>
                 
                 {/* Drawer Navigation */}
