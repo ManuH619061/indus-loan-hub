@@ -33,9 +33,12 @@ import BRSReport from "./pages/banking/BRSReport";
 import AddBankAccount from "./pages/banking/AddBankAccount";
 import Expenses from "./pages/Expenses";
 import LoanComparison from "./pages/LoanComparison";
+import InstallApp from "./pages/InstallApp";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PageTransition from "./components/PageTransition";
+import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
+import { OfflineIndicator } from "./components/OfflineIndicator";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +50,7 @@ function AnimatedRoutes() {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/install" element={<InstallApp />} />
         <Route path="/dashboard" element={<ProtectedRoute><Layout><PageTransition><NewDashboard /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/budget-planner" element={<ProtectedRoute><Layout><PageTransition><BudgetPlanner /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/budget/monthly-expenses" element={<ProtectedRoute><Layout><PageTransition><MonthlyExpenses /></PageTransition></Layout></ProtectedRoute>} />
@@ -84,6 +88,8 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <OfflineIndicator />
+      <PWAInstallPrompt />
       <BrowserRouter>
         <AnimatedRoutes />
       </BrowserRouter>
