@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect, useRef, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,57 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+
+// Hook for swipe-to-open gesture
+function useSwipeToOpen(onOpen: () => void, edgeThreshold = 30, minSwipeDistance = 50) {
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    const touch = e.touches[0];
+    // Only track if starting from left edge
+    if (touch.clientX <= edgeThreshold) {
+      touchStartX.current = touch.clientX;
+      touchStartY.current = touch.clientY;
+    }
+  }, [edgeThreshold]);
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStartX.current;
+    const deltaY = Math.abs(touch.clientY - touchStartY.current);
+
+    // If swiping more horizontally than vertically and swiped far enough
+    if (deltaX > minSwipeDistance && deltaX > deltaY * 2) {
+      onOpen();
+      touchStartX.current = null;
+      touchStartY.current = null;
+    }
+  }, [minSwipeDistance, onOpen]);
+
+  const handleTouchEnd = useCallback(() => {
+    touchStartX.current = null;
+    touchStartY.current = null;
+  }, []);
+
+  useEffect(() => {
+    // Only add listeners on mobile
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+    if (!isMobile) return;
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchmove', handleTouchMove, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
+}
 
 interface LayoutProps {
   children: ReactNode;
@@ -70,6 +121,10 @@ export default function Layout({ children }: LayoutProps) {
     budget: true,
     banking: true,
   });
+
+  // Enable swipe-from-left-edge to open drawer
+  const openDrawer = useCallback(() => setMobileMenuOpen(true), []);
+  useSwipeToOpen(openDrawer);
 
   const toggleSection = (key: string) => {
     setExpandedSections(prev => ({
