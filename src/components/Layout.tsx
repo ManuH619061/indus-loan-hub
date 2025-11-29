@@ -14,12 +14,12 @@ import {
   Menu,
   BarChart3,
   Scale,
-  Upload,
   Receipt,
   ChevronDown,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 
 interface LayoutProps {
   children: ReactNode;
@@ -65,6 +65,7 @@ export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     budget: true,
     banking: true,
@@ -82,10 +83,18 @@ export default function Layout({ children }: LayoutProps) {
     navigate("/auth");
   };
 
-  const NavItems = () => (
+  const handleNavClick = () => {
+    setMobileMenuOpen(false);
+  };
+
+  const NavItems = ({ isMobile = false }: { isMobile?: boolean }) => (
     <>
       {navigation.map((item) => {
         const Icon = item.icon;
+        const iconSize = isMobile ? "h-6 w-6" : "h-5 w-5";
+        const textSize = isMobile ? "text-base" : "text-sm";
+        const padding = isMobile ? "px-4 py-4" : "px-3 py-2";
+        const gap = isMobile ? "gap-4" : "gap-3";
         
         if ('children' in item && item.children && 'key' in item) {
           const isAnyChildActive = item.children.some(child => location.pathname === child.href);
@@ -95,15 +104,21 @@ export default function Layout({ children }: LayoutProps) {
             <div key={item.name} className="space-y-1">
               <button
                 onClick={() => toggleSection(item.key as string)}
-                className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                className={cn(
+                  "flex items-center justify-between w-full rounded-lg transition-colors touch-target",
+                  "text-muted-foreground hover:bg-muted active:bg-muted/80",
+                  padding,
+                  textSize,
+                  "font-medium"
+                )}
               >
-                <div className="flex items-center gap-3">
-                  <Icon className="h-4 w-4" />
+                <div className={cn("flex items-center", gap)}>
+                  <Icon className={iconSize} />
                   <span>{item.name}</span>
                 </div>
                 <ChevronDown 
                   className={cn(
-                    "h-4 w-4 transition-transform duration-200",
+                    "h-5 w-5 transition-transform duration-200",
                     isExpanded ? "rotate-0" : "-rotate-90"
                   )} 
                 />
@@ -117,7 +132,10 @@ export default function Layout({ children }: LayoutProps) {
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="ml-4 space-y-1 border-l-2 border-muted pl-2">
+                    <div className={cn(
+                      "border-l-2 border-muted",
+                      isMobile ? "ml-5 pl-4 space-y-1" : "ml-4 pl-2 space-y-1"
+                    )}>
                       {item.children.map((child) => {
                         const ChildIcon = child.icon;
                         const isActive = location.pathname === child.href;
@@ -125,16 +143,20 @@ export default function Layout({ children }: LayoutProps) {
                           <Link
                             key={child.name}
                             to={child.href}
+                            onClick={handleNavClick}
                             className={cn(
-                              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden",
+                              "flex items-center rounded-lg font-medium transition-all duration-200 relative overflow-hidden touch-target",
+                              padding,
+                              gap,
+                              textSize,
                               isActive
                                 ? "bg-primary text-primary-foreground"
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted/80"
                             )}
                           >
                             {isActive && (
                               <motion.div
-                                layoutId="activeNav"
+                                layoutId={isMobile ? "activeNavMobile" : "activeNav"}
                                 className="absolute inset-0 bg-primary rounded-lg"
                                 initial={false}
                                 transition={{
@@ -144,8 +166,8 @@ export default function Layout({ children }: LayoutProps) {
                                 }}
                               />
                             )}
-                            <span className="relative z-10 flex items-center gap-3">
-                              <ChildIcon className="h-4 w-4" />
+                            <span className={cn("relative z-10 flex items-center", gap)}>
+                              <ChildIcon className={iconSize} />
                               {child.name}
                             </span>
                           </Link>
@@ -164,16 +186,20 @@ export default function Layout({ children }: LayoutProps) {
           <Link
             key={item.name}
             to={item.href}
+            onClick={handleNavClick}
             className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden",
+              "flex items-center rounded-lg font-medium transition-all duration-200 relative overflow-hidden touch-target",
+              padding,
+              gap,
+              textSize,
               isActive
                 ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted/80"
             )}
           >
             {isActive && (
               <motion.div
-                layoutId="activeNav"
+                layoutId={isMobile ? "activeNavMobile" : "activeNav"}
                 className="absolute inset-0 bg-primary rounded-lg"
                 initial={false}
                 transition={{
@@ -183,8 +209,8 @@ export default function Layout({ children }: LayoutProps) {
                 }}
               />
             )}
-            <span className="relative z-10 flex items-center gap-3">
-              <Icon className="h-4 w-4" />
+            <span className={cn("relative z-10 flex items-center", gap)}>
+              <Icon className={iconSize} />
               {item.name}
             </span>
           </Link>
@@ -195,46 +221,80 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="container flex h-14 items-center px-4">
-          <Sheet>
-            <SheetTrigger asChild className="lg:hidden">
-              <Button variant="ghost" size="icon">
-                <Menu className="h-5 w-5" />
+      {/* Mobile Header - Larger and more app-like */}
+      <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 safe-top">
+        <div className="flex h-16 md:h-14 items-center px-4 md:px-6">
+          {/* Mobile Menu Button */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-12 w-12 touch-target"
+              >
+                <Menu className="h-7 w-7" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
-              <div className="flex flex-col h-full">
-                <div className="p-4 border-b">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-gradient-primary rounded-lg">
-                      <Wallet className="h-5 w-5 text-primary-foreground" />
+            <SheetContent 
+              side="left" 
+              className="w-[85vw] max-w-[320px] p-0 border-r-0"
+            >
+              <div className="flex flex-col h-full bg-card">
+                {/* Drawer Header */}
+                <div className="flex items-center justify-between p-5 border-b bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-gradient-primary rounded-xl">
+                      <Wallet className="h-7 w-7 text-primary-foreground" />
                     </div>
-                    <span className="font-bold">Loan Tracker</span>
+                    <span className="font-bold text-xl">Loan Tracker</span>
                   </div>
+                  <SheetClose asChild>
+                    <Button variant="ghost" size="icon" className="h-11 w-11 touch-target">
+                      <X className="h-6 w-6" />
+                    </Button>
+                  </SheetClose>
                 </div>
-                <nav className="flex-1 p-4 space-y-1">
-                  <NavItems />
+                
+                {/* Drawer Navigation */}
+                <nav className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-hide">
+                  <NavItems isMobile={true} />
                 </nav>
+
+                {/* Drawer Footer */}
+                <div className="p-4 border-t bg-muted/30">
+                  <div className="mb-3 px-2">
+                    <p className="text-sm text-muted-foreground">Signed in as</p>
+                    <p className="text-base font-medium truncate">{user?.email}</p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full h-12 text-base touch-target" 
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="h-5 w-5 mr-3" />
+                    Sign Out
+                  </Button>
+                </div>
               </div>
             </SheetContent>
           </Sheet>
 
-          <div className="flex items-center gap-2 lg:ml-0">
-            <div className="hidden lg:flex items-center gap-2">
+          {/* Logo */}
+          <div className="flex items-center gap-3 md:ml-0 ml-2">
+            <div className="hidden md:flex items-center gap-2">
               <div className="p-2 bg-gradient-primary rounded-lg">
                 <Wallet className="h-5 w-5 text-primary-foreground" />
               </div>
               <span className="font-bold text-lg">Loan Tracker</span>
             </div>
-            <span className="lg:hidden font-bold text-lg">Loan Tracker</span>
+            <span className="md:hidden font-bold text-xl">Loan Tracker</span>
           </div>
 
           <div className="flex-1" />
 
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2 text-sm">
+          {/* Desktop User Info */}
+          <div className="hidden md:flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Signed in as</span>
               <span className="font-medium">{user?.email}</span>
             </div>
@@ -247,16 +307,16 @@ export default function Layout({ children }: LayoutProps) {
       </header>
 
       <div className="flex">
-        {/* Sidebar - Desktop */}
-        <aside className="hidden lg:flex w-64 flex-col fixed inset-y-0 top-14 border-r bg-card">
-          <nav className="flex-1 p-4 space-y-1">
-            <NavItems />
+        {/* Sidebar - Desktop Only */}
+        <aside className="hidden md:flex w-64 flex-col fixed inset-y-0 top-14 border-r bg-card">
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-hide">
+            <NavItems isMobile={false} />
           </nav>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 lg:ml-64">
-          <div className="container p-4 md:p-6 lg:p-8">
+        <main className="flex-1 md:ml-64">
+          <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
             {children}
           </div>
         </main>
