@@ -77,6 +77,7 @@ export default function NewLoan() {
     recast_mode: "REDUCE_TENURE" as const,
     preferred_method: "",
     remarks: "",
+    months_already_paid: "0", // For existing/running loans
   });
 
   const [newLenderData, setNewLenderData] = useState({
@@ -433,6 +434,58 @@ export default function NewLoan() {
 
       if (amortError) throw amortError;
 
+      // Handle existing loan - create past payments and mark as paid
+      const monthsAlreadyPaid = parseInt(formData.months_already_paid) || 0;
+      if (monthsAlreadyPaid > 0) {
+        console.log(`Creating ${monthsAlreadyPaid} past EMI payments...`);
+        
+        // Get the amortization rows we just created
+        const { data: amortData, error: fetchAmortError } = await supabase
+          .from("amortization_rows")
+          .select("*")
+          .eq("loan_id", loan.id)
+          .order("period_no", { ascending: true })
+          .limit(monthsAlreadyPaid);
+
+        if (fetchAmortError) throw fetchAmortError;
+
+        if (amortData && amortData.length > 0) {
+          // Create payment records for past EMIs
+          const pastPayments = amortData.map((row) => ({
+            loan_id: loan.id,
+            paid_on: row.due_on,
+            amount: row.scheduled_emi,
+            payment_type: "EMI" as const,
+            source: "OTHER" as const,
+            reference: `Auto-created for existing loan - Period ${row.period_no}`,
+            notes: "Auto-generated payment for existing running loan",
+          }));
+
+          const { error: paymentError } = await supabase
+            .from("payments")
+            .insert(pastPayments);
+
+          if (paymentError) {
+            console.error("Error creating past payments:", paymentError);
+            throw paymentError;
+          }
+
+          // Mark amortization rows as paid
+          const amortIds = amortData.map((row) => row.id);
+          const { error: updateError } = await supabase
+            .from("amortization_rows")
+            .update({ is_paid: true })
+            .in("id", amortIds);
+
+          if (updateError) {
+            console.error("Error marking amortization as paid:", updateError);
+            throw updateError;
+          }
+
+          console.log(`Successfully created ${monthsAlreadyPaid} past payments and marked as paid`);
+        }
+      }
+
       if (documentFile) {
         const filePath = `${user.id}/${loan.id}/${Date.now()}_${documentFile.name}`;
         
@@ -453,9 +506,12 @@ export default function NewLoan() {
         });
       }
 
+      const monthsPaidCount = parseInt(formData.months_already_paid) || 0;
       toast({ 
         title: "Loan created successfully!",
-        description: "EMI schedule, interest calculations, and all loan data have been generated."
+        description: monthsPaidCount > 0 
+          ? `EMI schedule generated with ${monthsPaidCount} past payments auto-created. All reports updated.`
+          : "EMI schedule, interest calculations, and all loan data have been generated."
       });
       
       // Navigate to dashboard to see the new loan
@@ -706,6 +762,28 @@ export default function NewLoan() {
                       <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* Existing Loan - Months Already Paid */}
+              <div className="p-4 bg-muted/50 rounded-lg border border-dashed space-y-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-xs">For Existing Loans</Badge>
+                  <span className="text-sm text-muted-foreground">Already running? Enter EMIs paid</span>
+                </div>
+                <div className="space-y-2">
+                  <Label>EMIs Already Paid</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max={parseInt(formData.tenure_months) || 999}
+                    value={formData.months_already_paid}
+                    onChange={(e) => setFormData({ ...formData, months_already_paid: e.target.value })}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    System will auto-create {parseInt(formData.months_already_paid) || 0} past payment records and update outstanding balance
+                  </p>
                 </div>
               </div>
             </div>
