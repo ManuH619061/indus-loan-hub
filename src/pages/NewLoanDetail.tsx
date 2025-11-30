@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { ArrowLeft, Calendar, TrendingUp, Building2, CreditCard, Target, Calculator, FileText, Copy } from "lucide-react";
+import { ArrowLeft, Calendar, TrendingUp, Building2, CreditCard, Target, Calculator, FileText, Copy, Edit } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import QuickPaySheet from "@/components/QuickPaySheet";
 import AIDebtAdvisor from "@/components/AIDebtAdvisor";
+import BulkEMIMarker from "@/components/BulkEMIMarker";
 
 export default function NewLoanDetail() {
   const { id } = useParams();
@@ -171,6 +172,20 @@ export default function NewLoanDetail() {
           <Copy className="h-4 w-4" />
           Duplicate
         </Button>
+        <Button 
+          variant="outline"
+          onClick={() => navigate(`/loans/${id}/edit`)} 
+          className="gap-2"
+        >
+          <Edit className="h-4 w-4" />
+          Edit
+        </Button>
+        <BulkEMIMarker
+          loanId={id!}
+          loanName={loan.loan_name}
+          amortization={amortization}
+          onUpdate={fetchLoanDetail}
+        />
         <Button onClick={() => setShowQuickPay(true)} className="gap-2">
           <CreditCard className="h-4 w-4" />
           Quick Pay
