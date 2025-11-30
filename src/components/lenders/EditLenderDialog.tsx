@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
+import LenderLogoUpload from "./LenderLogoUpload";
 
 interface LenderData {
   id: string;
@@ -66,7 +67,7 @@ export default function EditLenderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Lender</DialogTitle>
           <DialogDescription>
@@ -105,16 +106,12 @@ export default function EditLenderDialog({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-logo">Logo URL</Label>
-            <Input
-              id="edit-logo"
-              type="url"
-              value={formData.logo_url || ""}
-              onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-              placeholder="https://example.com/logo.png"
-            />
-          </div>
+          <LenderLogoUpload
+            lenderName={formData.name}
+            logoUrl={formData.logo_url}
+            onLogoChange={(url) => setFormData({ ...formData, logo_url: url })}
+            disabled={loading}
+          />
 
           <div className="space-y-2">
             <Label htmlFor="edit-website">Website</Label>

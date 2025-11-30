@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Building2, Pencil, Trash2, ExternalLink, Loader2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, ExternalLink, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import FadeInStagger from "@/components/FadeInStagger";
 import LendersSummaryCard from "@/components/lenders/LendersSummaryCard";
@@ -11,6 +11,7 @@ import AllLoanAppsTab from "@/components/lenders/AllLoanAppsTab";
 import AddCustomLenderDialog from "@/components/lenders/AddCustomLenderDialog";
 import EditLenderDialog from "@/components/lenders/EditLenderDialog";
 import DeleteLenderDialog from "@/components/lenders/DeleteLenderDialog";
+import LenderAvatar from "@/components/lenders/LenderAvatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -342,26 +343,20 @@ export default function Lenders() {
                 {filteredLenders.map((lender) => (
                   <Card key={lender.id} className="hover:shadow-md transition-shadow">
                     <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          {lender.logo_url ? (
-                            <img
-                              src={lender.logo_url}
-                              alt=""
-                              className="h-10 w-10 rounded object-contain"
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <LenderAvatar 
+                              name={lender.name} 
+                              logoUrl={lender.logo_url} 
+                              size="lg" 
                             />
-                          ) : (
-                            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
-                              <Building2 className="h-5 w-5 text-muted-foreground" />
+                            <div>
+                              <CardTitle className="text-base">{lender.name}</CardTitle>
+                              <Badge variant={getLenderTypeBadgeVariant(lender.type)} className="mt-1">
+                                {getLenderTypeLabel(lender.type)}
+                              </Badge>
                             </div>
-                          )}
-                          <div>
-                            <CardTitle className="text-base">{lender.name}</CardTitle>
-                            <Badge variant={getLenderTypeBadgeVariant(lender.type)} className="mt-1">
-                              {getLenderTypeLabel(lender.type)}
-                            </Badge>
                           </div>
-                        </div>
                         <div className="flex gap-1">
                           <Button
                             variant="ghost"

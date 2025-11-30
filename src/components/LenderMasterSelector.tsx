@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Check, ChevronsUpDown, Plus, Building2, Search } from "lucide-react";
+import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import LenderAvatar from "@/components/lenders/LenderAvatar";
 
 interface Lender {
   id: string;
@@ -117,15 +118,11 @@ export default function LenderMasterSelector({
         >
           {selectedLender ? (
             <div className="flex items-center gap-2 truncate">
-              {selectedLender.logo_url ? (
-                <img
-                  src={selectedLender.logo_url}
-                  alt=""
-                  className="h-4 w-4 rounded object-contain"
-                />
-              ) : (
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-              )}
+              <LenderAvatar 
+                name={selectedLender.name} 
+                logoUrl={selectedLender.logo_url} 
+                size="sm" 
+              />
               <span className="truncate">{selectedLender.name}</span>
               <span className="text-xs text-muted-foreground">
                 ({getLenderTypeLabel(selectedLender.type)})
@@ -181,15 +178,11 @@ export default function LenderMasterSelector({
                       )}
                     />
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      {lender.logo_url ? (
-                        <img
-                          src={lender.logo_url}
-                          alt=""
-                          className="h-5 w-5 rounded object-contain flex-shrink-0"
-                        />
-                      ) : (
-                        <Building2 className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                      )}
+                      <LenderAvatar 
+                        name={lender.name} 
+                        logoUrl={lender.logo_url} 
+                        size="sm" 
+                      />
                       <span className="truncate">{lender.name}</span>
                       <span className="text-xs text-muted-foreground flex-shrink-0">
                         {getLenderTypeLabel(lender.type)}
