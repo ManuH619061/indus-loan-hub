@@ -3,12 +3,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { loanAppsLibrary } from "@/lib/loan-apps-library";
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import LenderLogoUpload from "./LenderLogoUpload";
 
 interface AddCustomLenderDialogProps {
   open: boolean;
@@ -74,7 +75,7 @@ export default function AddCustomLenderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Custom Lender</DialogTitle>
         </DialogHeader>
@@ -125,6 +126,7 @@ export default function AddCustomLenderDialog({
               </PopoverContent>
             </Popover>
           </div>
+
           <div className="space-y-2">
             <Label>Type *</Label>
             <Select
@@ -143,14 +145,14 @@ export default function AddCustomLenderDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label>Logo URL (optional)</Label>
-            <Input
-              value={lenderData.logo_url}
-              onChange={(e) => onDataChange({ ...lenderData, logo_url: e.target.value })}
-              placeholder="https://example.com/logo.png"
-            />
-          </div>
+
+          <LenderLogoUpload
+            lenderName={lenderData.name}
+            logoUrl={lenderData.logo_url}
+            onLogoChange={(url) => onDataChange({ ...lenderData, logo_url: url })}
+            disabled={loading}
+          />
+
           <div className="space-y-2">
             <Label>Website (optional)</Label>
             <Input
