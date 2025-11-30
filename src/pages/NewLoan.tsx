@@ -17,7 +17,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import SmartLenderSelector from "@/components/SmartLenderSelector";
+import LenderMasterSelector from "@/components/LenderMasterSelector";
+import AddCustomLenderDialog from "@/components/lenders/AddCustomLenderDialog";
 
 interface Lender {
   id: string;
@@ -582,10 +583,10 @@ export default function NewLoan() {
               <div className="space-y-2">
                 <Label>Lender *</Label>
                 <div className="relative">
-                  <SmartLenderSelector
+                  <LenderMasterSelector
                     value={formData.lender_id}
-                    onChange={handleLenderChange}
-                    onAddCustom={() => setNewLenderOpen(true)}
+                    onValueChange={handleLenderChange}
+                    onAddNew={() => setNewLenderOpen(true)}
                   />
                   {fieldValidation.lender_id && (
                     <Check className="absolute right-10 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500 pointer-events-none z-10" />
