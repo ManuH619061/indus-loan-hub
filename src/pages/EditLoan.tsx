@@ -14,6 +14,8 @@ import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { formatINR } from "@/lib/currency";
+import LenderMasterSelector from "@/components/LenderMasterSelector";
+import AddCustomLenderDialog from "@/components/lenders/AddCustomLenderDialog";
 import { 
   updateLoanWithRecalculation, 
   validateLoanFields, 
@@ -36,6 +38,18 @@ export default function EditLoan() {
   const [calculatedEmi, setCalculatedEmi] = useState<number | null>(null);
   const [currentPaidMonths, setCurrentPaidMonths] = useState(0);
   const [newPaidMonths, setNewPaidMonths] = useState("");
+  
+  // Add lender dialog state
+  const [newLenderOpen, setNewLenderOpen] = useState(false);
+  const [newLenderLoading, setNewLenderLoading] = useState(false);
+  const [newLenderData, setNewLenderData] = useState({
+    name: "",
+    type: "BANK" as const,
+    logo_url: "",
+    website: "",
+    contact: "",
+    notes: "",
+  });
   
   const [formData, setFormData] = useState({
     lender_id: "",
@@ -95,6 +109,39 @@ export default function EditLoan() {
       .eq("user_id", user.id)
       .order("name");
     if (data) setLenders(data);
+  };
+
+  const handleAddLender = async () => {
+    if (!user || !newLenderData.name.trim()) return;
+    
+    setNewLenderLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("lenders")
+        .insert({
+          user_id: user.id,
+          name: newLenderData.name.trim(),
+          type: newLenderData.type,
+          logo_url: newLenderData.logo_url?.trim() || null,
+          website: newLenderData.website?.trim() || null,
+          contact: newLenderData.contact?.trim() || null,
+          notes: newLenderData.notes?.trim() || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setLenders([...lenders, data]);
+      setFormData({ ...formData, lender_id: data.id });
+      setNewLenderOpen(false);
+      setNewLenderData({ name: "", type: "BANK", logo_url: "", website: "", contact: "", notes: "" });
+      toast({ title: "Lender added successfully!" });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    } finally {
+      setNewLenderLoading(false);
+    }
   };
 
   const fetchLoan = async () => {
@@ -370,21 +417,11 @@ export default function EditLoan() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Lender</Label>
-                <Select
+                <LenderMasterSelector
                   value={formData.lender_id}
                   onValueChange={(value) => setFormData({ ...formData, lender_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select lender" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {lenders.map((lender) => (
-                      <SelectItem key={lender.id} value={lender.id}>
-                        {lender.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onAddNew={() => setNewLenderOpen(true)}
+                />
               </div>
 
               <div className="space-y-2">
@@ -656,6 +693,16 @@ export default function EditLoan() {
           </CardContent>
         </Card>
       </form>
+
+      {/* Add Lender Dialog */}
+      <AddCustomLenderDialog
+        open={newLenderOpen}
+        onOpenChange={setNewLenderOpen}
+        lenderData={newLenderData}
+        onDataChange={setNewLenderData}
+        onSubmit={handleAddLender}
+        loading={newLenderLoading}
+      />
     </div>
   );
 }
