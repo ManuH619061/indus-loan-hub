@@ -781,10 +781,33 @@ export default function NewLoan() {
                     onChange={(e) => setFormData({ ...formData, months_already_paid: e.target.value })}
                     placeholder="0"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    System will auto-create {parseInt(formData.months_already_paid) || 0} past payment records and update outstanding balance
-                  </p>
                 </div>
+                
+                {/* Preview of past payments */}
+                {parseInt(formData.months_already_paid) > 0 && previewEMI > 0 && (
+                  <div className="mt-3 p-3 bg-primary/5 rounded-md border border-primary/20">
+                    <p className="text-sm font-medium text-primary mb-2">
+                      Preview: {parseInt(formData.months_already_paid)} Past EMI Payments
+                    </p>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">EMI Amount:</span>
+                        <span className="font-medium">{formatINR(previewEMI)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Total Paid:</span>
+                        <span className="font-medium">{formatINR(previewEMI * parseInt(formData.months_already_paid))}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Remaining EMIs:</span>
+                        <span className="font-medium">{Math.max(0, parseInt(formData.tenure_months || "0") - parseInt(formData.months_already_paid))} months</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-primary/10">
+                      ✓ System will auto-create payment records and mark amortization as paid
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
