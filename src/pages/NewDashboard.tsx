@@ -152,10 +152,11 @@ export default function NewDashboard() {
           loanPayments
         );
         
-        totalOut += stats.outstandingPrincipal;
+        // Use outstandingTotal (principal + interest) for total outstanding
+        totalOut += stats.outstandingTotal;
         totalRate += loan.interest_rate_apy;
         totalPaid += stats.totalPrincipalPaid;
-        totalRemaining += stats.outstandingPrincipal;
+        totalRemaining += stats.outstandingTotal;
 
         // Find upcoming EMIs from amortization rows
         const unpaidRows = loan.amortization_rows?.filter((r: any) => !r.is_paid) || [];

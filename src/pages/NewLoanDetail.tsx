@@ -166,7 +166,10 @@ export default function NewLoanDetail() {
   }
 
   // Use loanStats (payment-based) for display
-  const outstanding = loanStats?.outstandingPrincipal ?? 0;
+  // Outstanding = principal + interest remaining (sum of future EMI components)
+  const outstanding = loanStats?.outstandingTotal ?? 0;
+  const outstandingPrincipal = loanStats?.outstandingPrincipal ?? 0;
+  const outstandingInterest = loanStats?.outstandingInterest ?? 0;
   const totalPrincipalPaid = loanStats?.totalPrincipalPaid ?? 0;
   const totalInterestPaid = loanStats?.totalInterestPaid ?? 0;
   const emisPaid = loanStats?.emisPaid ?? 0;
@@ -243,11 +246,14 @@ export default function NewLoanDetail() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Outstanding
+              Outstanding (P+I)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{formatINR(outstanding)}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              P: {formatINR(outstandingPrincipal)} | I: {formatINR(outstandingInterest)}
+            </p>
           </CardContent>
         </Card>
 

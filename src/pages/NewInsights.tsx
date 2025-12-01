@@ -151,7 +151,8 @@ export default function NewInsights() {
           payments
         );
         
-        return { ...loan, outstanding: stats.outstandingPrincipal };
+        // Use outstandingTotal (principal + interest) for display
+        return { ...loan, outstanding: stats.outstandingTotal };
       }) || [];
 
       setLoans(loansWithStats);
