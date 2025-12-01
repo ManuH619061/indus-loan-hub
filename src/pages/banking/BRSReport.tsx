@@ -15,8 +15,11 @@ import {
   Building2,
   CreditCard,
   Wallet,
-  Receipt
+  Receipt,
+  Printer,
+  FileDown
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import {
   Select,
   SelectContent,
@@ -226,7 +229,48 @@ export default function BRSReport() {
   };
 
   const handleExport = () => {
-    toast({ title: "Export feature coming soon" });
+    if (!summary || transactions.length === 0) {
+      toast({ title: "No data to export", variant: "destructive" });
+      return;
+    }
+
+    const selectedAccName = bankAccounts.find(a => a.id === selectedAccount)?.bank_name || "All Accounts";
+    
+    // Prepare data for export
+    const exportData = [
+      ["Bank Reconciliation Statement"],
+      [`Account: ${selectedAccName}`],
+      [`Period: ${startDate} to ${endDate}`],
+      [""],
+      ["Summary"],
+      ["Opening Balance", formatINR(summary.openingBalance)],
+      ["Total Inflows", formatINR(summary.totalInflows)],
+      ["Total Outflows", formatINR(summary.totalOutflows)],
+      ["Closing Balance", formatINR(summary.closingBalance)],
+      [""],
+      ["Transactions"],
+      ["Date", "Description", "Type", "Linked To", "Debit", "Credit", "Running Balance"],
+      ...transactions.map(t => [
+        format(new Date(t.date), 'MMM dd, yyyy'),
+        t.description,
+        t.type,
+        t.linkedEntity || "-",
+        t.debit ? formatINR(t.debit) : "-",
+        t.credit ? formatINR(t.credit) : "-",
+        formatINR(t.runningBalance)
+      ])
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "BRS Report");
+    XLSX.writeFile(wb, `BRS_Report_${selectedAccName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    toast({ title: "Report exported successfully" });
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   const selectedAccountData = bankAccounts.find((acc) => acc.id === selectedAccount);
@@ -239,10 +283,16 @@ export default function BRSReport() {
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight">BRS Report</h1>
           <p className="text-muted-foreground mt-2">Bank Reconciliation Statement with detailed transaction breakdown</p>
         </div>
-        <Button onClick={handleExport} variant="outline" size="lg">
-          <Download className="h-4 w-4 mr-2" />
-          Export Report
-        </Button>
+        <div className="flex gap-2 print:hidden">
+          <Button onClick={handlePrint} variant="outline" size="lg">
+            <Printer className="h-4 w-4 mr-2" />
+            Print
+          </Button>
+          <Button onClick={handleExport} variant="outline" size="lg">
+            <FileDown className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
