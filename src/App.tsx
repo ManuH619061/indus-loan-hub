@@ -33,6 +33,7 @@ import BRSReport from "./pages/banking/BRSReport";
 import AddBankAccount from "./pages/banking/AddBankAccount";
 import Expenses from "./pages/Expenses";
 import LoanComparison from "./pages/LoanComparison";
+import EMICalendar from "./pages/EMICalendar";
 import InstallApp from "./pages/InstallApp";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -75,6 +76,7 @@ function AnimatedRoutes() {
         <Route path="/lenders" element={<ProtectedRoute><Layout><PageTransition><Lenders /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/lenders/:id" element={<ProtectedRoute><Layout><PageTransition><LenderDetail /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/loan-comparison" element={<ProtectedRoute><Layout><PageTransition><LoanComparison /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/emi-calendar" element={<ProtectedRoute><Layout><PageTransition><EMICalendar /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/insights" element={<ProtectedRoute><Layout><PageTransition><NewInsights /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/documents" element={<ProtectedRoute><Layout><PageTransition><Documents /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
