@@ -10,8 +10,21 @@ import {
   TrendingUp,
   TrendingDown,
   ChevronRight,
-  Upload
+  Upload,
+  Pencil,
+  Trash2
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import EditBankAccountDialog from "@/components/banking/EditBankAccountDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -30,11 +43,15 @@ interface BankAccount {
   bank_name: string;
   account_type: string;
   account_number_masked: string;
+  account_number_full: string | null;
+  ifsc_code: string | null;
+  branch: string | null;
   book_balance: number;
   statement_balance: number | null;
   last_reconciled_at: string | null;
   is_active: boolean;
   icon_url: string | null;
+  notes: string | null;
 }
 
 interface Transaction {
@@ -50,6 +67,8 @@ export default function BankAccountsDashboard() {
   const [selectedAccount, setSelectedAccount] = useState<string>("all");
   const [dateRange, setDateRange] = useState<string>("30days");
   const [showBankingSummary, setShowBankingSummary] = useState(true);
+  const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
+  const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -166,6 +185,26 @@ export default function BankAccountsDashboard() {
   const getDifference = (account: BankAccount) => {
     if (!account.statement_balance) return null;
     return account.book_balance - account.statement_balance;
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletingAccountId) return;
+
+    try {
+      const { error } = await supabase
+        .from("bank_accounts")
+        .update({ is_active: false })
+        .eq("id", deletingAccountId);
+
+      if (error) throw error;
+
+      toast({ title: "Bank account deleted successfully" });
+      setDeletingAccountId(null);
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      toast({ title: "Error deleting account", variant: "destructive" });
+    }
   };
 
   if (loading) {
@@ -397,7 +436,7 @@ export default function BankAccountsDashboard() {
                             </div>
                           )}
 
-                          <div className="flex gap-2 mt-3">
+                          <div className="flex gap-2 mt-3 flex-wrap">
                             <Button
                               size="sm"
                               variant="outline"
@@ -419,6 +458,29 @@ export default function BankAccountsDashboard() {
                             >
                               Reconcile
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingAccount(account);
+                              }}
+                            >
+                              <Pencil className="h-3 w-3 mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingAccountId(account.id);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -431,6 +493,32 @@ export default function BankAccountsDashboard() {
           </div>
         )}
       </div>
+
+      {/* Edit Dialog */}
+      <EditBankAccountDialog
+        account={editingAccount}
+        open={!!editingAccount}
+        onOpenChange={(open) => !open && setEditingAccount(null)}
+        onSuccess={fetchData}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deletingAccountId} onOpenChange={(open) => !open && setDeletingAccountId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Bank Account</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this bank account? This will not delete any transactions, but the account will be marked as inactive.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
