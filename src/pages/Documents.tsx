@@ -32,6 +32,7 @@ import {
 import { toast } from "sonner";
 import { formatDistanceToNow, differenceInDays, parseISO } from "date-fns";
 import FadeInStagger from "@/components/FadeInStagger";
+import UploadDocumentDialog from "@/components/documents/UploadDocumentDialog";
 
 type DocumentRow = {
   id: string;
@@ -71,6 +72,7 @@ export default function Documents() {
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<DocumentRow | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -298,7 +300,7 @@ export default function Documents() {
             Manage and organize your loan documents
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setUploadDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Upload Document
         </Button>
@@ -434,6 +436,14 @@ export default function Documents() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <UploadDocumentDialog
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+        loans={loans}
+        lenders={lenders}
+        onSuccess={fetchData}
+      />
     </div>
   );
 }
