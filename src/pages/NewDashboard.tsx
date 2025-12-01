@@ -30,6 +30,7 @@ import {
   calculatePortfolioStatsFromAmortization,
   calculateThisMonthEMI,
   calculateNextMonthEMI,
+  calculateLastMonthEMI,
   calculateTotalPaidToDate,
   calculateWeightedAvgInterest,
   calculate6MonthProjection,
@@ -39,7 +40,7 @@ import {
   type MonthlyProjection,
   type LoanWithAmortization
 } from "@/lib/portfolio-stats";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 
 interface DashboardStats {
   totalOutstanding: number;
@@ -49,12 +50,16 @@ interface DashboardStats {
   thisMonthEMICount: number;
   nextMonthEMI: number;
   nextMonthEMICount: number;
+  lastMonthEMI: number;
+  lastMonthEMICount: number;
   totalPaidToDate: number;
   overdueCount: number;
   totalBankBalance: number;
   monthlyIncome: number;
   monthlyExpenses: number;
+  lastMonthExpenses: number;
   netBalance: number;
+  lastMonthNetBalance: number;
 }
 
 interface RiskAlert {
@@ -91,12 +96,16 @@ export default function NewDashboard() {
     thisMonthEMICount: 0,
     nextMonthEMI: 0,
     nextMonthEMICount: 0,
+    lastMonthEMI: 0,
+    lastMonthEMICount: 0,
     totalPaidToDate: 0,
     overdueCount: 0,
     totalBankBalance: 0,
     monthlyIncome: 0,
     monthlyExpenses: 0,
+    lastMonthExpenses: 0,
     netBalance: 0,
+    lastMonthNetBalance: 0,
   });
   const [loading, setLoading] = useState(true);
   const [upcoming7DaysEMIs, setUpcoming7DaysEMIs] = useState<any[]>([]);
@@ -139,9 +148,10 @@ export default function NewDashboard() {
       // Calculate portfolio stats
       const portfolioStats = calculatePortfolioStatsFromAmortization(loans);
       
-      // Calculate this month & next month EMI
+      // Calculate this month & next month & last month EMI
       const thisMonth = calculateThisMonthEMI(loans);
       const nextMonth = calculateNextMonthEMI(loans);
+      const lastMonth = calculateLastMonthEMI(loans);
       
       // Calculate total paid to date
       const totalPaid = calculateTotalPaidToDate(loans);
@@ -195,7 +205,21 @@ export default function NewDashboard() {
       
       const monthlyExpenses = transactions?.reduce((sum, txn) => sum + (txn.debit || 0), 0) || 0;
       
+      // Fetch last month's expenses
+      const lastMonthStart = format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd');
+      const lastMonthEnd = format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd');
+      
+      const { data: lastMonthTransactions } = await supabase
+        .from('transactions')
+        .select('debit, credit')
+        .eq('user_id', user!.id)
+        .gte('transaction_date', lastMonthStart)
+        .lte('transaction_date', lastMonthEnd);
+      
+      const lastMonthExpenses = lastMonthTransactions?.reduce((sum, txn) => sum + (txn.debit || 0), 0) || 0;
+      
       const netBalance = monthlyIncome - monthlyExpenses - thisMonth.total;
+      const lastMonthNetBalance = monthlyIncome - lastMonthExpenses - lastMonth.total;
       
       // Fetch recent transactions
       const { data: recentTxns } = await supabase
@@ -238,12 +262,16 @@ export default function NewDashboard() {
         thisMonthEMICount: thisMonth.count,
         nextMonthEMI: nextMonth.total,
         nextMonthEMICount: nextMonth.count,
+        lastMonthEMI: lastMonth.total,
+        lastMonthEMICount: lastMonth.count,
         totalPaidToDate: totalPaid,
         overdueCount: overdueCount,
         totalBankBalance,
         monthlyIncome,
         monthlyExpenses,
+        lastMonthExpenses,
         netBalance,
+        lastMonthNetBalance,
       });
       
       setUpcoming7DaysEMIs(upcoming7Days.payments);
@@ -418,6 +446,95 @@ export default function NewDashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Month-over-Month Comparison */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                This Month vs Last Month
+              </CardTitle>
+              <CardDescription>
+                Compare EMI payments, expenses, and net balance
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* EMI Comparison */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">EMI Payments</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold">{formatINR(stats.thisMonthEMI)}</span>
+                    {stats.lastMonthEMI > 0 && (
+                      <span className={`text-sm flex items-center gap-1 ${
+                        stats.thisMonthEMI > stats.lastMonthEMI ? 'text-red-600' : 'text-green-600'
+                      }`}>
+                        {stats.thisMonthEMI > stats.lastMonthEMI ? (
+                          <ArrowUpRight className="h-4 w-4" />
+                        ) : (
+                          <ArrowDownRight className="h-4 w-4" />
+                        )}
+                        {Math.abs(((stats.thisMonthEMI - stats.lastMonthEMI) / stats.lastMonthEMI) * 100).toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Last month: {formatINR(stats.lastMonthEMI)}
+                  </p>
+                </div>
+
+                {/* Expenses Comparison */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Expenses</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold">{formatINR(stats.monthlyExpenses)}</span>
+                    {stats.lastMonthExpenses > 0 && (
+                      <span className={`text-sm flex items-center gap-1 ${
+                        stats.monthlyExpenses > stats.lastMonthExpenses ? 'text-red-600' : 'text-green-600'
+                      }`}>
+                        {stats.monthlyExpenses > stats.lastMonthExpenses ? (
+                          <ArrowUpRight className="h-4 w-4" />
+                        ) : (
+                          <ArrowDownRight className="h-4 w-4" />
+                        )}
+                        {Math.abs(((stats.monthlyExpenses - stats.lastMonthExpenses) / stats.lastMonthExpenses) * 100).toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Last month: {formatINR(stats.lastMonthExpenses)}
+                  </p>
+                </div>
+
+                {/* Net Balance Comparison */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Net Balance</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className={`text-2xl font-bold ${stats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatINR(stats.netBalance)}
+                    </span>
+                    {stats.lastMonthNetBalance !== 0 && (
+                      <span className={`text-sm flex items-center gap-1 ${
+                        stats.netBalance > stats.lastMonthNetBalance ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {stats.netBalance > stats.lastMonthNetBalance ? (
+                          <ArrowUpRight className="h-4 w-4" />
+                        ) : (
+                          <ArrowDownRight className="h-4 w-4" />
+                        )}
+                        {stats.lastMonthNetBalance !== 0 
+                          ? Math.abs(((stats.netBalance - stats.lastMonthNetBalance) / Math.abs(stats.lastMonthNetBalance)) * 100).toFixed(1)
+                          : '∞'}%
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Last month: {formatINR(stats.lastMonthNetBalance)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Payoff Progress */}
           <Card>

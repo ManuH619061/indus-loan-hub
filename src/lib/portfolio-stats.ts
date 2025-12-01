@@ -224,6 +224,37 @@ export function calculateNextMonthEMI(
 }
 
 /**
+ * Calculate LAST MONTH EMI (previous calendar month paid EMIs)
+ */
+export function calculateLastMonthEMI(
+  loans: LoanWithAmortization[],
+  today: Date = new Date()
+): { total: number; count: number } {
+  const lastMonth = addMonths(today, -1);
+  const monthStart = startOfMonth(lastMonth);
+  const monthEnd = endOfMonth(lastMonth);
+  let total = 0;
+  let count = 0;
+
+  loans.forEach(loan => {
+    const allRows = loan.amortization_rows || [];
+    
+    allRows.forEach(row => {
+      const dueDate = new Date(row.due_on);
+      if (isWithinInterval(dueDate, { start: monthStart, end: monthEnd })) {
+        total += row.scheduled_emi;
+        count++;
+      }
+    });
+  });
+
+  return {
+    total: Math.round(total * 100) / 100,
+    count,
+  };
+}
+
+/**
  * Calculate Total Paid Till Date (all paid EMIs + interest)
  */
 export function calculateTotalPaidToDate(loans: LoanWithAmortization[]): number {
