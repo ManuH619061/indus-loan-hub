@@ -52,29 +52,40 @@ export default function LenderLogoUpload({
 
     setUploading(true);
     try {
-      const fileExt = file.name.split(".").pop();
+      const fileExt = file.name.split(".").pop()?.toLowerCase() || 'png';
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = fileName;
 
-      const { error: uploadError } = await supabase.storage
+      console.log("Uploading file:", fileName, "Size:", file.size);
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from("lender-logos")
-        .upload(filePath, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Storage upload error:", uploadError);
+        throw uploadError;
+      }
+
+      console.log("Upload successful:", uploadData);
 
       const { data: { publicUrl } } = supabase.storage
         .from("lender-logos")
-        .getPublicUrl(filePath);
+        .getPublicUrl(fileName);
+
+      console.log("Public URL:", publicUrl);
 
       onLogoChange(publicUrl);
       setUrlInput(publicUrl);
       toast({ title: "Logo uploaded successfully!" });
     } catch (error: any) {
-      console.error("Upload error:", error);
+      console.error("Upload error details:", error);
       toast({
         variant: "destructive",
         title: "Upload failed",
-        description: error.message,
+        description: error.message || "Could not upload image. Please try again.",
       });
     } finally {
       setUploading(false);

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,13 @@ export default function LenderAvatar({
   size = "md",
   className 
 }: LenderAvatarProps) {
+  const [imageError, setImageError] = useState(false);
+  
+  // Reset error state when logoUrl changes
+  useEffect(() => {
+    setImageError(false);
+  }, [logoUrl]);
+  
   const initials = name
     .split(" ")
     .map((word) => word[0])
@@ -27,13 +35,16 @@ export default function LenderAvatar({
     .toUpperCase()
     .slice(0, 2);
 
+  const showImage = logoUrl && !imageError;
+
   return (
     <Avatar className={cn(sizeClasses[size], className)}>
-      {logoUrl && (
+      {showImage && (
         <AvatarImage 
           src={logoUrl} 
           alt={name} 
           className="object-contain"
+          onError={() => setImageError(true)}
         />
       )}
       <AvatarFallback className="bg-primary/10 text-primary font-medium">
