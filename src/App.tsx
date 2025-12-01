@@ -39,6 +39,7 @@ import LoanComparison from "./pages/LoanComparison";
 import EMICalendar from "./pages/EMICalendar";
 import InstallApp from "./pages/InstallApp";
 import Settings from "./pages/Settings";
+import BackupManager from "./pages/BackupManager";
 import BudgetAIAdvice from "./pages/ai/BudgetAIAdvice";
 import ExpenseAIAdvice from "./pages/ai/ExpenseAIAdvice";
 import LoanEMIAIAdvice from "./pages/ai/LoanEMIAIAdvice";
