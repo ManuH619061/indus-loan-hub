@@ -141,9 +141,9 @@ export default function Layout({ children }: LayoutProps) {
   const { user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    banking: true,
-    loans: true,
-    budget: true,
+    banking: false,
+    loans: false,
+    budget: false,
     ai: false,
   });
 
@@ -152,10 +152,26 @@ export default function Layout({ children }: LayoutProps) {
   useSwipeToOpen(openDrawer);
 
   const toggleSection = (key: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    setExpandedSections(prev => {
+      const isMobile = window.innerWidth < 768;
+      if (isMobile) {
+        // On mobile, only one section open at a time
+        const newState: Record<string, boolean> = {
+          banking: false,
+          loans: false,
+          budget: false,
+          ai: false,
+        };
+        newState[key] = !prev[key];
+        return newState;
+      } else {
+        // On desktop, allow multiple sections open
+        return {
+          ...prev,
+          [key]: !prev[key]
+        };
+      }
+    });
   };
 
   const handleSignOut = async () => {
@@ -321,22 +337,39 @@ export default function Layout({ children }: LayoutProps) {
               className="w-[85vw] max-w-[320px] p-0 border-r-0"
             >
               <div className="flex flex-col h-full bg-card">
-                {/* Drawer Header */}
-                <div className="flex items-center justify-between p-5 border-b bg-muted/30">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-gradient-primary rounded-xl">
-                      <Wallet className="h-7 w-7 text-primary-foreground" />
+                {/* Drawer Header - User Profile */}
+                <div className="p-5 border-b bg-gradient-to-br from-primary/5 to-primary/10">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-primary rounded-xl">
+                        <Wallet className="h-6 w-6 text-primary-foreground" />
+                      </div>
+                      <span className="font-bold text-lg">Loan Tracker</span>
                     </div>
-                    <span className="font-bold text-xl">Loan Tracker</span>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-10 w-10 touch-target"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-11 w-11 touch-target"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <X className="h-6 w-6" />
-                  </Button>
+                  
+                  {/* User Info */}
+                  <div className="flex items-center gap-3 px-2">
+                    <div className="h-12 w-12 rounded-full bg-gradient-primary flex items-center justify-center text-primary-foreground font-semibold text-lg">
+                      {user?.email?.charAt(0).toUpperCase() || "U"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">
+                        {user?.user_metadata?.name || "User"}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {user?.email}
+                      </p>
+                    </div>
+                  </div>
                 </div>
                 
                 {/* Drawer Navigation */}
@@ -346,10 +379,6 @@ export default function Layout({ children }: LayoutProps) {
 
                 {/* Drawer Footer */}
                 <div className="p-4 border-t bg-muted/30">
-                  <div className="mb-3 px-2">
-                    <p className="text-sm text-muted-foreground">Signed in as</p>
-                    <p className="text-base font-medium truncate">{user?.email}</p>
-                  </div>
                   <Button 
                     variant="outline" 
                     className="w-full h-12 text-base touch-target" 
