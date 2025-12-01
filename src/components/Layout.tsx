@@ -80,6 +80,29 @@ interface LayoutProps {
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { 
+    name: "Bank Manager", 
+    key: "banking",
+    icon: Building2,
+    children: [
+      { name: "Bank Accounts", href: "/banking/accounts", icon: Building2 },
+      { name: "BRS Report", href: "/banking/brs-report", icon: BarChart3 },
+      { name: "Transactions", href: "/expenses", icon: Receipt },
+    ]
+  },
+  { 
+    name: "Loan Manager", 
+    key: "loans",
+    icon: Wallet,
+    children: [
+      { name: "Loans", href: "/loans", icon: Wallet },
+      { name: "Lenders", href: "/lenders", icon: Building2 },
+      { name: "Payments", href: "/payments", icon: CreditCard },
+      { name: "EMI Calendar", href: "/emi-calendar", icon: CalendarDays },
+      { name: "Loan & Lender Comparison", href: "/loan-comparison", icon: Scale },
+      { name: "Debt Payoff Calculator", href: "/budget/debt-optimizer", icon: Scale },
+    ]
+  },
+  { 
     name: "Budget Manager", 
     key: "budget",
     icon: TrendingUp,
@@ -89,29 +112,21 @@ const navigation = [
       { name: "Budget History", href: "/budget-history", icon: BarChart3 },
       { name: "Future Cash-Flow", href: "/budget/future-cashflow", icon: TrendingUp },
       { name: "Savings & Goals", href: "/budget/savings-goals", icon: TrendingUp },
-      { name: "Debt Payoff Calculator", href: "/budget/debt-optimizer", icon: Scale },
       { name: "Budget Reports", href: "/budget/reports", icon: FileText },
     ]
   },
   { 
-    name: "Bank Manager", 
-    key: "banking",
-    icon: Building2,
+    name: "AI Advice Manager", 
+    key: "ai",
+    icon: FileText,
     children: [
-      { name: "Bank Accounts", href: "/banking/accounts", icon: Building2 },
-      { name: "Reconciliation", href: "/banking/reconcile", icon: Scale },
-      { name: "Automation Rules", href: "/banking/rules", icon: FileText },
-      { name: "BRS Report", href: "/banking/brs-report", icon: BarChart3 },
-      { name: "Transactions", href: "/expenses", icon: Receipt },
+      { name: "AI Insights", href: "/insights", icon: FileText },
+      { name: "Budget AI Advice", href: "/ai/budget-advice", icon: TrendingUp },
+      { name: "Expense AI Advice", href: "/ai/expense-advice", icon: Receipt },
+      { name: "Loan & EMI AI Advice", href: "/ai/loan-advice", icon: Wallet },
     ]
   },
-  { name: "Loans", href: "/loans", icon: Wallet },
-  { name: "Payments", href: "/payments", icon: CreditCard },
-  { name: "EMI Calendar", href: "/emi-calendar", icon: CalendarDays },
-  { name: "Lenders", href: "/lenders", icon: Building2 },
-  { name: "Loan Comparison", href: "/loan-comparison", icon: Scale },
   { name: "Financial Insights", href: "/financial-insights", icon: BarChart3 },
-  { name: "AI Insights", href: "/insights", icon: FileText },
   { name: "Documents", href: "/documents", icon: FileText },
 ];
 
@@ -121,8 +136,10 @@ export default function Layout({ children }: LayoutProps) {
   const { user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    budget: true,
     banking: true,
+    loans: true,
+    budget: true,
+    ai: false,
   });
 
   // Enable swipe-from-left-edge to open drawer
