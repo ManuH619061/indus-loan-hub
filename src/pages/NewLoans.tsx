@@ -244,9 +244,12 @@ export default function NewLoans() {
         const nextDue = unpaidRows[0]?.due_on || null;
         const nextEMI = unpaidRows[0]?.scheduled_emi || 0;
         
+        // Use outstandingTotal (principal + interest) for display
         return { 
           ...loan, 
-          outstanding: stats.outstandingPrincipal, 
+          outstanding: stats.outstandingTotal, 
+          outstandingPrincipal: stats.outstandingPrincipal,
+          outstandingInterest: stats.outstandingInterest,
           emisPaid: stats.emisPaid,
           emisPending: stats.emisPending,
           nextDue, 
