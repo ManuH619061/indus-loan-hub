@@ -825,6 +825,7 @@ export type Database = {
           notes: string | null
           paid_on: string
           payment_type: Database["public"]["Enums"]["payment_type"]
+          receipt_url: string | null
           reference: string | null
           source: Database["public"]["Enums"]["payment_source"]
           suggestion_used: string | null
@@ -843,6 +844,7 @@ export type Database = {
           notes?: string | null
           paid_on: string
           payment_type?: Database["public"]["Enums"]["payment_type"]
+          receipt_url?: string | null
           reference?: string | null
           source?: Database["public"]["Enums"]["payment_source"]
           suggestion_used?: string | null
@@ -861,6 +863,7 @@ export type Database = {
           notes?: string | null
           paid_on?: string
           payment_type?: Database["public"]["Enums"]["payment_type"]
+          receipt_url?: string | null
           reference?: string | null
           source?: Database["public"]["Enums"]["payment_source"]
           suggestion_used?: string | null
