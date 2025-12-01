@@ -6,63 +6,88 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/currency";
-import { Plus, Edit2, Trash2, Search, Calendar, Loader2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Search, Settings, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import FadeInStagger from "@/components/FadeInStagger";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--destructive))'];
 
-const CATEGORIES = [
-  "Food", "Transport", "Shopping", "Eating Out", "Travel", "Entertainment",
-  "Healthcare", "Education", "Bills", "Rent", "Insurance", "EMI", "Other"
-];
-
-interface Expense {
+interface ExpenseGroup {
   id: string;
-  transaction_date: string;
-  narration: string;
-  debit: number;
-  category: string;
-  subcategory?: string;
-  notes?: string;
-  bank_type: string;
+  name: string;
+  icon: string;
+  color: string;
+}
+
+interface ExpenseSubgroup {
+  id: string;
+  group_id: string;
+  name: string;
+  icon: string;
+  requires_location: boolean;
+  requires_travel_mode: boolean;
+}
+
+interface MonthlyExpense {
+  id: string;
+  expense_date: string;
+  description: string;
+  group_id: string;
+  subgroup_id: string;
+  amount: number;
+  paid_from: string;
   bank_account_id?: string;
+  from_location?: string;
+  to_location?: string;
+  travel_mode?: string;
+  tags?: string[];
+  notes?: string;
 }
 
 interface BankAccount {
   id: string;
   bank_name: string;
   account_number_masked: string;
-  account_type: string;
 }
 
 export default function MonthlyExpenses() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [expenses, setExpenses] = useState<MonthlyExpense[]>([]);
+  const [groups, setGroups] = useState<ExpenseGroup[]>([]);
+  const [subgroups, setSubgroups] = useState<ExpenseSubgroup[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
-  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [filteredExpenses, setFilteredExpenses] = useState<MonthlyExpense[]>([]);
+  
+  const [groupFilter, setGroupFilter] = useState<string>("all");
+  const [subgroupFilter, setSubgroupFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
 
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [openExpenseDialog, setOpenExpenseDialog] = useState(false);
+  const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<MonthlyExpense | null>(null);
+
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     description: "",
-    category: "Other",
+    group_id: "",
+    subgroup_id: "",
     amount: "",
-    paidFrom: "cash",
+    paid_from: "Cash",
+    bank_account_id: "",
+    from_location: "",
+    to_location: "",
+    travel_mode: "",
     tags: "",
     notes: "",
   });
@@ -75,22 +100,37 @@ export default function MonthlyExpenses() {
 
   useEffect(() => {
     filterExpenses();
-  }, [expenses, categoryFilter, searchTerm]);
+  }, [expenses, groupFilter, subgroupFilter, searchTerm]);
 
   const fetchData = async () => {
     if (!user) return;
     setLoading(true);
     try {
+      // Fetch expense groups
+      const { data: groupsData } = await supabase
+        .from("expense_groups")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("display_order");
+      setGroups(groupsData || []);
+
+      // Fetch expense subgroups
+      const { data: subgroupsData } = await supabase
+        .from("expense_subgroups")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("display_order");
+      setSubgroups(subgroupsData || []);
+
       // Fetch bank accounts
       const { data: accountsData } = await supabase
         .from("bank_accounts")
         .select("*")
         .eq("user_id", user.id)
         .eq("is_active", true);
-
       setBankAccounts(accountsData || []);
 
-      // Fetch expenses from transactions table
+      // Fetch expenses
       const startDate = `${selectedMonth}-01`;
       const endDate = new Date(
         parseInt(selectedMonth.split('-')[0]),
@@ -99,17 +139,16 @@ export default function MonthlyExpenses() {
       ).toISOString().split('T')[0];
 
       const { data: expensesData } = await supabase
-        .from("transactions")
+        .from("monthly_expenses")
         .select("*")
         .eq("user_id", user.id)
-        .gte("transaction_date", startDate)
-        .lte("transaction_date", endDate)
-        .gt("debit", 0)
-        .order("transaction_date", { ascending: false });
+        .gte("expense_date", startDate)
+        .lte("expense_date", endDate)
+        .order("expense_date", { ascending: false });
 
       setExpenses(expensesData || []);
     } catch (error) {
-      toast.error("Failed to fetch expenses");
+      toast.error("Failed to fetch data");
     } finally {
       setLoading(false);
     }
@@ -118,13 +157,17 @@ export default function MonthlyExpenses() {
   const filterExpenses = () => {
     let filtered = [...expenses];
 
-    if (categoryFilter !== "all") {
-      filtered = filtered.filter(e => e.category === categoryFilter);
+    if (groupFilter !== "all") {
+      filtered = filtered.filter(e => e.group_id === groupFilter);
+    }
+
+    if (subgroupFilter !== "all") {
+      filtered = filtered.filter(e => e.subgroup_id === subgroupFilter);
     }
 
     if (searchTerm) {
       filtered = filtered.filter(e =>
-        e.narration.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        e.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         e.notes?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -132,16 +175,21 @@ export default function MonthlyExpenses() {
     setFilteredExpenses(filtered);
   };
 
-  const handleOpenDialog = (expense?: Expense) => {
+  const handleOpenExpenseDialog = (expense?: MonthlyExpense) => {
     if (expense) {
       setEditingExpense(expense);
       setFormData({
-        date: expense.transaction_date,
-        description: expense.narration,
-        category: expense.category,
-        amount: expense.debit.toString(),
-        paidFrom: expense.bank_account_id || "cash",
-        tags: expense.subcategory || "",
+        date: expense.expense_date,
+        description: expense.description,
+        group_id: expense.group_id,
+        subgroup_id: expense.subgroup_id,
+        amount: expense.amount.toString(),
+        paid_from: expense.paid_from,
+        bank_account_id: expense.bank_account_id || "",
+        from_location: expense.from_location || "",
+        to_location: expense.to_location || "",
+        travel_mode: expense.travel_mode || "",
+        tags: expense.tags?.join(", ") || "",
         notes: expense.notes || "",
       });
     } else {
@@ -149,80 +197,80 @@ export default function MonthlyExpenses() {
       setFormData({
         date: new Date().toISOString().split('T')[0],
         description: "",
-        category: "Other",
+        group_id: groups[0]?.id || "",
+        subgroup_id: "",
         amount: "",
-        paidFrom: "cash",
+        paid_from: "Cash",
+        bank_account_id: "",
+        from_location: "",
+        to_location: "",
+        travel_mode: "",
         tags: "",
         notes: "",
       });
     }
-    setOpenDialog(true);
+    setOpenExpenseDialog(true);
   };
 
   const handleSaveExpense = async () => {
-    if (!user || !formData.amount || !formData.description) {
+    if (!user || !formData.amount || !formData.description || !formData.group_id) {
       toast.error("Please fill in all required fields");
       return;
     }
 
     try {
       const amount = parseFloat(formData.amount);
-      const bankAccountId = formData.paidFrom !== "cash" ? formData.paidFrom : null;
+      const tagsArray = formData.tags.split(",").map(t => t.trim()).filter(Boolean);
+
+      const expenseData = {
+        user_id: user.id,
+        expense_date: formData.date,
+        description: formData.description,
+        group_id: formData.group_id,
+        subgroup_id: formData.subgroup_id || null,
+        amount,
+        paid_from: formData.paid_from,
+        bank_account_id: formData.bank_account_id || null,
+        from_location: formData.from_location || null,
+        to_location: formData.to_location || null,
+        travel_mode: formData.travel_mode || null,
+        tags: tagsArray.length > 0 ? tagsArray : null,
+        notes: formData.notes || null,
+      };
 
       if (editingExpense) {
-        // Update existing expense
         const { error } = await supabase
-          .from("transactions")
-          .update({
-            transaction_date: formData.date,
-            narration: formData.description,
-            category: formData.category,
-            subcategory: formData.tags || null,
-            debit: amount,
-            notes: formData.notes,
-            bank_type: bankAccountId ? "Bank" : "Cash",
-          })
+          .from("monthly_expenses")
+          .update(expenseData)
           .eq("id", editingExpense.id);
 
         if (error) throw error;
         toast.success("Expense updated successfully");
       } else {
-        // Create new expense
-        const { error: txnError } = await supabase.from("transactions").insert({
-          user_id: user.id,
-          transaction_date: formData.date,
-          narration: formData.description,
-          debit: amount,
-          credit: 0,
-          category: formData.category,
-          subcategory: formData.tags || null,
-          notes: formData.notes,
-          bank_type: bankAccountId ? "Bank" : "Cash",
-        });
+        const { error } = await supabase
+          .from("monthly_expenses")
+          .insert(expenseData);
 
-        if (txnError) throw txnError;
+        if (error) throw error;
 
-        // If paid from bank account, also create bank statement entry
-        if (bankAccountId) {
-          const { error: bankError } = await supabase.from("bank_statement_entries").insert({
+        // If paid from bank account, create bank statement entry
+        if (formData.bank_account_id) {
+          await supabase.from("bank_statement_entries").insert({
             user_id: user.id,
-            bank_account_id: bankAccountId,
+            bank_account_id: formData.bank_account_id,
             transaction_date: formData.date,
             narration: formData.description,
             debit: amount,
-            credit: 0,
-            category: formData.category,
-            subcategory: formData.tags || null,
-            notes: formData.notes,
+            category: groups.find(g => g.id === formData.group_id)?.name || "Expense",
+            subcategory: subgroups.find(s => s.id === formData.subgroup_id)?.name,
+            notes: formData.notes || null,
           });
-
-          if (bankError) throw bankError;
         }
 
         toast.success("Expense added successfully");
       }
 
-      setOpenDialog(false);
+      setOpenExpenseDialog(false);
       fetchData();
     } catch (error: any) {
       toast.error("Failed to save expense");
@@ -230,12 +278,12 @@ export default function MonthlyExpenses() {
     }
   };
 
-  const handleDeleteExpense = async (expense: Expense) => {
+  const handleDeleteExpense = async (expense: MonthlyExpense) => {
     if (!confirm("Are you sure you want to delete this expense?")) return;
 
     try {
       const { error } = await supabase
-        .from("transactions")
+        .from("monthly_expenses")
         .delete()
         .eq("id", expense.id);
 
@@ -247,8 +295,8 @@ export default function MonthlyExpenses() {
           .from("bank_statement_entries")
           .delete()
           .eq("bank_account_id", expense.bank_account_id)
-          .eq("narration", expense.narration)
-          .eq("transaction_date", expense.transaction_date);
+          .eq("narration", expense.description)
+          .eq("transaction_date", expense.expense_date);
       }
 
       toast.success("Expense deleted successfully");
@@ -261,7 +309,8 @@ export default function MonthlyExpenses() {
   const getCategoryData = () => {
     const categoryTotals: Record<string, number> = {};
     filteredExpenses.forEach(e => {
-      categoryTotals[e.category] = (categoryTotals[e.category] || 0) + e.debit;
+      const groupName = groups.find(g => g.id === e.group_id)?.name || "Unknown";
+      categoryTotals[groupName] = (categoryTotals[groupName] || 0) + e.amount;
     });
 
     return Object.entries(categoryTotals)
@@ -269,22 +318,9 @@ export default function MonthlyExpenses() {
       .sort((a, b) => b.value - a.value);
   };
 
-  const getTrendData = () => {
-    const dailyTotals: Record<string, number> = {};
-    filteredExpenses.forEach(e => {
-      const date = e.transaction_date;
-      dailyTotals[date] = (dailyTotals[date] || 0) + e.debit;
-    });
-
-    return Object.entries(dailyTotals)
-      .map(([date, amount]) => ({ date, amount }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  };
-
+  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
   const categoryData = getCategoryData();
-  const trendData = getTrendData();
-  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.debit, 0);
-  const topCategories = categoryData.slice(0, 5);
+  const selectedSubgroup = subgroups.find(s => s.id === formData.subgroup_id);
 
   if (loading) {
     return (
@@ -299,12 +335,18 @@ export default function MonthlyExpenses() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold mb-2">Monthly Expenses</h1>
-          <p className="text-muted-foreground">Track and categorize your spending</p>
+          <p className="text-muted-foreground">Advanced expense tracking with categories and groups</p>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Expense
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setOpenCategoryDialog(true)}>
+            <Settings className="h-4 w-4 mr-2" />
+            Manage Categories
+          </Button>
+          <Button onClick={() => handleOpenExpenseDialog()}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Expense
+          </Button>
+        </div>
       </div>
 
       <FadeInStagger>
@@ -334,10 +376,10 @@ export default function MonthlyExpenses() {
               <CardTitle>Top Category</CardTitle>
             </CardHeader>
             <CardContent>
-              {topCategories.length > 0 ? (
+              {categoryData.length > 0 ? (
                 <>
-                  <div className="text-2xl font-bold">{topCategories[0].name}</div>
-                  <p className="text-sm text-muted-foreground mt-1">{formatINR(topCategories[0].value)}</p>
+                  <div className="text-2xl font-bold">{categoryData[0].name}</div>
+                  <p className="text-sm text-muted-foreground mt-1">{formatINR(categoryData[0].value)}</p>
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">No data yet</p>
@@ -346,89 +388,34 @@ export default function MonthlyExpenses() {
           </Card>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Category-wise Spending</CardTitle>
-              <CardDescription>Distribution of expenses by category</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {categoryData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={categoryData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="hsl(var(--primary))"
-                      dataKey="value"
-                    >
-                      {categoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: any) => formatINR(value)} />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                  No expense data available
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Top 5 Categories</CardTitle>
-              <CardDescription>Highest spending categories</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {topCategories.map((category, index) => (
-                  <div key={category.name}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">{category.name}</span>
-                      <span className="text-sm text-muted-foreground">{formatINR(category.value)}</span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full transition-all"
-                        style={{
-                          width: `${(category.value / totalExpenses) * 100}%`,
-                          backgroundColor: COLORS[index % COLORS.length],
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         <Card>
           <CardHeader>
-            <CardTitle>Daily Spending Trend</CardTitle>
-            <CardDescription>Track your spending over time</CardDescription>
+            <CardTitle>Category-wise Spending</CardTitle>
           </CardHeader>
           <CardContent>
-            {trendData.length > 0 ? (
+            {categoryData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="hsl(var(--primary))"
+                    dataKey="value"
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
                   <Tooltip formatter={(value: any) => formatINR(value)} />
-                  <Line type="monotone" dataKey="amount" stroke="hsl(var(--primary))" strokeWidth={2} />
-                </LineChart>
+                </PieChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                No trend data available
+                No expense data available
               </div>
             )}
           </CardContent>
@@ -442,14 +429,16 @@ export default function MonthlyExpenses() {
                 <CardDescription>View and manage your expenses</CardDescription>
               </div>
               <div className="flex gap-2">
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <Select value={groupFilter} onValueChange={setGroupFilter}>
                   <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by category" />
+                    <SelectValue placeholder="Filter by group" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {CATEGORIES.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    <SelectItem value="all">All Groups</SelectItem>
+                    {groups.map(group => (
+                      <SelectItem key={group.id} value={group.id}>
+                        {group.icon} {group.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -479,150 +468,214 @@ export default function MonthlyExpenses() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredExpenses.map((expense) => (
-                    <TableRow key={expense.id}>
-                      <TableCell>{new Date(expense.transaction_date).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <div className="font-medium">{expense.narration}</div>
-                        {expense.notes && (
-                          <div className="text-sm text-muted-foreground">{expense.notes}</div>
-                        )}
-                        {expense.subcategory && (
-                          <Badge variant="outline" className="mt-1">{expense.subcategory}</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{expense.category}</Badge>
-                      </TableCell>
-                      <TableCell>{expense.bank_type}</TableCell>
-                      <TableCell className="text-right font-medium text-destructive">
-                        {formatINR(expense.debit)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenDialog(expense)}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteExpense(expense)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredExpenses.map((expense) => {
+                    const group = groups.find(g => g.id === expense.group_id);
+                    const subgroup = subgroups.find(s => s.id === expense.subgroup_id);
+                    
+                    return (
+                      <TableRow key={expense.id}>
+                        <TableCell>{new Date(expense.expense_date).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{subgroup?.icon || group?.icon || "📄"}</span>
+                            <div>
+                              <div className="font-medium">{expense.description}</div>
+                              {expense.notes && (
+                                <div className="text-sm text-muted-foreground">{expense.notes}</div>
+                              )}
+                              {expense.tags && expense.tags.length > 0 && (
+                                <div className="flex gap-1 mt-1">
+                                  {expense.tags.map((tag, i) => (
+                                    <Badge key={i} variant="outline">{tag}</Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{group?.name}</div>
+                            {subgroup && (
+                              <div className="text-sm text-muted-foreground">{subgroup.name}</div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{expense.paid_from}</TableCell>
+                        <TableCell className="text-right font-semibold">{formatINR(expense.amount)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenExpenseDialog(expense)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteExpense(expense)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
-            {filteredExpenses.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                No expenses found. Add your first expense to get started.
-              </div>
-            )}
           </CardContent>
         </Card>
       </FadeInStagger>
 
-      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+      {/* Add/Edit Expense Dialog */}
+      <Dialog open={openExpenseDialog} onOpenChange={setOpenExpenseDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingExpense ? "Edit Expense" : "Add New Expense"}</DialogTitle>
-            <DialogDescription>
-              {editingExpense ? "Update expense details" : "Enter expense details to track your spending"}
-            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="date">Date *</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount *</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  placeholder="0.00"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description *</Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Date</Label>
               <Input
-                id="description"
-                placeholder="e.g., Grocery shopping at Store"
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Amount*</Label>
+              <Input
+                type="number"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                placeholder="1000"
+              />
+            </div>
+            <div className="col-span-2">
+              <Label>Description*</Label>
+              <Input
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="e.g., Groceries, Taxi fare"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="category">Category *</Label>
-                <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="paidFrom">Paid From *</Label>
-                <Select value={formData.paidFrom} onValueChange={(value) => setFormData({ ...formData, paidFrom: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    {bankAccounts.map(account => (
-                      <SelectItem key={account.id} value={account.id}>
-                        {account.bank_name} - {account.account_number_masked}
+            <div>
+              <Label>Group*</Label>
+              <Select
+                value={formData.group_id}
+                onValueChange={(value) => setFormData({ ...formData, group_id: value, subgroup_id: "" })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups.map(group => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.icon} {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Subgroup</Label>
+              <Select
+                value={formData.subgroup_id}
+                onValueChange={(value) => setFormData({ ...formData, subgroup_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select subgroup" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subgroups
+                    .filter(s => s.group_id === formData.group_id)
+                    .map(subgroup => (
+                      <SelectItem key={subgroup.id} value={subgroup.id}>
+                        {subgroup.icon} {subgroup.name}
                       </SelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="tags">Tags (Optional)</Label>
+            <div>
+              <Label>Paid From</Label>
+              <Select
+                value={formData.paid_from}
+                onValueChange={(value) => setFormData({ ...formData, paid_from: value, bank_account_id: value === "Cash" ? "" : value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cash">💵 Cash</SelectItem>
+                  {bankAccounts.map(account => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.bank_name} - {account.account_number_masked}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Tags (comma-separated)</Label>
               <Input
-                id="tags"
-                placeholder="e.g., Business, Personal"
                 value={formData.tags}
                 onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                placeholder="food, essential"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes (Optional)</Label>
+            
+            {selectedSubgroup?.requires_location && (
+              <>
+                <div>
+                  <Label>From Location</Label>
+                  <Input
+                    value={formData.from_location}
+                    onChange={(e) => setFormData({ ...formData, from_location: e.target.value })}
+                    placeholder="Home"
+                  />
+                </div>
+                <div>
+                  <Label>To Location</Label>
+                  <Input
+                    value={formData.to_location}
+                    onChange={(e) => setFormData({ ...formData, to_location: e.target.value })}
+                    placeholder="Office"
+                  />
+                </div>
+              </>
+            )}
+
+            {selectedSubgroup?.requires_travel_mode && (
+              <div>
+                <Label>Travel Mode/App</Label>
+                <Input
+                  value={formData.travel_mode}
+                  onChange={(e) => setFormData({ ...formData, travel_mode: e.target.value })}
+                  placeholder="Uber, Ola, Auto, etc."
+                />
+              </div>
+            )}
+
+            <div className="col-span-2">
+              <Label>Notes</Label>
               <Textarea
-                id="notes"
-                placeholder="Add any additional notes..."
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                placeholder="Additional notes"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setOpenExpenseDialog(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleSaveExpense}>
-              {editingExpense ? "Update" : "Add"} Expense
+              Save Expense
             </Button>
           </DialogFooter>
         </DialogContent>

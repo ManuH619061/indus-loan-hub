@@ -475,6 +475,89 @@ export type Database = {
           },
         ]
       }
+      expense_groups: {
+        Row: {
+          color: string | null
+          created_at: string
+          display_order: number | null
+          icon: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          display_order?: number | null
+          icon?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          display_order?: number | null
+          icon?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      expense_subgroups: {
+        Row: {
+          color: string | null
+          created_at: string
+          display_order: number | null
+          group_id: string
+          icon: string | null
+          id: string
+          name: string
+          requires_location: boolean | null
+          requires_travel_mode: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          display_order?: number | null
+          group_id: string
+          icon?: string | null
+          id?: string
+          name: string
+          requires_location?: boolean | null
+          requires_travel_mode?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          display_order?: number | null
+          group_id?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          requires_location?: boolean | null
+          requires_travel_mode?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_subgroups_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "expense_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goals: {
         Row: {
           created_at: string
@@ -521,6 +604,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      income_sources: {
+        Row: {
+          amount: number
+          created_at: string
+          end_month: string | null
+          frequency: string
+          id: string
+          is_active: boolean | null
+          name: string
+          start_month: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          end_month?: string | null
+          frequency: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          start_month: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          end_month?: string | null
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          start_month?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       lenders: {
         Row: {
@@ -813,6 +935,95 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_expenses: {
+        Row: {
+          amount: number
+          bank_account_id: string | null
+          created_at: string
+          description: string
+          expense_date: string
+          from_location: string | null
+          group_id: string | null
+          id: string
+          notes: string | null
+          paid_from: string
+          subgroup_id: string | null
+          tags: string[] | null
+          to_location: string | null
+          transaction_id: string | null
+          travel_mode: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          bank_account_id?: string | null
+          created_at?: string
+          description: string
+          expense_date: string
+          from_location?: string | null
+          group_id?: string | null
+          id?: string
+          notes?: string | null
+          paid_from: string
+          subgroup_id?: string | null
+          tags?: string[] | null
+          to_location?: string | null
+          transaction_id?: string | null
+          travel_mode?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string | null
+          created_at?: string
+          description?: string
+          expense_date?: string
+          from_location?: string | null
+          group_id?: string | null
+          id?: string
+          notes?: string | null
+          paid_from?: string
+          subgroup_id?: string | null
+          tags?: string[] | null
+          to_location?: string | null
+          transaction_id?: string | null
+          travel_mode?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_expenses_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_expenses_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "expense_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_expenses_subgroup_id_fkey"
+            columns: ["subgroup_id"]
+            isOneToOne: false
+            referencedRelation: "expense_subgroups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_expenses_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -1048,6 +1259,81 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      salary_settings: {
+        Row: {
+          base_salary: number
+          created_at: string
+          id: string
+          increment_month: number
+          increment_type: string
+          increment_value: number
+          last_increment_year: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          base_salary: number
+          created_at?: string
+          id?: string
+          increment_month: number
+          increment_type: string
+          increment_value: number
+          last_increment_year?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          base_salary?: number
+          created_at?: string
+          id?: string
+          increment_month?: number
+          increment_type?: string
+          increment_value?: number
+          last_increment_year?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      savings_goals: {
+        Row: {
+          created_at: string
+          current_amount: number | null
+          id: string
+          is_active: boolean | null
+          monthly_contribution: number | null
+          name: string
+          target_amount: number
+          target_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_amount?: number | null
+          id?: string
+          is_active?: boolean | null
+          monthly_contribution?: number | null
+          name: string
+          target_amount: number
+          target_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_amount?: number | null
+          id?: string
+          is_active?: boolean | null
+          monthly_contribution?: number | null
+          name?: string
+          target_amount?: number
+          target_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       tags: {
         Row: {
