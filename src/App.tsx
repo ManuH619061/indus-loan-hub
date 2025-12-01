@@ -28,7 +28,7 @@ import BudgetReports from "./pages/budget/BudgetReports";
 import DebtPayoffCalculator from "./pages/budget/DebtPayoffCalculator";
 import CategoryManager from "./pages/budget/CategoryManager";
 import BudgetReportsPage from "./pages/budget/BudgetReportsPage";
-import BankStatementImport from "./pages/BankStatementImport";
+import BankStatementImport from "./pages/banking/BankStatementImport";
 import BankAccountsDashboard from "./pages/banking/BankAccountsDashboard";
 import Reconciliation from "./pages/banking/Reconciliation";
 import BankRules from "./pages/banking/BankRules";
@@ -71,6 +71,7 @@ function AnimatedRoutes() {
         <Route path="/budget/reports" element={<ProtectedRoute><Layout><PageTransition><BudgetReports /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/banking/accounts" element={<ProtectedRoute><Layout><PageTransition><BankAccountsDashboard /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/banking/add-account" element={<ProtectedRoute><Layout><PageTransition><AddBankAccount /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/banking/import/:accountId" element={<ProtectedRoute><Layout><PageTransition><BankStatementImport /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/banking/reconcile" element={<ProtectedRoute><Layout><PageTransition><Reconciliation /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/banking/reconcile/:accountId" element={<ProtectedRoute><Layout><PageTransition><Reconciliation /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/banking/rules" element={<ProtectedRoute><Layout><PageTransition><BankRules /></PageTransition></Layout></ProtectedRoute>} />
