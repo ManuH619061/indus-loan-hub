@@ -18,6 +18,7 @@ import Lenders from "./pages/Lenders";
 import LenderDetail from "./pages/LenderDetail";
 import Documents from "./pages/Documents";
 import NewInsights from "./pages/NewInsights";
+import FinancialInsights from "./pages/FinancialInsights";
 import BudgetPlanner from "./pages/BudgetPlanner";
 import BudgetHistory from "./pages/BudgetHistory";
 import MonthlyExpenses from "./pages/budget/MonthlyExpenses";
@@ -78,6 +79,7 @@ function AnimatedRoutes() {
         <Route path="/loan-comparison" element={<ProtectedRoute><Layout><PageTransition><LoanComparison /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/emi-calendar" element={<ProtectedRoute><Layout><PageTransition><EMICalendar /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/insights" element={<ProtectedRoute><Layout><PageTransition><NewInsights /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/financial-insights" element={<ProtectedRoute><Layout><PageTransition><FinancialInsights /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/documents" element={<ProtectedRoute><Layout><PageTransition><Documents /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
