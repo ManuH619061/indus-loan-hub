@@ -16,6 +16,7 @@ import QuickPaySheet from "@/components/QuickPaySheet";
 import FadeInStagger, { FadeInStaggerItem } from "@/components/FadeInStagger";
 import { deleteLoan } from "@/lib/loan-service";
 import LenderAvatar from "@/components/lenders/LenderAvatar";
+import { calculateLoanStatsFromPayments } from "@/lib/loan-calculations";
 
 interface LoanCardProps {
   loan: any;
@@ -188,6 +189,7 @@ export default function NewLoans() {
         .channel("loans-list-changes")
         .on("postgres_changes", { event: "*", schema: "public", table: "loans" }, () => fetchLoans())
         .on("postgres_changes", { event: "*", schema: "public", table: "amortization_rows" }, () => fetchLoans())
+        .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => fetchLoans())
         .subscribe();
 
       return () => {
@@ -205,12 +207,51 @@ export default function NewLoans() {
 
       if (error) throw error;
 
+      // Fetch all payments for these loans
+      const loanIds = data?.map((l) => l.id) || [];
+      const { data: allPayments } = await supabase
+        .from("payments")
+        .select("*")
+        .in("loan_id", loanIds);
+
+      // Group payments by loan_id
+      const paymentsByLoan = new Map<string, any[]>();
+      (allPayments || []).forEach((p: any) => {
+        const existing = paymentsByLoan.get(p.loan_id) || [];
+        existing.push(p);
+        paymentsByLoan.set(p.loan_id, existing);
+      });
+
       const loansWithStats = data?.map((loan) => {
+        const loanPayments = paymentsByLoan.get(loan.id) || [];
+        
+        // Calculate outstanding based on actual payments
+        const stats = calculateLoanStatsFromPayments(
+          {
+            id: loan.id,
+            principal_amount: loan.principal_amount,
+            interest_rate_apy: loan.interest_rate_apy,
+            tenure_months: loan.tenure_months,
+            disbursed_on: loan.disbursed_on,
+            due_day: loan.due_day,
+            rate_type: loan.rate_type,
+            emi_amount: loan.emi_amount,
+          },
+          loanPayments
+        );
+        
         const unpaidRows = loan.amortization_rows?.filter((row: any) => !row.is_paid) || [];
-        const outstanding = unpaidRows[0]?.closing_principal || 0;
         const nextDue = unpaidRows[0]?.due_on || null;
         const nextEMI = unpaidRows[0]?.scheduled_emi || 0;
-        return { ...loan, outstanding, nextDue, nextEMI };
+        
+        return { 
+          ...loan, 
+          outstanding: stats.outstandingPrincipal, 
+          emisPaid: stats.emisPaid,
+          emisPending: stats.emisPending,
+          nextDue, 
+          nextEMI 
+        };
       });
 
       setLoans(loansWithStats || []);

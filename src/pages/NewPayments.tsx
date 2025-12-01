@@ -17,6 +17,7 @@ import { ChartContainer } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import LenderAvatar from "@/components/lenders/LenderAvatar";
+import { syncAmortizationWithPayments } from "@/lib/loan-calculations";
 
 interface PaymentFormData {
   id?: string;
@@ -238,8 +239,20 @@ export default function NewPayments() {
   const handleDelete = async () => {
     if (!selectedPayment) return;
     try {
+      const loanId = selectedPayment.loan_id;
+      
+      // Delete the payment
       const { error } = await supabase.from("payments").delete().eq("id", selectedPayment.id);
       if (error) throw error;
+
+      // Fetch remaining payments for this loan and sync amortization
+      const { data: remainingPayments } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("loan_id", loanId);
+
+      // Sync amortization rows based on remaining payments
+      await syncAmortizationWithPayments(loanId, remainingPayments || [], supabase);
 
       toast({ title: "Payment deleted successfully" });
       setDeleteDialogOpen(false);
