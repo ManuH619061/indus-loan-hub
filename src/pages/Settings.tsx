@@ -39,6 +39,7 @@ export default function Settings() {
     name: "",
     email: "",
     monthly_income: 0,
+    display_mode: "auto" as "auto" | "mobile" | "desktop",
   });
 
   // Notification settings
@@ -77,6 +78,7 @@ export default function Settings() {
           name: profileData.name || "",
           email: profileData.email || user.email || "",
           monthly_income: profileData.monthly_income || 0,
+          display_mode: (profileData.display_mode as "auto" | "mobile" | "desktop") || "auto",
         });
       }
     } catch (error) {
@@ -95,6 +97,7 @@ export default function Settings() {
         .update({
           name: profile.name,
           monthly_income: profile.monthly_income,
+          display_mode: profile.display_mode,
         })
         .eq("id", user.id);
 
@@ -322,6 +325,77 @@ export default function Settings() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1 flex-1">
+                      <Label>Display Mode</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Choose your preferred layout style
+                      </p>
+                    </div>
+                    <Select 
+                      value={profile.display_mode} 
+                      onValueChange={(value: "auto" | "mobile" | "desktop") => 
+                        setProfile({ ...profile, display_mode: value })
+                      }
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">
+                          <div className="space-y-1">
+                            <div className="font-medium">Auto</div>
+                            <div className="text-xs text-muted-foreground">
+                              Adapt to device size
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="mobile">
+                          <div className="space-y-1">
+                            <div className="font-medium">Mobile View</div>
+                            <div className="text-xs text-muted-foreground">
+                              Single column, touch-optimized
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="desktop">
+                          <div className="space-y-1">
+                            <div className="font-medium">Desktop View</div>
+                            <div className="text-xs text-muted-foreground">
+                              Sidebar with multi-column layout
+                            </div>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+                    <p className="text-sm font-medium">Current mode: {profile.display_mode === "auto" ? "Auto (adapts to screen size)" : profile.display_mode === "mobile" ? "Mobile View" : "Desktop View"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {profile.display_mode === "auto" && "Layout will automatically switch based on your device screen size."}
+                      {profile.display_mode === "mobile" && "Always use single-column touch-optimized layout, even on large screens."}
+                      {profile.display_mode === "desktop" && "Always show sidebar and multi-column layout, even on mobile devices."}
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveProfile} disabled={saving}>
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Preferences"
+                    )}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
