@@ -17,6 +17,7 @@ import { format, addMonths, startOfMonth, endOfMonth, isWithinInterval, differen
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from "recharts";
 import FadeInStagger, { FadeInStaggerItem } from "@/components/FadeInStagger";
+import { calculateLoanStatsFromPayments } from "@/lib/loan-calculations";
 
 interface DashboardStats {
   totalOutstanding: number;
@@ -94,6 +95,7 @@ export default function NewDashboard() {
 
   const fetchDashboardData = async () => {
     try {
+      // Fetch loans with amortization
       const { data: loans } = await supabase
         .from("loans")
         .select(`
@@ -104,6 +106,21 @@ export default function NewDashboard() {
         .eq("status", "ACTIVE");
 
       if (!loans) return;
+
+      // Fetch all EMI payments for active loans
+      const loanIds = loans.map((l: any) => l.id);
+      const { data: allPayments } = await supabase
+        .from("payments")
+        .select("*")
+        .in("loan_id", loanIds);
+
+      // Group payments by loan_id
+      const paymentsByLoan = new Map<string, any[]>();
+      (allPayments || []).forEach((p: any) => {
+        const existing = paymentsByLoan.get(p.loan_id) || [];
+        existing.push(p);
+        paymentsByLoan.set(p.loan_id, existing);
+      });
 
       let totalOut = 0;
       let totalRate = 0;
@@ -118,21 +135,31 @@ export default function NewDashboard() {
       const next30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
 
       loans.forEach((loan: any) => {
-        const unpaidRows = loan.amortization_rows?.filter((r: any) => !r.is_paid) || [];
-        const paidRows = loan.amortization_rows?.filter((r: any) => r.is_paid) || [];
+        const loanPayments = paymentsByLoan.get(loan.id) || [];
         
-        const outstanding = unpaidRows[0]?.closing_principal || 0;
-        totalOut += outstanding;
-        totalRate += loan.interest_rate_apy;
-
-        // Calculate paid principal
-        const paidPrincipal = paidRows.reduce((sum: number, r: any) => 
-          sum + (r.principal_component || 0), 0
+        // Calculate stats based on actual payments
+        const stats = calculateLoanStatsFromPayments(
+          {
+            id: loan.id,
+            principal_amount: loan.principal_amount,
+            interest_rate_apy: loan.interest_rate_apy,
+            tenure_months: loan.tenure_months,
+            disbursed_on: loan.disbursed_on,
+            due_day: loan.due_day,
+            rate_type: loan.rate_type,
+            emi_amount: loan.emi_amount,
+          },
+          loanPayments
         );
-        totalPaid += paidPrincipal;
-        totalRemaining += outstanding;
+        
+        totalOut += stats.outstandingPrincipal;
+        totalRate += loan.interest_rate_apy;
+        totalPaid += stats.totalPrincipalPaid;
+        totalRemaining += stats.outstandingPrincipal;
 
-        // Find upcoming EMIs
+        // Find upcoming EMIs from amortization rows
+        const unpaidRows = loan.amortization_rows?.filter((r: any) => !r.is_paid) || [];
+        
         unpaidRows.forEach((row: any) => {
           const dueDate = new Date(row.due_on);
           const daysUntilDue = differenceInDays(dueDate, today);
@@ -155,10 +182,10 @@ export default function NewDashboard() {
         });
 
         // Risk alerts
-        if (outstanding > loan.principal_amount * 0.8) {
+        if (stats.outstandingPrincipal > loan.principal_amount * 0.8) {
           alerts.push({
             type: "warning",
-            message: `${loan.loan_name} has high outstanding balance (${formatPercent((outstanding / loan.principal_amount) * 100, 0)} of principal)`,
+            message: `${loan.loan_name} has high outstanding balance (${formatPercent((stats.outstandingPrincipal / loan.principal_amount) * 100, 0)} of principal)`,
           });
         }
         if (loan.interest_rate_apy > 18) {

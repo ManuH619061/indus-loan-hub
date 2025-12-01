@@ -13,6 +13,7 @@ import {
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import AIDebtAdvisor from "@/components/AIDebtAdvisor";
+import { calculateLoanStatsFromPayments } from "@/lib/loan-calculations";
 
 export default function NewInsights() {
   const { user } = useAuth();
@@ -95,6 +96,21 @@ export default function NewInsights() {
         `)
         .eq("status", "ACTIVE");
 
+      // Fetch all EMI payments for these loans
+      const loanIds = loansData?.map((l: any) => l.id) || [];
+      const { data: loanPayments } = await supabase
+        .from("payments")
+        .select("*")
+        .in("loan_id", loanIds);
+
+      // Group payments by loan_id
+      const paymentsByLoan = new Map<string, any[]>();
+      (loanPayments || []).forEach((p: any) => {
+        const existing = paymentsByLoan.get(p.loan_id) || [];
+        existing.push(p);
+        paymentsByLoan.set(p.loan_id, existing);
+      });
+
       const threeMonthsAgo = new Date();
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
       
@@ -108,21 +124,40 @@ export default function NewInsights() {
         .select("*");
 
       setProfile(profileData);
-      setLoans(loansData || []);
       setPayments(paymentsData || []);
       setGoals(goalsData || []);
 
-      // Calculate metrics
+      // Calculate metrics based on actual payments
       const monthlyIncome = profileData?.monthly_income || 0;
       let totalMonthlyDebt = 0;
       let totalCreditUsed = 0;
       let totalCreditLimit = 0;
       const alerts: any[] = [];
 
-      loansData?.forEach((loan: any) => {
-        const unpaidRows = loan.amortization_rows?.filter((r: any) => !r.is_paid) || [];
-        const outstanding = unpaidRows[0]?.closing_principal || 0;
+      // Process loans with payment-based stats
+      const loansWithStats = loansData?.map((loan: any) => {
+        const payments = paymentsByLoan.get(loan.id) || [];
+        const stats = calculateLoanStatsFromPayments(
+          {
+            id: loan.id,
+            principal_amount: loan.principal_amount,
+            interest_rate_apy: loan.interest_rate_apy,
+            tenure_months: loan.tenure_months,
+            disbursed_on: loan.disbursed_on,
+            due_day: loan.due_day,
+            rate_type: loan.rate_type,
+            emi_amount: loan.emi_amount,
+          },
+          payments
+        );
         
+        return { ...loan, outstanding: stats.outstandingPrincipal };
+      }) || [];
+
+      setLoans(loansWithStats);
+
+      loansWithStats.forEach((loan: any) => {
+        const outstanding = loan.outstanding;
         totalMonthlyDebt += loan.emi_amount || 0;
 
         // Risk alerts
@@ -385,26 +420,21 @@ export default function NewInsights() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {loans.map((loan) => {
-                const unpaidRows = loan.amortization_rows?.filter((r: any) => !r.is_paid) || [];
-                const outstanding = unpaidRows[0]?.closing_principal || 0;
-
-                return (
-                  <div key={loan.id} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">{loan.loan_name}</p>
-                      <p className="text-sm font-semibold">{formatPercent(loan.interest_rate_apy, 1)}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Progress 
-                        value={Math.min((loan.interest_rate_apy / 20) * 100, 100)} 
-                        className="flex-1 h-2"
-                      />
-                      <span className="text-xs text-muted-foreground">{formatINR(outstanding)}</span>
-                    </div>
+              {loans.map((loan) => (
+                <div key={loan.id} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">{loan.loan_name}</p>
+                    <p className="text-sm font-semibold">{formatPercent(loan.interest_rate_apy, 1)}</p>
                   </div>
-                );
-              })}
+                  <div className="flex items-center gap-2">
+                    <Progress 
+                      value={Math.min((loan.interest_rate_apy / 20) * 100, 100)} 
+                      className="flex-1 h-2"
+                    />
+                    <span className="text-xs text-muted-foreground">{formatINR(loan.outstanding)}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -420,10 +450,7 @@ export default function NewInsights() {
         </CardHeader>
         <CardContent>
           <AIDebtAdvisor 
-            loans={loans.map(l => ({
-              ...l,
-              outstanding: l.amortization_rows?.filter((r: any) => !r.is_paid)[0]?.closing_principal || 0
-            }))} 
+            loans={loans} 
             monthlyIncome={financialMetrics.monthlyIncome}
             goals={goals}
           />

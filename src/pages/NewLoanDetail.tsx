@@ -11,6 +11,7 @@ import QuickPaySheet from "@/components/QuickPaySheet";
 import AIDebtAdvisor from "@/components/AIDebtAdvisor";
 import BulkEMIMarker from "@/components/BulkEMIMarker";
 import LenderAvatar from "@/components/lenders/LenderAvatar";
+import { calculateLoanStatsFromPayments, type LoanStats } from "@/lib/loan-calculations";
 
 export default function NewLoanDetail() {
   const { id } = useParams();
@@ -21,6 +22,8 @@ export default function NewLoanDetail() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
   const [showQuickPay, setShowQuickPay] = useState(false);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [loanStats, setLoanStats] = useState<LoanStats | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -47,6 +50,18 @@ export default function NewLoanDetail() {
             event: '*',
             schema: 'public',
             table: 'amortization_rows',
+            filter: `loan_id=eq.${id}`,
+          },
+          () => {
+            fetchLoanDetail();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'payments',
             filter: `loan_id=eq.${id}`,
           },
           () => {
@@ -83,6 +98,13 @@ export default function NewLoanDetail() {
 
       if (amortError) throw amortError;
 
+      // Fetch payments for this loan to calculate stats
+      const { data: paymentsData } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("loan_id", id)
+        .order("paid_on", { ascending: true });
+
       const { data: docsData } = await supabase
         .from("documents")
         .select("*")
@@ -97,8 +119,27 @@ export default function NewLoanDetail() {
 
       setLoan(loanData);
       setAmortization(amortData || []);
+      setPayments(paymentsData || []);
       setDocuments(docsData || []);
       setGoals(goalsData || []);
+
+      // Calculate loan stats based on actual payments
+      if (loanData) {
+        const stats = calculateLoanStatsFromPayments(
+          {
+            id: loanData.id,
+            principal_amount: loanData.principal_amount,
+            interest_rate_apy: loanData.interest_rate_apy,
+            tenure_months: loanData.tenure_months,
+            disbursed_on: loanData.disbursed_on,
+            due_day: loanData.due_day,
+            rate_type: loanData.rate_type,
+            emi_amount: loanData.emi_amount,
+          },
+          paymentsData || []
+        );
+        setLoanStats(stats);
+      }
     } catch (error) {
       console.error("Error fetching loan detail:", error);
     } finally {
@@ -124,10 +165,12 @@ export default function NewLoanDetail() {
     );
   }
 
-  const unpaidRows = amortization.filter((row) => !row.is_paid);
-  const paidRows = amortization.filter((row) => row.is_paid);
-  const outstanding = unpaidRows[0]?.closing_principal || 0;
-  const totalPaid = paidRows.reduce((sum, row) => sum + row.principal_component, 0);
+  // Use loanStats (payment-based) for display
+  const outstanding = loanStats?.outstandingPrincipal ?? 0;
+  const totalPrincipalPaid = loanStats?.totalPrincipalPaid ?? 0;
+  const totalInterestPaid = loanStats?.totalInterestPaid ?? 0;
+  const emisPaid = loanStats?.emisPaid ?? 0;
+  const emisPending = loanStats?.emisPending ?? loan.tenure_months;
   const logoUrl = loan.logo_url || loan.lenders?.logo_url;
   const lenderName = loan.lenders?.name || "No Lender";
 
@@ -195,7 +238,8 @@ export default function NewLoanDetail() {
         </Badge>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* EMI Stats */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -210,22 +254,22 @@ export default function NewLoanDetail() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Interest Rate
+              EMIs Paid
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatPercent(loan.interest_rate_apy, 1)}</p>
+            <p className="text-2xl font-bold">{emisPaid} / {loan.tenure_months}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              EMI Amount
+              EMIs Pending
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatINR(loan.emi_amount)}</p>
+            <p className="text-2xl font-bold">{emisPending}</p>
           </CardContent>
         </Card>
 
@@ -236,10 +280,32 @@ export default function NewLoanDetail() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatINR(totalPaid)}</p>
+            <p className="text-2xl font-bold">{formatINR(totalPrincipalPaid)}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {formatPercent((totalPaid / loan.principal_amount) * 100, 0)} paid off
+              {formatPercent((totalPrincipalPaid / loan.principal_amount) * 100, 0)} paid off
             </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Interest Paid
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{formatINR(totalInterestPaid)}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Interest Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{formatPercent(loan.interest_rate_apy, 1)}</p>
           </CardContent>
         </Card>
       </div>
