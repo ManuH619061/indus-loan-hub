@@ -9,7 +9,8 @@ import {
   Wallet as WalletIcon,
   TrendingUp,
   TrendingDown,
-  ChevronRight
+  ChevronRight,
+  Upload
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -395,6 +396,30 @@ export default function BankAccountsDashboard() {
                               </Badge>
                             </div>
                           )}
+
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/banking/import/${account.id}`);
+                              }}
+                            >
+                              <Upload className="h-3 w-3 mr-1" />
+                              Import
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/banking/reconcile`);
+                              }}
+                            >
+                              Reconcile
+                            </Button>
+                          </div>
                         </div>
                       </div>
                       <ChevronRight className="h-5 w-5 text-muted-foreground" />

@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { GitCompare, Check, X, Split, ArrowLeftRight, Tag, Eye, EyeOff } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { GitCompare, Check, EyeOff, ArrowLeft, AlertCircle, Sparkles } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface BankEntry {
   id: string;
@@ -45,6 +46,8 @@ export default function Reconciliation() {
   const [loading, setLoading] = useState(true);
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string>("");
+  const [suggestedMatches, setSuggestedMatches] = useState<Map<string, string>>(new Map());
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -107,6 +110,31 @@ export default function Reconciliation() {
 
       if (appError) throw appError;
       setAppTransactions(appData || []);
+
+      // Auto-suggest matches
+      const matches = new Map<string, string>();
+      for (const bankEntry of bankData || []) {
+        const amount = bankEntry.debit || bankEntry.credit || 0;
+        const isDebit = bankEntry.debit !== null;
+
+        const match = (appData || []).find((txn) => {
+          const txnAmount = txn.debit || txn.credit || 0;
+          const txnIsDebit = txn.debit !== null;
+
+          if (Math.abs(amount - txnAmount) > 0.01 || isDebit !== txnIsDebit) return false;
+
+          const bankDate = new Date(bankEntry.transaction_date);
+          const txnDate = new Date(txn.transaction_date);
+          const daysDiff = Math.abs((bankDate.getTime() - txnDate.getTime()) / (1000 * 60 * 60 * 24));
+
+          return daysDiff <= 3;
+        });
+
+        if (match) {
+          matches.set(bankEntry.id, match.id);
+        }
+      }
+      setSuggestedMatches(matches);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({ title: "Error loading data", variant: "destructive" });
@@ -233,21 +261,24 @@ export default function Reconciliation() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Bank Reconciliation</h1>
-          <p className="text-muted-foreground mt-1">Match bank statements with your transactions</p>
+    <div className="space-y-6 pb-8">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/banking/accounts")}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-2xl md:text-3xl font-bold">Bank Reconciliation</h1>
+          <p className="text-sm text-muted-foreground mt-1">Match bank statements with your transactions</p>
         </div>
         <div className="flex gap-2">
           <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-            <SelectTrigger className="w-[250px]">
+            <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Select account" />
             </SelectTrigger>
             <SelectContent>
               {bankAccounts.map((account) => (
                 <SelectItem key={account.id} value={account.id}>
-                  {account.bank_name} - {account.account_number_masked}
+                  {account.bank_name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -258,6 +289,15 @@ export default function Reconciliation() {
           </Button>
         </div>
       </div>
+
+      {suggestedMatches.size > 0 && (
+        <Alert>
+          <Sparkles className="h-4 w-4" />
+          <AlertDescription>
+            Found {suggestedMatches.size} suggested matches based on date and amount. Review and confirm below.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Tabs defaultValue="to-match" className="space-y-4">
         <TabsList>
@@ -291,35 +331,56 @@ export default function Reconciliation() {
                 <CardTitle>Bank Statement Entries</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {bankEntries.map((entry) => (
-                  <div key={entry.id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50">
-                    <Checkbox
-                      checked={selectedBank.includes(entry.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedBank([...selectedBank, entry.id]);
-                        } else {
-                          setSelectedBank(selectedBank.filter((id) => id !== entry.id));
-                        }
-                      }}
-                    />
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm">{entry.narration}</span>
-                        <Badge variant={entry.debit ? "destructive" : "default"}>
-                          {entry.debit ? `- ₹${entry.debit.toLocaleString()}` : `+ ₹${entry.credit?.toLocaleString()}`}
-                        </Badge>
+                {bankEntries.map((entry) => {
+                  const suggestedMatchId = suggestedMatches.get(entry.id);
+                  const isSuggested = suggestedMatchId !== undefined;
+
+                  return (
+                    <div
+                      key={entry.id}
+                      className={`flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 ${
+                        isSuggested ? "border-primary bg-primary/5" : ""
+                      }`}
+                    >
+                      <Checkbox
+                        checked={selectedBank.includes(entry.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedBank([...selectedBank, entry.id]);
+                            if (suggestedMatchId && !selectedApp.includes(suggestedMatchId)) {
+                              setSelectedApp([...selectedApp, suggestedMatchId]);
+                            }
+                          } else {
+                            setSelectedBank(selectedBank.filter((id) => id !== entry.id));
+                          }
+                        }}
+                      />
+                      <div className="flex-1 space-y-1">
+                        {isSuggested && (
+                          <Badge variant="secondary" className="mb-1">
+                            <Sparkles className="h-3 w-3 mr-1" />
+                            Suggested Match
+                          </Badge>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-sm">{entry.narration}</span>
+                          <Badge variant={entry.debit ? "destructive" : "default"}>
+                            {entry.debit
+                              ? `- ₹${entry.debit.toLocaleString()}`
+                              : `+ ₹${entry.credit?.toLocaleString()}`}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{new Date(entry.transaction_date).toLocaleDateString()}</span>
+                          {entry.reference && <span>• {entry.reference}</span>}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{new Date(entry.transaction_date).toLocaleDateString()}</span>
-                        {entry.reference && <span>• {entry.reference}</span>}
-                      </div>
+                      <Button size="icon" variant="ghost" onClick={() => handleExclude(entry.id)}>
+                        <EyeOff className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button size="icon" variant="ghost" onClick={() => handleExclude(entry.id)}>
-                      <EyeOff className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
 
@@ -329,32 +390,43 @@ export default function Reconciliation() {
                 <CardTitle>App Transactions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {appTransactions.map((txn) => (
-                  <div key={txn.id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50">
-                    <Checkbox
-                      checked={selectedApp.includes(txn.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedApp([...selectedApp, txn.id]);
-                        } else {
-                          setSelectedApp(selectedApp.filter((id) => id !== txn.id));
-                        }
-                      }}
-                    />
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm">{txn.narration}</span>
-                        <Badge variant={txn.debit ? "destructive" : "default"}>
-                          {txn.debit ? `- ₹${txn.debit.toLocaleString()}` : `+ ₹${txn.credit?.toLocaleString()}`}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{new Date(txn.transaction_date).toLocaleDateString()}</span>
-                        <Badge variant="outline">{txn.category}</Badge>
+                {appTransactions.map((txn) => {
+                  const isSuggested = Array.from(suggestedMatches.values()).includes(txn.id);
+
+                  return (
+                    <div
+                      key={txn.id}
+                      className={`flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 ${
+                        isSuggested ? "border-primary bg-primary/5" : ""
+                      }`}
+                    >
+                      <Checkbox
+                        checked={selectedApp.includes(txn.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedApp([...selectedApp, txn.id]);
+                          } else {
+                            setSelectedApp(selectedApp.filter((id) => id !== txn.id));
+                          }
+                        }}
+                      />
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-sm">{txn.narration}</span>
+                          <Badge variant={txn.debit ? "destructive" : "default"}>
+                            {txn.debit
+                              ? `- ₹${txn.debit.toLocaleString()}`
+                              : `+ ₹${txn.credit?.toLocaleString()}`}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{new Date(txn.transaction_date).toLocaleDateString()}</span>
+                          <Badge variant="outline">{txn.category}</Badge>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           </div>
