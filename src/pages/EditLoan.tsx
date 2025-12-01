@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Save, AlertCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, Save, AlertCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -20,6 +20,7 @@ import {
   updateLoanWithRecalculation, 
   validateLoanFields, 
   calculateLoanEMI,
+  generateLoanAmortization,
   type LoanData 
 } from "@/lib/loan-service";
 
@@ -31,13 +32,11 @@ export default function EditLoan() {
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [updatingPaidMonths, setUpdatingPaidMonths] = useState(false);
   const [lenders, setLenders] = useState<any[]>([]);
   const [originalLoan, setOriginalLoan] = useState<LoanData | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [calculatedEmi, setCalculatedEmi] = useState<number | null>(null);
-  const [currentPaidMonths, setCurrentPaidMonths] = useState(0);
-  const [newPaidMonths, setNewPaidMonths] = useState("");
+  const [emisAlreadyPaid, setEmisAlreadyPaid] = useState("0");
   
   // Add lender dialog state
   const [newLenderOpen, setNewLenderOpen] = useState(false);
@@ -154,15 +153,14 @@ export default function EditLoan() {
 
       if (error) throw error;
 
-      // Fetch current paid months count
+      // Fetch current paid months count from amortization
       const { count: paidCount } = await supabase
         .from("amortization_rows")
         .select("*", { count: "exact", head: true })
         .eq("loan_id", id)
         .eq("is_paid", true);
 
-      setCurrentPaidMonths(paidCount || 0);
-      setNewPaidMonths((paidCount || 0).toString());
+      setEmisAlreadyPaid((paidCount || 0).toString());
 
       setOriginalLoan({
         id: data.id,
@@ -208,109 +206,6 @@ export default function EditLoan() {
     }
   };
 
-  const handleUpdatePaidMonths = async () => {
-    if (!id || !user) return;
-    
-    const newCount = parseInt(newPaidMonths) || 0;
-    const tenure = parseInt(formData.tenure_months) || 0;
-    
-    if (newCount < 0 || newCount > tenure) {
-      toast({ 
-        variant: "destructive", 
-        title: "Invalid Value", 
-        description: `EMIs paid must be between 0 and ${tenure}` 
-      });
-      return;
-    }
-
-    setUpdatingPaidMonths(true);
-
-    try {
-      // Get all amortization rows for this loan
-      const { data: amortRows, error: fetchError } = await supabase
-        .from("amortization_rows")
-        .select("*")
-        .eq("loan_id", id)
-        .order("period_no", { ascending: true });
-
-      if (fetchError) throw fetchError;
-      if (!amortRows) return;
-
-      const emiAmount = calculatedEmi || parseFloat(formData.emi_amount) || 0;
-
-      // If increasing paid months, create new payments
-      if (newCount > currentPaidMonths) {
-        const monthsToAdd = newCount - currentPaidMonths;
-        const rowsToMark = amortRows.slice(currentPaidMonths, newCount);
-        
-        // Create payment records for newly paid months
-        const newPayments = rowsToMark.map((row) => ({
-          loan_id: id,
-          paid_on: row.due_on,
-          amount: row.scheduled_emi,
-          payment_type: "EMI" as const,
-          source: "OTHER" as const,
-          reference: `Bulk update - Period ${row.period_no}`,
-          notes: "Payment added via Edit Loan - EMIs paid update",
-        }));
-
-        const { error: paymentError } = await supabase
-          .from("payments")
-          .insert(newPayments);
-
-        if (paymentError) throw paymentError;
-
-        // Mark amortization rows as paid
-        const { error: updateError } = await supabase
-          .from("amortization_rows")
-          .update({ is_paid: true })
-          .in("id", rowsToMark.map(r => r.id));
-
-        if (updateError) throw updateError;
-
-        toast({ 
-          title: "Payments Updated", 
-          description: `Added ${monthsToAdd} EMI payment records and updated amortization.` 
-        });
-      } 
-      // If decreasing paid months, remove payments and unmark
-      else if (newCount < currentPaidMonths) {
-        const monthsToRemove = currentPaidMonths - newCount;
-        const rowsToUnmark = amortRows.slice(newCount, currentPaidMonths);
-
-        // Delete payment records for these periods
-        for (const row of rowsToUnmark) {
-          await supabase
-            .from("payments")
-            .delete()
-            .eq("loan_id", id)
-            .eq("paid_on", row.due_on)
-            .eq("payment_type", "EMI");
-        }
-
-        // Mark amortization rows as unpaid
-        const { error: updateError } = await supabase
-          .from("amortization_rows")
-          .update({ is_paid: false })
-          .in("id", rowsToUnmark.map(r => r.id));
-
-        if (updateError) throw updateError;
-
-        toast({ 
-          title: "Payments Updated", 
-          description: `Removed ${monthsToRemove} EMI payment records and updated amortization.` 
-        });
-      }
-
-      setCurrentPaidMonths(newCount);
-    } catch (error: any) {
-      console.error("Error updating paid months:", error);
-      toast({ variant: "destructive", title: "Error", description: error.message });
-    } finally {
-      setUpdatingPaidMonths(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !id || !originalLoan) return;
@@ -323,6 +218,18 @@ export default function EditLoan() {
         variant: "destructive", 
         title: "Validation Error", 
         description: "Please fix all required fields before saving" 
+      });
+      return;
+    }
+
+    const emisPaid = parseInt(emisAlreadyPaid) || 0;
+    const tenure = parseInt(formData.tenure_months) || 0;
+    
+    if (emisPaid < 0 || emisPaid > tenure) {
+      toast({ 
+        variant: "destructive", 
+        title: "Invalid Value", 
+        description: `EMIs Already Paid must be between 0 and ${tenure}` 
       });
       return;
     }
@@ -355,15 +262,87 @@ export default function EditLoan() {
         status: formData.status as any,
       };
 
+      // Step 1: Update loan and rebuild amortization schedule
       const result = await updateLoanWithRecalculation(id, updates, originalLoan);
 
       if (!result.success) {
         throw new Error(result.error);
       }
 
+      // Step 2: Delete old auto-backfill payments (keep manual payments)
+      const { error: deletePaymentsError } = await supabase
+        .from("payments")
+        .delete()
+        .eq("loan_id", id)
+        .eq("payment_type", "EMI")
+        .ilike("notes", "%Auto Backfill%");
+
+      if (deletePaymentsError) {
+        console.error("Error deleting old backfill payments:", deletePaymentsError);
+      }
+
+      // Step 3: Get the newly generated amortization rows
+      const { data: amortRows, error: amortError } = await supabase
+        .from("amortization_rows")
+        .select("*")
+        .eq("loan_id", id)
+        .order("period_no", { ascending: true });
+
+      if (amortError) throw amortError;
+
+      if (amortRows && emisPaid > 0) {
+        // Step 4: Create N payment records based on EMIs Already Paid
+        const rowsToPay = amortRows.slice(0, emisPaid);
+        
+        const newPayments = rowsToPay.map((row) => ({
+          loan_id: id,
+          paid_on: row.due_on,
+          amount: row.scheduled_emi,
+          payment_type: "EMI" as const,
+          source: "OTHER" as const,
+          reference: `Period ${row.period_no} - Principal: ₹${row.principal_component.toLocaleString('en-IN')}, Interest: ₹${row.interest_component.toLocaleString('en-IN')}`,
+          notes: `Auto Backfill - EMI ${row.period_no}/${tenure}`,
+        }));
+
+        if (newPayments.length > 0) {
+          const { error: paymentError } = await supabase
+            .from("payments")
+            .insert(newPayments);
+
+          if (paymentError) throw paymentError;
+        }
+
+        // Step 5: Mark the first N amortization rows as paid
+        const rowIds = rowsToPay.map(r => r.id);
+        const { error: markPaidError } = await supabase
+          .from("amortization_rows")
+          .update({ is_paid: true })
+          .in("id", rowIds);
+
+        if (markPaidError) throw markPaidError;
+
+        // Mark remaining rows as unpaid
+        const unpaidRowIds = amortRows.slice(emisPaid).map(r => r.id);
+        if (unpaidRowIds.length > 0) {
+          await supabase
+            .from("amortization_rows")
+            .update({ is_paid: false })
+            .in("id", unpaidRowIds);
+        }
+      } else if (amortRows) {
+        // Reset all rows to unpaid if emisPaid is 0
+        const allRowIds = amortRows.map(r => r.id);
+        await supabase
+          .from("amortization_rows")
+          .update({ is_paid: false })
+          .in("id", allRowIds);
+      }
+
       toast({ 
         title: "Loan Updated Successfully!", 
-        description: "EMI schedule and all calculations have been recalculated."
+        description: emisPaid > 0 
+          ? `EMI schedule recalculated and ${emisPaid} payment(s) auto-backfilled.`
+          : "EMI schedule and all calculations have been recalculated."
       });
       navigate(`/loans/${id}`);
     } catch (error: any) {
@@ -589,58 +568,35 @@ export default function EditLoan() {
                 <Label>Auto-debit enabled</Label>
               </div>
 
-              {/* Update EMIs Paid Section */}
+              {/* Payment Tracking Section */}
               <div className="p-4 bg-muted/50 rounded-lg border border-dashed space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="text-xs">Payment Tracking</Badge>
-                    <span className="text-sm text-muted-foreground">Update EMIs paid for this loan</span>
+                    <span className="text-sm text-muted-foreground">Set how many EMIs have been paid</span>
                   </div>
-                  <Badge variant="outline" className="text-xs">
-                    Currently: {currentPaidMonths} / {formData.tenure_months || 0} paid
-                  </Badge>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4 items-end">
-                  <div className="space-y-2">
-                    <Label>EMIs Already Paid</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      max={parseInt(formData.tenure_months) || 999}
-                      value={newPaidMonths}
-                      onChange={(e) => setNewPaidMonths(e.target.value)}
-                    />
-                  </div>
-                  <Button 
-                    type="button"
-                    variant="outline"
-                    onClick={handleUpdatePaidMonths}
-                    disabled={updatingPaidMonths || parseInt(newPaidMonths) === currentPaidMonths}
-                    className="gap-2"
-                  >
-                    {updatingPaidMonths ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Updating...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4" />
-                        Update Payments
-                      </>
-                    )}
-                  </Button>
+                <div className="space-y-2">
+                  <Label>EMIs Already Paid</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max={parseInt(formData.tenure_months) || 999}
+                    value={emisAlreadyPaid}
+                    onChange={(e) => setEmisAlreadyPaid(e.target.value)}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    On save, this will auto-create {emisAlreadyPaid || 0} payment record(s) with correct principal/interest split and mark them as paid.
+                  </p>
                 </div>
 
-                {/* Preview of changes */}
-                {parseInt(newPaidMonths) !== currentPaidMonths && calculatedEmi && (
+                {/* Preview of what will happen */}
+                {parseInt(emisAlreadyPaid) > 0 && calculatedEmi && (
                   <div className="p-3 bg-primary/5 rounded-md border border-primary/20">
                     <p className="text-sm font-medium text-primary mb-2">
-                      {parseInt(newPaidMonths) > currentPaidMonths 
-                        ? `Will add ${parseInt(newPaidMonths) - currentPaidMonths} payment records`
-                        : `Will remove ${currentPaidMonths - parseInt(newPaidMonths)} payment records`
-                      }
+                      Will auto-backfill {emisAlreadyPaid} EMI payment(s)
                     </p>
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between">
@@ -648,17 +604,15 @@ export default function EditLoan() {
                         <span className="font-medium">{formatINR(calculatedEmi)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          {parseInt(newPaidMonths) > currentPaidMonths ? "Amount to Add:" : "Amount to Remove:"}
-                        </span>
+                        <span className="text-muted-foreground">Total Paid:</span>
                         <span className="font-medium">
-                          {formatINR(Math.abs(parseInt(newPaidMonths) - currentPaidMonths) * calculatedEmi)}
+                          {formatINR(parseInt(emisAlreadyPaid) * calculatedEmi)}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Remaining EMIs:</span>
                         <span className="font-medium">
-                          {Math.max(0, parseInt(formData.tenure_months || "0") - parseInt(newPaidMonths))} months
+                          {Math.max(0, parseInt(formData.tenure_months || "0") - parseInt(emisAlreadyPaid))} months
                         </span>
                       </div>
                     </div>
