@@ -50,6 +50,7 @@ export interface MonthlyProjection {
   month: string;
   monthStart: Date;
   emi: number;
+  count: number;
 }
 
 export interface LenderStats {
@@ -136,6 +137,7 @@ export function calculate6MonthProjection(
     const monthStart = startOfMonth(addMonths(today, i));
     const monthEnd = endOfMonth(addMonths(today, i));
     let monthTotal = 0;
+    let monthCount = 0;
 
     loans.forEach(loan => {
       const unpaidRows = loan.amortization_rows?.filter(r => !r.is_paid) || [];
@@ -144,18 +146,154 @@ export function calculate6MonthProjection(
         const dueDate = new Date(row.due_on);
         if (isWithinInterval(dueDate, { start: monthStart, end: monthEnd })) {
           monthTotal += row.scheduled_emi;
+          monthCount++;
         }
       });
     });
 
     projections.push({
-      month: monthStart.toLocaleDateString('en-US', { month: 'short' }),
+      month: monthStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
       monthStart,
       emi: Math.round(monthTotal * 100) / 100,
+      count: monthCount,
     });
   }
 
   return projections;
+}
+
+/**
+ * Calculate THIS MONTH EMI (current calendar month unpaid EMIs)
+ */
+export function calculateThisMonthEMI(
+  loans: LoanWithAmortization[],
+  today: Date = new Date()
+): { total: number; count: number } {
+  const monthStart = startOfMonth(today);
+  const monthEnd = endOfMonth(today);
+  let total = 0;
+  let count = 0;
+
+  loans.forEach(loan => {
+    const unpaidRows = loan.amortization_rows?.filter(r => !r.is_paid) || [];
+    
+    unpaidRows.forEach(row => {
+      const dueDate = new Date(row.due_on);
+      if (isWithinInterval(dueDate, { start: monthStart, end: monthEnd })) {
+        total += row.scheduled_emi;
+        count++;
+      }
+    });
+  });
+
+  return {
+    total: Math.round(total * 100) / 100,
+    count,
+  };
+}
+
+/**
+ * Calculate NEXT MONTH EMI (next calendar month unpaid EMIs)
+ */
+export function calculateNextMonthEMI(
+  loans: LoanWithAmortization[],
+  today: Date = new Date()
+): { total: number; count: number } {
+  const nextMonth = addMonths(today, 1);
+  const monthStart = startOfMonth(nextMonth);
+  const monthEnd = endOfMonth(nextMonth);
+  let total = 0;
+  let count = 0;
+
+  loans.forEach(loan => {
+    const unpaidRows = loan.amortization_rows?.filter(r => !r.is_paid) || [];
+    
+    unpaidRows.forEach(row => {
+      const dueDate = new Date(row.due_on);
+      if (isWithinInterval(dueDate, { start: monthStart, end: monthEnd })) {
+        total += row.scheduled_emi;
+        count++;
+      }
+    });
+  });
+
+  return {
+    total: Math.round(total * 100) / 100,
+    count,
+  };
+}
+
+/**
+ * Calculate Total Paid Till Date (all paid EMIs + interest)
+ */
+export function calculateTotalPaidToDate(loans: LoanWithAmortization[]): number {
+  let totalPaid = 0;
+
+  loans.forEach(loan => {
+    const paidRows = loan.amortization_rows?.filter(r => r.is_paid) || [];
+    totalPaid += paidRows.reduce((sum, row) => sum + row.scheduled_emi, 0);
+  });
+
+  return Math.round(totalPaid * 100) / 100;
+}
+
+/**
+ * Calculate Weighted Average Interest Rate (weighted by remaining balance)
+ */
+export function calculateWeightedAvgInterest(loans: LoanWithAmortization[]): number {
+  let totalWeightedRate = 0;
+  let totalOutstanding = 0;
+
+  loans.forEach(loan => {
+    const outstanding = calculateOutstandingFromAmortization(loan.amortization_rows || []);
+    totalWeightedRate += loan.interest_rate_apy * outstanding.total;
+    totalOutstanding += outstanding.total;
+  });
+
+  return totalOutstanding > 0 
+    ? Math.round((totalWeightedRate / totalOutstanding) * 100) / 100 
+    : 0;
+}
+
+/**
+ * Calculate Upcoming 7 Days EMI (for alerts)
+ */
+export function calculateUpcoming7DaysEMI(
+  loans: LoanWithAmortization[],
+  today: Date = new Date()
+): { total: number; count: number; payments: any[] } {
+  const next7Days = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const payments: any[] = [];
+  let total = 0;
+
+  loans.forEach(loan => {
+    const unpaidRows = loan.amortization_rows?.filter(r => !r.is_paid) || [];
+    
+    unpaidRows.forEach(row => {
+      const dueDate = new Date(row.due_on);
+      
+      if (dueDate >= today && dueDate <= next7Days) {
+        const daysUntilDue = differenceInDays(dueDate, today);
+        total += row.scheduled_emi;
+        
+        payments.push({
+          loanId: loan.id,
+          loanName: loan.loan_name,
+          lenderName: loan.lenders?.name || null,
+          amount: row.scheduled_emi,
+          dueDate: row.due_on,
+          daysUntilDue,
+          interestRate: loan.interest_rate_apy,
+        });
+      }
+    });
+  });
+
+  return {
+    total: Math.round(total * 100) / 100,
+    count: payments.length,
+    payments: payments.sort((a, b) => a.daysUntilDue - b.daysUntilDue),
+  };
 }
 
 /**

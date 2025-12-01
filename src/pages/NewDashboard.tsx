@@ -28,8 +28,12 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import {
   fetchLoansWithAmortization,
   calculatePortfolioStatsFromAmortization,
-  calculateNext30DaysEMI,
+  calculateThisMonthEMI,
+  calculateNextMonthEMI,
+  calculateTotalPaidToDate,
+  calculateWeightedAvgInterest,
   calculate6MonthProjection,
+  calculateUpcoming7DaysEMI,
   countOverdueEMIs,
   calculatePayoffProgress,
   type MonthlyProjection,
@@ -41,13 +45,15 @@ interface DashboardStats {
   totalOutstanding: number;
   activeLoans: number;
   avgInterestRate: number;
-  upcomingEMI: number;
-  upcomingEMICount: number;
+  thisMonthEMI: number;
+  thisMonthEMICount: number;
+  nextMonthEMI: number;
+  nextMonthEMICount: number;
+  totalPaidToDate: number;
   overdueCount: number;
   totalBankBalance: number;
   monthlyIncome: number;
   monthlyExpenses: number;
-  monthlyEMI: number;
   netBalance: number;
 }
 
@@ -81,17 +87,19 @@ export default function NewDashboard() {
     totalOutstanding: 0,
     activeLoans: 0,
     avgInterestRate: 0,
-    upcomingEMI: 0,
-    upcomingEMICount: 0,
+    thisMonthEMI: 0,
+    thisMonthEMICount: 0,
+    nextMonthEMI: 0,
+    nextMonthEMICount: 0,
+    totalPaidToDate: 0,
     overdueCount: 0,
     totalBankBalance: 0,
     monthlyIncome: 0,
     monthlyExpenses: 0,
-    monthlyEMI: 0,
     netBalance: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [upcomingEMIs, setUpcomingEMIs] = useState<any[]>([]);
+  const [upcoming7DaysEMIs, setUpcoming7DaysEMIs] = useState<any[]>([]);
   const [monthlyProjection, setMonthlyProjection] = useState<MonthlyProjection[]>([]);
   const [riskAlerts, setRiskAlerts] = useState<RiskAlert[]>([]);
   const [payoffProgress, setPayoffProgress] = useState({
@@ -131,11 +139,21 @@ export default function NewDashboard() {
       // Calculate portfolio stats
       const portfolioStats = calculatePortfolioStatsFromAmortization(loans);
       
-      // Calculate next 30 days EMI
-      const next30Days = calculateNext30DaysEMI(loans);
+      // Calculate this month & next month EMI
+      const thisMonth = calculateThisMonthEMI(loans);
+      const nextMonth = calculateNextMonthEMI(loans);
+      
+      // Calculate total paid to date
+      const totalPaid = calculateTotalPaidToDate(loans);
+      
+      // Calculate weighted average interest rate
+      const weightedAvgRate = calculateWeightedAvgInterest(loans);
       
       // Calculate 6-month projection
       const projection = calculate6MonthProjection(loans);
+      
+      // Calculate upcoming 7 days for alerts
+      const upcoming7Days = calculateUpcoming7DaysEMI(loans);
       
       // Count overdue EMIs
       const overdueCount = countOverdueEMIs(loans);
@@ -144,7 +162,7 @@ export default function NewDashboard() {
       const progress = calculatePayoffProgress(loans);
       
       // Generate risk alerts
-      const alerts = generateRiskAlerts(loans);
+      const alerts = generateRiskAlerts(loans, upcoming7Days.payments);
       
       // Fetch bank balances
       const { data: bankAccounts } = await supabase
@@ -177,16 +195,7 @@ export default function NewDashboard() {
       
       const monthlyExpenses = transactions?.reduce((sum, txn) => sum + (txn.debit || 0), 0) || 0;
       
-      // Calculate this month's EMI total
-      const thisMonthEMI = loans.reduce((sum, loan) => {
-        const thisMonthRows = loan.amortization_rows?.filter(row => {
-          const dueDate = new Date(row.due_on);
-          return dueDate >= new Date(startDate) && dueDate <= new Date(endDate) && !row.is_paid;
-        }) || [];
-        return sum + thisMonthRows.reduce((rowSum, row) => rowSum + row.scheduled_emi, 0);
-      }, 0);
-      
-      const netBalance = monthlyIncome - monthlyExpenses - thisMonthEMI;
+      const netBalance = monthlyIncome - monthlyExpenses - thisMonth.total;
       
       // Fetch recent transactions
       const { data: recentTxns } = await supabase
@@ -224,18 +233,20 @@ export default function NewDashboard() {
       setStats({
         totalOutstanding: portfolioStats.totalOutstanding,
         activeLoans: portfolioStats.activeLoansCount,
-        avgInterestRate: portfolioStats.avgInterestRate,
-        upcomingEMI: next30Days.total,
-        upcomingEMICount: next30Days.count,
+        avgInterestRate: weightedAvgRate,
+        thisMonthEMI: thisMonth.total,
+        thisMonthEMICount: thisMonth.count,
+        nextMonthEMI: nextMonth.total,
+        nextMonthEMICount: nextMonth.count,
+        totalPaidToDate: totalPaid,
         overdueCount: overdueCount,
         totalBankBalance,
         monthlyIncome,
         monthlyExpenses,
-        monthlyEMI: thisMonthEMI,
         netBalance,
       });
       
-      setUpcomingEMIs(next30Days.payments);
+      setUpcoming7DaysEMIs(upcoming7Days.payments);
       setMonthlyProjection(projection);
       setRiskAlerts(alerts);
       setPayoffProgress(progress);
@@ -246,24 +257,22 @@ export default function NewDashboard() {
     }
   };
 
-  const generateRiskAlerts = (loans: LoanWithAmortization[]): RiskAlert[] => {
+  const generateRiskAlerts = (loans: LoanWithAmortization[], upcoming7Days: any[]): RiskAlert[] => {
     const alerts: RiskAlert[] = [];
 
-    loans.forEach(loan => {
-      // Check for high outstanding (>80% of principal remaining)
-      const unpaidRows = loan.amortization_rows?.filter(r => !r.is_paid) || [];
-      const remainingPrincipal = unpaidRows.reduce((sum, row) => sum + row.principal_component, 0);
-      
-      if (remainingPrincipal > loan.principal_amount * 0.8) {
-        alerts.push({
-          id: `high-outstanding-${loan.id}`,
-          severity: 'medium',
-          title: `High Outstanding - ${loan.loan_name}`,
-          description: `${formatPercent((remainingPrincipal / loan.principal_amount) * 100, 0)} of principal remaining`,
-          loanId: loan.id,
-        });
-      }
+    // Overdue EMIs already handled in main alerts section
+    
+    // Upcoming EMIs within 7 days
+    if (upcoming7Days.length > 0) {
+      alerts.push({
+        id: 'upcoming-7-days',
+        severity: 'medium',
+        title: `${upcoming7Days.length} EMI${upcoming7Days.length > 1 ? 's' : ''} Due Within 7 Days`,
+        description: `Total ${formatINR(upcoming7Days.reduce((sum, p) => sum + p.amount, 0))} due soon`,
+      });
+    }
 
+    loans.forEach(loan => {
       // Check for high interest rate
       if (loan.interest_rate_apy > 18) {
         alerts.push({
@@ -275,6 +284,20 @@ export default function NewDashboard() {
         });
       }
     });
+
+    // Budget stress alert (EMI > 40% of income)
+    const emiToIncomeRatio = stats.monthlyIncome > 0 
+      ? (stats.thisMonthEMI / stats.monthlyIncome) * 100 
+      : 0;
+    
+    if (emiToIncomeRatio > 40) {
+      alerts.push({
+        id: 'budget-stress',
+        severity: 'high',
+        title: 'Budget Stress Alert',
+        description: `EMI is ${emiToIncomeRatio.toFixed(0)}% of your income (>40% threshold)`,
+      });
+    }
 
     return alerts;
   };
@@ -309,8 +332,8 @@ export default function NewDashboard() {
         </div>
       ) : (
         <>
-          {/* Top Summary Row - 4 Cards */}
-          <div className="grid gap-4 md:gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {/* Top Summary Row - 6 Cards */}
+          <div className="grid gap-4 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
             {/* Total Outstanding */}
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -320,51 +343,77 @@ export default function NewDashboard() {
               <CardContent>
                 <div className="text-2xl md:text-3xl font-bold">{formatINR(stats.totalOutstanding)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Principal + Interest across {stats.activeLoans} {stats.activeLoans === 1 ? 'loan' : 'loans'}
+                  Principal + Interest remaining
                 </p>
               </CardContent>
             </Card>
 
-            {/* Next 30 Days EMI */}
+            {/* EMIs Due This Month */}
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Next 30 Days EMI</CardTitle>
+                <CardTitle className="text-sm font-medium">EMIs Due This Month</CardTitle>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl md:text-3xl font-bold">{formatINR(stats.upcomingEMI)}</div>
+                <div className="text-2xl md:text-3xl font-bold">{formatINR(stats.thisMonthEMI)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {stats.upcomingEMICount} {stats.upcomingEMICount === 1 ? 'payment' : 'payments'} due
+                  {stats.thisMonthEMICount} {stats.thisMonthEMICount === 1 ? 'payment' : 'payments'} this month
                 </p>
               </CardContent>
             </Card>
 
-            {/* Total Bank Balance */}
+            {/* EMIs Due Next Month */}
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Bank Balance</CardTitle>
-                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">EMIs Due Next Month</CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl md:text-3xl font-bold">{formatINR(stats.totalBankBalance)}</div>
+                <div className="text-2xl md:text-3xl font-bold">{formatINR(stats.nextMonthEMI)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  All active accounts
+                  {stats.nextMonthEMICount} {stats.nextMonthEMICount === 1 ? 'payment' : 'payments'} next month
                 </p>
               </CardContent>
             </Card>
 
-            {/* This Month Net Balance */}
+            {/* Total Paid Till Date */}
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">This Month Net</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Total Paid Till Date</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl md:text-3xl font-bold ${stats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatINR(stats.netBalance)}
-                </div>
+                <div className="text-2xl md:text-3xl font-bold text-green-600">{formatINR(stats.totalPaidToDate)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Income - Expenses - EMIs
+                  All EMI payments made
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Average Interest Rate */}
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Avg Interest Rate</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl md:text-3xl font-bold">{formatPercent(stats.avgInterestRate, 2)}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Weighted by outstanding balance
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Active Loans */}
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Loans</CardTitle>
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl md:text-3xl font-bold">{stats.activeLoans}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Currently running
                 </p>
               </CardContent>
             </Card>
@@ -408,22 +457,22 @@ export default function NewDashboard() {
 
           {/* Main Content Grid - 2 columns on desktop */}
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Upcoming EMIs */}
+            {/* Upcoming EMIs - Next 7 Days */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5" />
-                  Upcoming EMIs (Next 30 Days)
+                  Upcoming EMIs (Next 7 Days)
                 </CardTitle>
-                <CardDescription>Next payments due with details</CardDescription>
+                <CardDescription>Immediate attention required</CardDescription>
               </CardHeader>
               <CardContent>
-                {upcomingEMIs.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4">No upcoming EMIs in the next 30 days</p>
+                {upcoming7DaysEMIs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4">No EMIs due in the next 7 days</p>
                 ) : (
                   <div className="space-y-3">
-                    {upcomingEMIs.slice(0, 5).map((emi) => (
-                      <div key={emi.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                    {upcoming7DaysEMIs.slice(0, 5).map((emi) => (
+                      <div key={emi.id || `${emi.loanId}-${emi.dueDate}`} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-sm">{emi.loanName}</p>
@@ -432,16 +481,19 @@ export default function NewDashboard() {
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground">{emi.lenderName}</p>
-                          <p className="text-xs text-muted-foreground mt-1">Due: {format(new Date(emi.dueDate), 'MMM dd, yyyy')}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Due: {format(new Date(emi.dueDate), 'MMM dd, yyyy')} 
+                            <span className="ml-2 font-medium">({emi.daysUntilDue} {emi.daysUntilDue === 1 ? 'day' : 'days'})</span>
+                          </p>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold">{formatINR(emi.amount)}</p>
                         </div>
                       </div>
                     ))}
-                    {upcomingEMIs.length > 5 && (
+                    {upcoming7DaysEMIs.length > 5 && (
                       <Button variant="ghost" size="sm" className="w-full" onClick={() => navigate("/emi-calendar")}>
-                        View All {upcomingEMIs.length} EMIs
+                        View All {upcoming7DaysEMIs.length} EMIs
                       </Button>
                     )}
                   </div>
@@ -587,11 +639,11 @@ export default function NewDashboard() {
                     </Alert>
                   )}
 
-                  {(stats.totalBankBalance < stats.upcomingEMI) && (
+                  {(stats.totalBankBalance < stats.thisMonthEMI) && (
                     <Alert className="border-orange-500 bg-orange-50 dark:bg-orange-950/20">
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription>
-                        <span className="font-medium">Low bank balance:</span> Your current balance may not cover upcoming EMIs.
+                        <span className="font-medium">Low bank balance:</span> Your current balance may not cover this month's EMIs.
                       </AlertDescription>
                     </Alert>
                   )}
@@ -600,14 +652,14 @@ export default function NewDashboard() {
             </Card>
           </div>
 
-          {/* 6-Month EMI Projection - Full Width */}
+          {/* 6-Month EMI Timeline - Full Width */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
-                6-Month EMI Projection
+                6-Month EMI Timeline
               </CardTitle>
-              <CardDescription>Upcoming EMI payments over the next 6 months</CardDescription>
+              <CardDescription>EMI projection with payment counts for the next 6 months</CardDescription>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -625,6 +677,10 @@ export default function NewDashboard() {
                   />
                   <Tooltip 
                     formatter={(value: number) => formatINR(value)}
+                    labelFormatter={(label, payload) => {
+                      const data = payload?.[0]?.payload;
+                      return data ? `${label} - ${data.count} EMI${data.count > 1 ? 's' : ''}` : label;
+                    }}
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
@@ -638,6 +694,17 @@ export default function NewDashboard() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              
+              {/* Monthly breakdown below chart */}
+              <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {monthlyProjection.map((proj, index) => (
+                  <div key={index} className="text-center p-3 border rounded-lg">
+                    <p className="text-xs font-medium text-muted-foreground">{proj.month}</p>
+                    <p className="text-lg font-bold mt-1">{formatINR(proj.emi)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{proj.count} EMI{proj.count > 1 ? 's' : ''}</p>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
