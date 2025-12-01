@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, Link, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import LenderAvatar from "./LenderAvatar";
 
 interface LenderLogoUploadProps {
@@ -22,6 +23,7 @@ export default function LenderLogoUpload({
   disabled = false,
 }: LenderLogoUploadProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [urlInput, setUrlInput] = useState(logoUrl);
@@ -29,6 +31,15 @@ export default function LenderLogoUpload({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Not authenticated",
+        description: "Please log in to upload logos",
+      });
+      return;
+    }
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
@@ -53,9 +64,10 @@ export default function LenderLogoUpload({
     setUploading(true);
     try {
       const fileExt = file.name.split(".").pop()?.toLowerCase() || 'png';
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      // Save in folder structure: lender-logos/{user_id}/{timestamp}-{random}.{ext}
+      const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-      console.log("Uploading file:", fileName, "Size:", file.size);
+      console.log("Uploading file to folder:", fileName, "Size:", file.size);
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("lender-logos")
