@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import FadeInStagger from "@/components/FadeInStagger";
 import { useTheme } from "next-themes";
+import BackupManager from "@/pages/BackupManager";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -186,7 +187,7 @@ export default function Settings() {
 
       <FadeInStagger>
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full max-w-2xl grid-cols-5">
+          <TabsList className="grid w-full max-w-2xl grid-cols-6">
             <TabsTrigger value="profile">
               <User className="h-4 w-4 mr-2" />
               <span className="hidden md:inline">Profile</span>
@@ -203,9 +204,13 @@ export default function Settings() {
               <SettingsIcon className="h-4 w-4 mr-2" />
               <span className="hidden md:inline">Defaults</span>
             </TabsTrigger>
+            <TabsTrigger value="backup">
+              <Download className="h-4 w-4 mr-2" />
+              <span className="hidden md:inline">Backup</span>
+            </TabsTrigger>
             <TabsTrigger value="data">
               <Download className="h-4 w-4 mr-2" />
-              <span className="hidden md:inline">Data</span>
+              <span className="hidden md:inline">Export</span>
             </TabsTrigger>
           </TabsList>
 
@@ -469,6 +474,10 @@ export default function Settings() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="backup">
+            <BackupManager />
           </TabsContent>
 
           <TabsContent value="data">
