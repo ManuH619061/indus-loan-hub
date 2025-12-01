@@ -20,12 +20,12 @@ export default defineConfig(({ mode }) => ({
         name: "Indus Loan Hub - Personal Loan Manager",
         short_name: "Loan Hub",
         description: "Track and manage your loans, EMIs, and payments efficiently",
-        theme_color: "#10b981",
-        background_color: "#0f172a",
+        theme_color: "#3b82f6",
+        background_color: "#ffffff",
         display: "standalone",
         orientation: "portrait-primary",
         scope: "/",
-        start_url: "/",
+        start_url: "/dashboard",
         icons: [
           {
             src: "/pwa-192x192.png",
@@ -67,12 +67,19 @@ export default defineConfig(({ mode }) => ({
             description: "Add a new loan",
             url: "/loans/new",
             icons: [{ src: "/pwa-192x192.png", sizes: "192x192" }]
+          },
+          {
+            name: "Budget Planner",
+            short_name: "Budget",
+            description: "Manage your budget",
+            url: "/budget-planner",
+            icons: [{ src: "/pwa-192x192.png", sizes: "192x192" }]
           }
         ]
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MiB
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -81,7 +88,7 @@ export default defineConfig(({ mode }) => ({
               cacheName: "google-fonts-cache",
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365
               },
               cacheableResponse: {
                 statuses: [0, 200]
@@ -95,7 +102,7 @@ export default defineConfig(({ mode }) => ({
               cacheName: "gstatic-fonts-cache",
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365
               },
               cacheableResponse: {
                 statuses: [0, 200]
@@ -108,9 +115,16 @@ export default defineConfig(({ mode }) => ({
             options: {
               cacheName: "images-cache",
               expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+                maxEntries: 60,
+                maxAgeSeconds: 60 * 60 * 24 * 30
               }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/.*/i,
+            handler: "NetworkOnly",
+            options: {
+              cacheName: "auth-cache"
             }
           },
           {
@@ -119,13 +133,36 @@ export default defineConfig(({ mode }) => ({
             options: {
               cacheName: "api-cache",
               expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 5 // 5 minutes
+                maxEntries: 150,
+                maxAgeSeconds: 60 * 10
               },
               networkTimeoutSeconds: 10
             }
+          },
+          {
+            urlPattern: ({ url }) => {
+              return url.pathname.startsWith('/dashboard') ||
+                     url.pathname.startsWith('/loans') ||
+                     url.pathname.startsWith('/budget') ||
+                     url.pathname.startsWith('/banking') ||
+                     url.pathname.startsWith('/payments') ||
+                     url.pathname.startsWith('/lenders') ||
+                     url.pathname.startsWith('/insights') ||
+                     url.pathname.startsWith('/expenses');
+            },
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "pages-cache",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24
+              },
+              networkTimeoutSeconds: 5
+            }
           }
-        ]
+        ],
+        navigateFallback: "/dashboard",
+        navigateFallbackDenylist: [/^\/auth/, /^\/api/]
       },
       devOptions: {
         enabled: true
