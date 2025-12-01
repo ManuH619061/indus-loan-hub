@@ -110,7 +110,8 @@ const navigation = [
   { name: "EMI Calendar", href: "/emi-calendar", icon: CalendarDays },
   { name: "Lenders", href: "/lenders", icon: Building2 },
   { name: "Loan Comparison", href: "/loan-comparison", icon: Scale },
-  { name: "Insights", href: "/insights", icon: FileText },
+  { name: "Financial Insights", href: "/financial-insights", icon: BarChart3 },
+  { name: "AI Insights", href: "/insights", icon: FileText },
   { name: "Documents", href: "/documents", icon: FileText },
 ];
 
