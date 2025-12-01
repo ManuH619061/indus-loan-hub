@@ -8,146 +8,262 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/currency";
-import { Plus, Upload, Download, Calendar, Sparkles, AlertCircle, TrendingUp } from "lucide-react";
+import { Plus, Edit2, Trash2, Search, Calendar, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import FadeInStagger from "@/components/FadeInStagger";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--destructive))'];
 
-const CATEGORIES = ["Food", "Transport", "Shopping", "Eating Out", "Travel", "Entertainment", "Healthcare", "Education", "Bills", "Other"];
+const CATEGORIES = [
+  "Food", "Transport", "Shopping", "Eating Out", "Travel", "Entertainment",
+  "Healthcare", "Education", "Bills", "Rent", "Insurance", "EMI", "Other"
+];
 
-interface Transaction {
+interface Expense {
   id: string;
   transaction_date: string;
   narration: string;
   debit: number;
-  credit: number;
   category: string;
   subcategory?: string;
   notes?: string;
   bank_type: string;
+  bank_account_id?: string;
+}
+
+interface BankAccount {
+  id: string;
+  bank_name: string;
+  account_number_masked: string;
+  account_type: string;
 }
 
 export default function MonthlyExpenses() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
-  
-  const [newTransaction, setNewTransaction] = useState({
+
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
-    amount: "",
+    description: "",
     category: "Other",
+    amount: "",
+    paidFrom: "cash",
+    tags: "",
     notes: "",
-    mode: "UPI",
   });
 
-  const [openAddDialog, setOpenAddDialog] = useState(false);
-
   useEffect(() => {
-    fetchTransactions();
+    if (user) {
+      fetchData();
+    }
   }, [user, selectedMonth]);
 
   useEffect(() => {
-    filterTransactions();
-  }, [transactions, categoryFilter, searchTerm]);
+    filterExpenses();
+  }, [expenses, categoryFilter, searchTerm]);
 
-  const fetchTransactions = async () => {
+  const fetchData = async () => {
     if (!user) return;
     setLoading(true);
     try {
+      // Fetch bank accounts
+      const { data: accountsData } = await supabase
+        .from("bank_accounts")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("is_active", true);
+
+      setBankAccounts(accountsData || []);
+
+      // Fetch expenses from transactions table
       const startDate = `${selectedMonth}-01`;
-      const endDate = new Date(parseInt(selectedMonth.split('-')[0]), parseInt(selectedMonth.split('-')[1]), 0).toISOString().split('T')[0];
-      
-      const { data, error } = await supabase
+      const endDate = new Date(
+        parseInt(selectedMonth.split('-')[0]),
+        parseInt(selectedMonth.split('-')[1]),
+        0
+      ).toISOString().split('T')[0];
+
+      const { data: expensesData } = await supabase
         .from("transactions")
         .select("*")
         .eq("user_id", user.id)
         .gte("transaction_date", startDate)
         .lte("transaction_date", endDate)
+        .gt("debit", 0)
         .order("transaction_date", { ascending: false });
 
-      if (error) throw error;
-      setTransactions(data || []);
-    } catch (error: any) {
-      toast.error("Failed to fetch transactions");
+      setExpenses(expensesData || []);
+    } catch (error) {
+      toast.error("Failed to fetch expenses");
     } finally {
       setLoading(false);
     }
   };
 
-  const filterTransactions = () => {
-    let filtered = [...transactions];
-    
+  const filterExpenses = () => {
+    let filtered = [...expenses];
+
     if (categoryFilter !== "all") {
-      filtered = filtered.filter(t => t.category === categoryFilter);
+      filtered = filtered.filter(e => e.category === categoryFilter);
     }
-    
+
     if (searchTerm) {
-      filtered = filtered.filter(t => 
-        t.narration.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.notes?.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(e =>
+        e.narration.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        e.notes?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
-    setFilteredTransactions(filtered);
+
+    setFilteredExpenses(filtered);
   };
 
-  const handleAddTransaction = async () => {
-    if (!user || !newTransaction.amount) {
+  const handleOpenDialog = (expense?: Expense) => {
+    if (expense) {
+      setEditingExpense(expense);
+      setFormData({
+        date: expense.transaction_date,
+        description: expense.narration,
+        category: expense.category,
+        amount: expense.debit.toString(),
+        paidFrom: expense.bank_account_id || "cash",
+        tags: expense.subcategory || "",
+        notes: expense.notes || "",
+      });
+    } else {
+      setEditingExpense(null);
+      setFormData({
+        date: new Date().toISOString().split('T')[0],
+        description: "",
+        category: "Other",
+        amount: "",
+        paidFrom: "cash",
+        tags: "",
+        notes: "",
+      });
+    }
+    setOpenDialog(true);
+  };
+
+  const handleSaveExpense = async () => {
+    if (!user || !formData.amount || !formData.description) {
       toast.error("Please fill in all required fields");
       return;
     }
 
     try {
-      const { error } = await supabase.from("transactions").insert({
-        user_id: user.id,
-        transaction_date: newTransaction.date,
-        narration: `Manual Entry - ${newTransaction.category}`,
-        debit: parseFloat(newTransaction.amount),
-        credit: 0,
-        category: newTransaction.category,
-        notes: newTransaction.notes,
-        bank_type: "Manual",
-      });
+      const amount = parseFloat(formData.amount);
+      const bankAccountId = formData.paidFrom !== "cash" ? formData.paidFrom : null;
+
+      if (editingExpense) {
+        // Update existing expense
+        const { error } = await supabase
+          .from("transactions")
+          .update({
+            transaction_date: formData.date,
+            narration: formData.description,
+            category: formData.category,
+            subcategory: formData.tags || null,
+            debit: amount,
+            notes: formData.notes,
+            bank_type: bankAccountId ? "Bank" : "Cash",
+          })
+          .eq("id", editingExpense.id);
+
+        if (error) throw error;
+        toast.success("Expense updated successfully");
+      } else {
+        // Create new expense
+        const { error: txnError } = await supabase.from("transactions").insert({
+          user_id: user.id,
+          transaction_date: formData.date,
+          narration: formData.description,
+          debit: amount,
+          credit: 0,
+          category: formData.category,
+          subcategory: formData.tags || null,
+          notes: formData.notes,
+          bank_type: bankAccountId ? "Bank" : "Cash",
+        });
+
+        if (txnError) throw txnError;
+
+        // If paid from bank account, also create bank statement entry
+        if (bankAccountId) {
+          const { error: bankError } = await supabase.from("bank_statement_entries").insert({
+            user_id: user.id,
+            bank_account_id: bankAccountId,
+            transaction_date: formData.date,
+            narration: formData.description,
+            debit: amount,
+            credit: 0,
+            category: formData.category,
+            subcategory: formData.tags || null,
+            notes: formData.notes,
+          });
+
+          if (bankError) throw bankError;
+        }
+
+        toast.success("Expense added successfully");
+      }
+
+      setOpenDialog(false);
+      fetchData();
+    } catch (error: any) {
+      toast.error("Failed to save expense");
+      console.error(error);
+    }
+  };
+
+  const handleDeleteExpense = async (expense: Expense) => {
+    if (!confirm("Are you sure you want to delete this expense?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", expense.id);
 
       if (error) throw error;
-      
-      toast.success("Transaction added successfully");
-      setOpenAddDialog(false);
-      setNewTransaction({
-        date: new Date().toISOString().split('T')[0],
-        amount: "",
-        category: "Other",
-        notes: "",
-        mode: "UPI",
-      });
-      fetchTransactions();
-    } catch (error: any) {
-      toast.error("Failed to add transaction");
+
+      // Also delete from bank_statement_entries if it exists
+      if (expense.bank_account_id) {
+        await supabase
+          .from("bank_statement_entries")
+          .delete()
+          .eq("bank_account_id", expense.bank_account_id)
+          .eq("narration", expense.narration)
+          .eq("transaction_date", expense.transaction_date);
+      }
+
+      toast.success("Expense deleted successfully");
+      fetchData();
+    } catch (error) {
+      toast.error("Failed to delete expense");
     }
   };
 
   const getCategoryData = () => {
     const categoryTotals: Record<string, number> = {};
-    filteredTransactions.forEach(t => {
-      const amount = t.debit || 0;
-      if (amount > 0) {
-        categoryTotals[t.category] = (categoryTotals[t.category] || 0) + amount;
-      }
+    filteredExpenses.forEach(e => {
+      categoryTotals[e.category] = (categoryTotals[e.category] || 0) + e.debit;
     });
-    
+
     return Object.entries(categoryTotals)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
@@ -155,12 +271,11 @@ export default function MonthlyExpenses() {
 
   const getTrendData = () => {
     const dailyTotals: Record<string, number> = {};
-    filteredTransactions.forEach(t => {
-      const date = t.transaction_date;
-      const amount = t.debit || 0;
-      dailyTotals[date] = (dailyTotals[date] || 0) + amount;
+    filteredExpenses.forEach(e => {
+      const date = e.transaction_date;
+      dailyTotals[date] = (dailyTotals[date] || 0) + e.debit;
     });
-    
+
     return Object.entries(dailyTotals)
       .map(([date, amount]) => ({ date, amount }))
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -168,8 +283,16 @@ export default function MonthlyExpenses() {
 
   const categoryData = getCategoryData();
   const trendData = getTrendData();
-  const totalExpenses = filteredTransactions.reduce((sum, t) => sum + (t.debit || 0), 0);
+  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.debit, 0);
   const topCategories = categoryData.slice(0, 5);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -178,73 +301,10 @@ export default function MonthlyExpenses() {
           <h1 className="text-3xl font-bold mb-2">Monthly Expenses</h1>
           <p className="text-muted-foreground">Track and categorize your spending</p>
         </div>
-        <div className="flex gap-2">
-          <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Transaction
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Transaction</DialogTitle>
-                <DialogDescription>Manually add a transaction to track expenses</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="date">Date</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={newTransaction.date}
-                    onChange={(e) => setNewTransaction({ ...newTransaction, date: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Amount</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    placeholder="0.00"
-                    value={newTransaction.amount}
-                    onChange={(e) => setNewTransaction({ ...newTransaction, amount: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select value={newTransaction.category} onValueChange={(value) => setNewTransaction({ ...newTransaction, category: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map(cat => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Add notes..."
-                    value={newTransaction.notes}
-                    onChange={(e) => setNewTransaction({ ...newTransaction, notes: e.target.value })}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenAddDialog(false)}>Cancel</Button>
-                <Button onClick={handleAddTransaction}>Add Transaction</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          <Button variant="outline">
-            <Upload className="h-4 w-4 mr-2" />
-            Import Expenses
-          </Button>
-        </div>
+        <Button onClick={() => handleOpenDialog()}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Expense
+        </Button>
       </div>
 
       <FadeInStagger>
@@ -258,17 +318,17 @@ export default function MonthlyExpenses() {
               <p className="text-sm text-muted-foreground mt-1">This month</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader>
               <CardTitle>Transactions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{filteredTransactions.length}</div>
+              <div className="text-3xl font-bold">{filteredExpenses.length}</div>
               <p className="text-sm text-muted-foreground mt-1">Expense entries</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader>
               <CardTitle>Top Category</CardTitle>
@@ -378,7 +438,7 @@ export default function MonthlyExpenses() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>All Transactions</CardTitle>
+                <CardTitle>All Expenses</CardTitle>
                 <CardDescription>View and manage your expenses</CardDescription>
               </div>
               <div className="flex gap-2">
@@ -393,50 +453,180 @@ export default function MonthlyExpenses() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Input
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-[200px]"
-                />
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 w-[200px]"
+                  />
+                </div>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Bank</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTransactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell>{new Date(transaction.transaction_date).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <div className="font-medium">{transaction.narration}</div>
-                      {transaction.notes && (
-                        <div className="text-sm text-muted-foreground">{transaction.notes}</div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{transaction.category}</Badge>
-                    </TableCell>
-                    <TableCell>{transaction.bank_type}</TableCell>
-                    <TableCell className="text-right font-medium text-destructive">
-                      {formatINR(transaction.debit || 0)}
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Paid From</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredExpenses.map((expense) => (
+                    <TableRow key={expense.id}>
+                      <TableCell>{new Date(expense.transaction_date).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">{expense.narration}</div>
+                        {expense.notes && (
+                          <div className="text-sm text-muted-foreground">{expense.notes}</div>
+                        )}
+                        {expense.subcategory && (
+                          <Badge variant="outline" className="mt-1">{expense.subcategory}</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{expense.category}</Badge>
+                      </TableCell>
+                      <TableCell>{expense.bank_type}</TableCell>
+                      <TableCell className="text-right font-medium text-destructive">
+                        {formatINR(expense.debit)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenDialog(expense)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteExpense(expense)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {filteredExpenses.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                No expenses found. Add your first expense to get started.
+              </div>
+            )}
           </CardContent>
         </Card>
       </FadeInStagger>
+
+      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{editingExpense ? "Edit Expense" : "Add New Expense"}</DialogTitle>
+            <DialogDescription>
+              {editingExpense ? "Update expense details" : "Enter expense details to track your spending"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="date">Date *</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount *</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  placeholder="0.00"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description *</Label>
+              <Input
+                id="description"
+                placeholder="e.g., Grocery shopping at Store"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="category">Category *</Label>
+                <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="paidFrom">Paid From *</Label>
+                <Select value={formData.paidFrom} onValueChange={(value) => setFormData({ ...formData, paidFrom: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    {bankAccounts.map(account => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.bank_name} - {account.account_number_masked}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tags">Tags (Optional)</Label>
+              <Input
+                id="tags"
+                placeholder="e.g., Business, Personal"
+                value={formData.tags}
+                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Add any additional notes..."
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveExpense}>
+              {editingExpense ? "Update" : "Add"} Expense
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
