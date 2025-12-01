@@ -12,12 +12,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { formatINR } from "@/lib/currency";
-import { Plus, Smartphone, CreditCard, Banknote, Building2, TrendingUp, Calendar, AlertCircle, Pencil, Trash2, Upload, FileImage, X, ExternalLink } from "lucide-react";
+import { Plus, Smartphone, CreditCard, Banknote, Building2, TrendingUp, Calendar, AlertCircle, Pencil, Trash2, Upload, FileImage, X, ExternalLink, CheckSquare } from "lucide-react";
 import { ChartContainer } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import LenderAvatar from "@/components/lenders/LenderAvatar";
 import { syncAmortizationWithPayments } from "@/lib/loan-calculations";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface PaymentFormData {
   id?: string;
@@ -55,6 +56,22 @@ export default function NewPayments() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [editForm, setEditForm] = useState<PaymentFormData>(initialFormData);
+  
+  // Multi-select state
+  const [selectedPayments, setSelectedPayments] = useState<Set<string>>(new Set());
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [bulkEditDialogOpen, setBulkEditDialogOpen] = useState(false);
+  const [bulkEditForm, setBulkEditForm] = useState({
+    paid_on: "",
+    amount: "",
+    source: "",
+    notes: "",
+    updateDate: false,
+    updateAmount: false,
+    updateSource: false,
+    updateNotes: false,
+  });
+  const [bulkOperationLoading, setBulkOperationLoading] = useState(false);
   
   // Receipt upload state
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
@@ -260,6 +277,151 @@ export default function NewPayments() {
       fetchData();
     } catch (error: any) {
       toast({ title: "Error deleting payment", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // Multi-select handlers
+  const togglePaymentSelection = (paymentId: string) => {
+    const newSelected = new Set(selectedPayments);
+    if (newSelected.has(paymentId)) {
+      newSelected.delete(paymentId);
+    } else {
+      newSelected.add(paymentId);
+    }
+    setSelectedPayments(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedPayments.size === payments.length) {
+      setSelectedPayments(new Set());
+    } else {
+      setSelectedPayments(new Set(payments.map(p => p.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedPayments(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPayments.size === 0) return;
+    
+    setBulkOperationLoading(true);
+    try {
+      const selectedPaymentsList = payments.filter(p => selectedPayments.has(p.id));
+      
+      // Group payments by loan_id to sync amortization for each affected loan
+      const paymentsByLoan = new Map<string, any[]>();
+      selectedPaymentsList.forEach(payment => {
+        const existing = paymentsByLoan.get(payment.loan_id) || [];
+        existing.push(payment);
+        paymentsByLoan.set(payment.loan_id, existing);
+      });
+
+      // Delete all selected payments
+      const { error } = await supabase
+        .from("payments")
+        .delete()
+        .in("id", Array.from(selectedPayments));
+
+      if (error) throw error;
+
+      // Sync amortization for each affected loan
+      for (const loanId of paymentsByLoan.keys()) {
+        const { data: remainingPayments } = await supabase
+          .from("payments")
+          .select("*")
+          .eq("loan_id", loanId);
+
+        await syncAmortizationWithPayments(loanId, remainingPayments || [], supabase);
+      }
+
+      toast({ 
+        title: "Payments deleted successfully",
+        description: `${selectedPayments.size} payment(s) deleted and loan stats updated.`
+      });
+      setBulkDeleteDialogOpen(false);
+      clearSelection();
+      fetchData();
+    } catch (error: any) {
+      toast({ title: "Error deleting payments", description: error.message, variant: "destructive" });
+    } finally {
+      setBulkOperationLoading(false);
+    }
+  };
+
+  const openBulkEditDialog = () => {
+    setBulkEditForm({
+      paid_on: new Date().toISOString().split("T")[0],
+      amount: "",
+      source: "",
+      notes: "",
+      updateDate: false,
+      updateAmount: false,
+      updateSource: false,
+      updateNotes: false,
+    });
+    setBulkEditDialogOpen(true);
+  };
+
+  const handleBulkEdit = async () => {
+    if (selectedPayments.size === 0) return;
+    
+    const updates: any = {};
+    if (bulkEditForm.updateDate && bulkEditForm.paid_on) {
+      updates.paid_on = bulkEditForm.paid_on;
+    }
+    if (bulkEditForm.updateAmount && bulkEditForm.amount) {
+      updates.amount = parseFloat(bulkEditForm.amount);
+    }
+    if (bulkEditForm.updateSource && bulkEditForm.source) {
+      updates.source = bulkEditForm.source;
+    }
+    if (bulkEditForm.updateNotes) {
+      updates.notes = bulkEditForm.notes;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      toast({ title: "No fields selected", description: "Please select at least one field to update.", variant: "destructive" });
+      return;
+    }
+
+    setBulkOperationLoading(true);
+    try {
+      const selectedPaymentsList = payments.filter(p => selectedPayments.has(p.id));
+      
+      // Group payments by loan_id
+      const affectedLoanIds = new Set(selectedPaymentsList.map(p => p.loan_id));
+
+      // Update all selected payments
+      const { error } = await supabase
+        .from("payments")
+        .update(updates)
+        .in("id", Array.from(selectedPayments));
+
+      if (error) throw error;
+
+      // Sync amortization for each affected loan
+      for (const loanId of affectedLoanIds) {
+        const { data: loanPayments } = await supabase
+          .from("payments")
+          .select("*")
+          .eq("loan_id", loanId);
+
+        await syncAmortizationWithPayments(loanId, loanPayments || [], supabase);
+      }
+
+      toast({ 
+        title: "Payments updated successfully",
+        description: `${selectedPayments.size} payment(s) updated and loan stats recalculated.`
+      });
+      setBulkEditDialogOpen(false);
+      clearSelection();
+      fetchData();
+    } catch (error: any) {
+      toast({ title: "Error updating payments", description: error.message, variant: "destructive" });
+    } finally {
+      setBulkOperationLoading(false);
     }
   };
 
@@ -571,17 +733,61 @@ export default function NewPayments() {
 
         <TabsContent value="history">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle>Payment History</CardTitle>
+              {payments.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="select-all"
+                    checked={selectedPayments.size === payments.length && payments.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                  <Label htmlFor="select-all" className="text-sm font-normal cursor-pointer">
+                    Select All
+                  </Label>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
+              {/* Action bar when payments are selected */}
+              {selectedPayments.size > 0 && (
+                <div className="flex items-center justify-between p-3 mb-4 rounded-lg bg-primary/10 border border-primary/20">
+                  <div className="flex items-center gap-2">
+                    <CheckSquare className="h-5 w-5 text-primary" />
+                    <span className="font-medium">{selectedPayments.size} payment(s) selected</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={clearSelection}>
+                      Clear
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={openBulkEditDialog}>
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Edit Selected
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => setBulkDeleteDialogOpen(true)}>
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete Selected
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
               {payments.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">No payments recorded yet</p>
               ) : (
                 <div className="space-y-2">
                   {payments.map((payment) => (
-                    <div key={payment.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div 
+                      key={payment.id} 
+                      className={`flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors ${
+                        selectedPayments.has(payment.id) ? 'bg-primary/5 border-primary/30' : ''
+                      }`}
+                    >
                       <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={selectedPayments.has(payment.id)}
+                          onCheckedChange={() => togglePaymentSelection(payment.id)}
+                        />
                         <LenderAvatar
                           name={payment.loans?.lenders?.name || payment.loans?.loan_name || "Payment"}
                           logoUrl={payment.loans?.lenders?.logo_url || payment.loans?.logo_url}
@@ -773,6 +979,148 @@ export default function NewPayments() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Selected Payments</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedPayments.size} payment(s)? This action cannot be undone.
+              <br /><br />
+              <strong>Total amount:</strong> {formatINR(
+                payments
+                  .filter(p => selectedPayments.has(p.id))
+                  .reduce((sum, p) => sum + p.amount, 0)
+              )}
+              <br /><br />
+              Loan statistics (EMIs Paid, Pending EMIs, Outstanding, etc.) will be recalculated automatically.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkOperationLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleBulkDelete} 
+              className="bg-destructive text-destructive-foreground"
+              disabled={bulkOperationLoading}
+            >
+              {bulkOperationLoading ? "Deleting..." : `Delete ${selectedPayments.size} Payment(s)`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Edit Dialog */}
+      <Dialog open={bulkEditDialogOpen} onOpenChange={setBulkEditDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit {selectedPayments.size} Payment(s)</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mb-4">
+            Select the fields you want to update. Only checked fields will be modified for all selected payments.
+          </p>
+          <div className="space-y-4">
+            {/* Payment Date */}
+            <div className="flex items-start gap-3 p-3 rounded-lg border">
+              <Checkbox
+                id="update-date"
+                checked={bulkEditForm.updateDate}
+                onCheckedChange={(checked) => setBulkEditForm({ ...bulkEditForm, updateDate: !!checked })}
+              />
+              <div className="flex-1">
+                <Label htmlFor="update-date" className="cursor-pointer font-medium">Payment Date</Label>
+                <Input
+                  type="date"
+                  className="mt-2"
+                  value={bulkEditForm.paid_on}
+                  onChange={(e) => setBulkEditForm({ ...bulkEditForm, paid_on: e.target.value })}
+                  disabled={!bulkEditForm.updateDate}
+                />
+              </div>
+            </div>
+
+            {/* Amount */}
+            <div className="flex items-start gap-3 p-3 rounded-lg border">
+              <Checkbox
+                id="update-amount"
+                checked={bulkEditForm.updateAmount}
+                onCheckedChange={(checked) => setBulkEditForm({ ...bulkEditForm, updateAmount: !!checked })}
+              />
+              <div className="flex-1">
+                <Label htmlFor="update-amount" className="cursor-pointer font-medium">Amount</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  className="mt-2"
+                  placeholder="Enter amount"
+                  value={bulkEditForm.amount}
+                  onChange={(e) => setBulkEditForm({ ...bulkEditForm, amount: e.target.value })}
+                  disabled={!bulkEditForm.updateAmount}
+                />
+              </div>
+            </div>
+
+            {/* Payment Method */}
+            <div className="flex items-start gap-3 p-3 rounded-lg border">
+              <Checkbox
+                id="update-source"
+                checked={bulkEditForm.updateSource}
+                onCheckedChange={(checked) => setBulkEditForm({ ...bulkEditForm, updateSource: !!checked })}
+              />
+              <div className="flex-1">
+                <Label htmlFor="update-source" className="cursor-pointer font-medium">Payment Method</Label>
+                <Select
+                  value={bulkEditForm.source}
+                  onValueChange={(val) => setBulkEditForm({ ...bulkEditForm, source: val })}
+                  disabled={!bulkEditForm.updateSource}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Select method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="UPI_PHONEPE">PhonePe</SelectItem>
+                    <SelectItem value="UPI_GPAY">Google Pay</SelectItem>
+                    <SelectItem value="UPI_PAYTM">Paytm</SelectItem>
+                    <SelectItem value="NETBANKING">Net Banking</SelectItem>
+                    <SelectItem value="CARD">Card</SelectItem>
+                    <SelectItem value="CASH">Cash</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="flex items-start gap-3 p-3 rounded-lg border">
+              <Checkbox
+                id="update-notes"
+                checked={bulkEditForm.updateNotes}
+                onCheckedChange={(checked) => setBulkEditForm({ ...bulkEditForm, updateNotes: !!checked })}
+              />
+              <div className="flex-1">
+                <Label htmlFor="update-notes" className="cursor-pointer font-medium">Notes</Label>
+                <Input
+                  className="mt-2"
+                  placeholder="Enter notes (leave empty to clear)"
+                  value={bulkEditForm.notes}
+                  onChange={(e) => setBulkEditForm({ ...bulkEditForm, notes: e.target.value })}
+                  disabled={!bulkEditForm.updateNotes}
+                />
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Loan statistics will be recalculated after the update.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkEditDialogOpen(false)} disabled={bulkOperationLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkEdit} disabled={bulkOperationLoading}>
+              {bulkOperationLoading ? "Updating..." : `Update ${selectedPayments.size} Payment(s)`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
