@@ -111,9 +111,11 @@ const navigation = [
     children: [
       { name: "Budget Planner", href: "/budget-planner", icon: TrendingUp },
       { name: "Monthly Expenses", href: "/budget/monthly-expenses", icon: Receipt },
+      { name: "Category Manager", href: "/budget/category-manager", icon: SettingsIcon },
       { name: "Budget History", href: "/budget-history", icon: BarChart3 },
       { name: "Future Cash-Flow", href: "/budget/future-cashflow", icon: TrendingUp },
       { name: "Savings & Goals", href: "/budget/savings-goals", icon: TrendingUp },
+      { name: "Visual Reports", href: "/budget/visual-reports", icon: BarChart3 },
       { name: "Budget Reports", href: "/budget/reports", icon: FileText },
     ]
   },
