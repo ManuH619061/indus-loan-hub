@@ -123,6 +123,13 @@ All colors MUST be HSL.
     @apply bg-background text-foreground font-sans antialiased;
     font-size: 14px;
     line-height: 1.5;
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  #root {
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -142,6 +149,16 @@ All colors MUST be HSL.
   
   .card:hover {
     box-shadow: var(--shadow-md);
+  }
+  
+  /* Ensure no element exceeds viewport width */
+  * {
+    max-width: 100%;
+  }
+  
+  /* Allow specific elements to be full width */
+  html, body, #root, .w-full, .w-screen {
+    max-width: none;
   }
 }
 

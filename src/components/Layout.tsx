@@ -183,14 +183,14 @@ export default function Layout({ children }: LayoutProps) {
     setMobileMenuOpen(false);
   };
 
-  const NavItems = ({ isMobile = false }: { isMobile?: boolean }) => (
+      const NavItems = ({ isMobile = false }: { isMobile?: boolean }) => (
     <>
       {navigation.map((item) => {
         const Icon = item.icon;
-        const iconSize = isMobile ? "h-6 w-6" : "h-5 w-5";
+        const iconSize = isMobile ? "h-5 w-5" : "h-4 w-4";
         const textSize = isMobile ? "text-base" : "text-sm";
-        const padding = isMobile ? "px-4 py-4" : "px-3 py-2";
-        const gap = isMobile ? "gap-4" : "gap-3";
+        const padding = isMobile ? "px-3 py-3" : "px-2.5 py-2";
+        const gap = isMobile ? "gap-3" : "gap-2.5";
         
         if ('children' in item && item.children && 'key' in item) {
           const isAnyChildActive = item.children.some(child => location.pathname === child.href);
@@ -198,27 +198,28 @@ export default function Layout({ children }: LayoutProps) {
           
           return (
             <div key={item.name} className="space-y-1">
-              <button
-                onClick={() => toggleSection(item.key as string)}
-                className={cn(
-                  "flex items-center justify-between w-full rounded-lg transition-colors touch-target",
-                  "text-muted-foreground hover:bg-muted active:bg-muted/80",
-                  padding,
-                  textSize,
-                  "font-medium"
-                )}
-              >
-                <div className={cn("flex items-center", gap)}>
-                  <Icon className={iconSize} />
-                  <span>{item.name}</span>
-                </div>
-                <ChevronDown 
+                <button
+                  onClick={() => toggleSection(item.key as string)}
                   className={cn(
-                    "h-5 w-5 transition-transform duration-200",
-                    isExpanded ? "rotate-0" : "-rotate-90"
-                  )} 
-                />
-              </button>
+                    "flex items-center justify-between w-full rounded-lg transition-colors touch-target",
+                    "text-muted-foreground hover:bg-muted/70 active:bg-muted",
+                    padding,
+                    textSize,
+                    "font-medium"
+                  )}
+                  aria-expanded={isExpanded}
+                >
+                  <div className={cn("flex items-center", gap)}>
+                    <Icon className={iconSize} />
+                    <span>{item.name}</span>
+                  </div>
+                  <ChevronDown 
+                    className={cn(
+                      "h-4 w-4 transition-transform duration-200 flex-shrink-0",
+                      isExpanded ? "rotate-0" : "-rotate-90"
+                    )} 
+                  />
+                </button>
               <AnimatePresence initial={false}>
                 {isExpanded && (
                   <motion.div
@@ -316,18 +317,19 @@ export default function Layout({ children }: LayoutProps) {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden max-w-full">
       {/* Mobile Header - Larger and more app-like */}
-      <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 safe-top">
-        <div className="flex h-16 md:h-14 items-center px-4 md:px-6">
+      <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur-sm supports-[backdrop-filter]:bg-card/80 safe-top">
+        <div className="flex h-14 md:h-14 items-center px-3 md:px-6 max-w-full">
           {/* Mobile Menu Button - Always visible on mobile */}
           <Button 
             variant="ghost" 
             size="icon" 
-            className="md:hidden h-12 w-12 touch-target mr-2"
+            className="md:hidden h-10 w-10 touch-target mr-2 flex-shrink-0"
             onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open menu"
           >
-            <Menu className="h-7 w-7" />
+            <Menu className="h-5 w-5" />
           </Button>
 
           {/* Mobile Drawer */}
@@ -336,29 +338,30 @@ export default function Layout({ children }: LayoutProps) {
               side="left" 
               className="w-[85vw] max-w-[320px] p-0 border-r-0"
             >
-              <div className="flex flex-col h-full bg-card">
+              <div className="flex flex-col h-full bg-card overflow-y-auto">
                 {/* Drawer Header - User Profile */}
-                <div className="p-5 border-b bg-gradient-to-br from-primary/5 to-primary/10">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-gradient-primary rounded-xl">
-                        <Wallet className="h-6 w-6 text-primary-foreground" />
+                <div className="p-4 border-b bg-primary/5 flex-shrink-0">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-gradient-primary rounded-lg">
+                        <Wallet className="h-5 w-5 text-primary-foreground" />
                       </div>
-                      <span className="font-bold text-lg">Loan Tracker</span>
+                      <span className="font-semibold text-base">Loan Tracker</span>
                     </div>
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-10 w-10 touch-target"
+                      className="h-9 w-9 touch-target flex-shrink-0"
                       onClick={() => setMobileMenuOpen(false)}
+                      aria-label="Close menu"
                     >
                       <X className="h-5 w-5" />
                     </Button>
                   </div>
                   
                   {/* User Info */}
-                  <div className="flex items-center gap-3 px-2">
-                    <div className="h-12 w-12 rounded-full bg-gradient-primary flex items-center justify-center text-primary-foreground font-semibold text-lg">
+                  <div className="flex items-center gap-2.5 px-1">
+                    <div className="h-10 w-10 rounded-full bg-gradient-primary flex items-center justify-center text-primary-foreground font-semibold text-base flex-shrink-0">
                       {user?.email?.charAt(0).toUpperCase() || "U"}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -373,18 +376,18 @@ export default function Layout({ children }: LayoutProps) {
                 </div>
                 
                 {/* Drawer Navigation */}
-                <nav className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-hide">
+                <nav className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-hide">
                   <NavItems isMobile={true} />
                 </nav>
 
                 {/* Drawer Footer */}
-                <div className="p-4 border-t bg-muted/30">
+                <div className="p-3 border-t bg-muted/20 flex-shrink-0 safe-bottom">
                   <Button 
                     variant="outline" 
-                    className="w-full h-12 text-base touch-target" 
+                    className="w-full h-11 text-sm touch-target" 
                     onClick={handleSignOut}
                   >
-                    <LogOut className="h-5 w-5 mr-3" />
+                    <LogOut className="h-4 w-4 mr-2" />
                     Sign Out
                   </Button>
                 </div>
@@ -393,42 +396,40 @@ export default function Layout({ children }: LayoutProps) {
           </Sheet>
 
           {/* Logo */}
-          <div className="flex items-center gap-3 md:ml-0 ml-2">
+          <div className="flex items-center gap-2 md:gap-3 md:ml-0 flex-1 min-w-0">
             <div className="hidden md:flex items-center gap-2">
-              <div className="p-2 bg-gradient-primary rounded-lg">
-                <Wallet className="h-5 w-5 text-primary-foreground" />
+              <div className="p-1.5 bg-gradient-primary rounded-lg flex-shrink-0">
+                <Wallet className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="font-bold text-lg">Loan Tracker</span>
+              <span className="font-semibold text-base truncate">Loan Tracker</span>
             </div>
-            <span className="md:hidden font-bold text-xl">Loan Tracker</span>
+            <span className="md:hidden font-semibold text-base truncate">Loan Tracker</span>
           </div>
 
-          <div className="flex-1" />
-
           {/* Desktop User Info */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-3 flex-shrink-0">
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Signed in as</span>
-              <span className="font-medium">{user?.email}</span>
+              <span className="text-muted-foreground text-xs">Signed in as</span>
+              <span className="font-medium text-xs truncate max-w-[150px]">{user?.email}</span>
             </div>
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
-              <LogOut className="h-4 w-4 mr-2" />
+            <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-xs">
+              <LogOut className="h-4 w-4 mr-1" />
               Sign Out
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="flex">
+      <div className="flex overflow-x-hidden">
         {/* Sidebar - Desktop Only */}
-        <aside className="hidden md:flex w-64 flex-col fixed inset-y-0 top-14 border-r bg-card">
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-hide">
+        <aside className="hidden md:flex w-60 flex-col fixed inset-y-0 top-14 border-r bg-card overflow-y-auto">
+          <nav className="flex-1 p-3 space-y-1 scrollbar-hide">
             <NavItems isMobile={false} />
           </nav>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 md:ml-64">
+        <main className="flex-1 md:ml-60 w-full overflow-x-hidden">
           <div className="p-3 md:p-4 lg:p-6 max-w-[1400px] mx-auto w-full">
             {children}
           </div>
