@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow, differenceInDays, parseISO } from "date-fns";
 import FadeInStagger from "@/components/FadeInStagger";
 import UploadDocumentDialog from "@/components/documents/UploadDocumentDialog";
+import DocumentPreviewDialog from "@/components/documents/DocumentPreviewDialog";
 
 type DocumentRow = {
   id: string;
@@ -73,6 +74,8 @@ export default function Documents() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<DocumentRow | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [documentToPreview, setDocumentToPreview] = useState<DocumentRow | null>(null);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -246,10 +249,15 @@ export default function Documents() {
                   )}
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <Button variant="ghost" size="sm" asChild>
-                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                      <Eye className="h-4 w-4" />
-                    </a>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      setDocumentToPreview(doc);
+                      setPreviewDialogOpen(true);
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
                   </Button>
                   <Button variant="ghost" size="sm" asChild>
                     <a href={doc.file_url} download>
@@ -443,6 +451,12 @@ export default function Documents() {
         loans={loans}
         lenders={lenders}
         onSuccess={fetchData}
+      />
+
+      <DocumentPreviewDialog
+        open={previewDialogOpen}
+        onOpenChange={setPreviewDialogOpen}
+        document={documentToPreview}
       />
     </div>
   );
