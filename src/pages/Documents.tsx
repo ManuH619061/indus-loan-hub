@@ -1,9 +1,10 @@
-"use client";
-
-import React, { useState, useEffect, useMemo } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useEffect, useMemo } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,74 +17,113 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { FileText, Download, Plus, Trash2 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-
-type Lender = {
-  name: string | null;
-};
-
-type Loan = {
-  loan_name: string | null;
-  user_id: string;
-  lenders: Lender | null;
-};
+import { 
+  FileText, 
+  Download, 
+  Plus, 
+  Trash2, 
+  Search, 
+  Filter,
+  Eye,
+  AlertCircle,
+  Loader2,
+  X
+} from "lucide-react";
+import { toast } from "sonner";
+import { formatDistanceToNow, differenceInDays, parseISO } from "date-fns";
+import FadeInStagger from "@/components/FadeInStagger";
 
 type DocumentRow = {
   id: string;
-  label: string | null;
+  label: string;
   doc_type: string | null;
-  file_url: string | null;
-  added_on: string | null;
+  file_url: string;
+  file_name: string | null;
+  added_on: string;
   valid_to: string | null;
   notes: string | null;
-  loans: Loan | null;
+  loan_id: string;
+  loans: {
+    loan_name: string;
+    user_id: string;
+    lender_id: string | null;
+    lenders: {
+      name: string;
+    } | null;
+  };
 };
+
+const DOC_TYPES = [
+  "Loan Sanction Letter",
+  "NOC",
+  "ID Proof",
+  "Bank Statement",
+  "Insurance",
+  "Agreement",
+  "Other"
+];
 
 export default function Documents() {
   const { user } = useAuth();
-  const { toast } = useToast();
-
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
+  const [loans, setLoans] = useState<any[]>([]);
+  const [lenders, setLenders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<DocumentRow | null>(null);
+
+  // Filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [lenderFilter, setLenderFilter] = useState("all");
+  const [loanFilter, setLoanFilter] = useState("all");
+  const [expiryFilter, setExpiryFilter] = useState("all");
 
   useEffect(() => {
     if (user) {
-      void fetchDocuments();
+      fetchData();
     }
   }, [user]);
 
-  const fetchDocuments = async () => {
+  const fetchData = async () => {
+    if (!user) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Fetch documents
+      const { data: docsData, error: docsError } = await supabase
         .from("documents")
         .select(`
           *,
           loans!inner (
             loan_name,
             user_id,
+            lender_id,
             lenders (name)
           )
         `)
         .order("added_on", { ascending: false });
 
-      if (error) throw error;
+      if (docsError) throw docsError;
 
-      // Optional: filter by current user if needed
-      const filtered = (data as any)?.filter((doc: any) => doc.loans?.user_id === user?.id) ?? [];
+      const filtered = (docsData as any)?.filter((doc: any) => doc.loans?.user_id === user.id) ?? [];
+      setDocuments(filtered);
 
-      setDocuments(filtered as DocumentRow[]);
+      // Fetch loans
+      const { data: loansData } = await supabase
+        .from("loans")
+        .select("id, loan_name")
+        .eq("user_id", user.id);
+      setLoans(loansData || []);
+
+      // Fetch lenders
+      const { data: lendersData } = await supabase
+        .from("lenders")
+        .select("id, name")
+        .eq("user_id", user.id);
+      setLenders(lendersData || []);
     } catch (error) {
-      console.error("Error fetching documents:", error);
-      toast({
-        title: "Error loading documents",
-        description: "Please try again in a moment.",
-        variant: "destructive",
-      });
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load documents");
     } finally {
       setLoading(false);
     }
@@ -93,20 +133,13 @@ export default function Documents() {
     if (!documentToDelete) return;
 
     try {
-      // Delete from storage if file exists
       if (documentToDelete.file_url) {
         const fileName = documentToDelete.file_url.split("/").pop();
         if (fileName) {
-          const { error: storageError } = await supabase.storage
-            .from("loan-documents")
-            // If you store in folders, replace with full path here instead of just fileName
-            .remove([fileName]);
-
-          if (storageError) throw storageError;
+          await supabase.storage.from("loan-documents").remove([fileName]);
         }
       }
 
-      // Delete document record
       const { error } = await supabase
         .from("documents")
         .delete()
@@ -114,90 +147,133 @@ export default function Documents() {
 
       if (error) throw error;
 
-      toast({ title: "Document deleted successfully" });
+      toast.success("Document deleted successfully");
       setDeleteDialogOpen(false);
       setDocumentToDelete(null);
-      void fetchDocuments();
+      fetchData();
     } catch (error: any) {
-      console.error("Error deleting document:", error);
-      toast({
-        title: "Error deleting document",
-        description: error?.message ?? "Something went wrong",
-        variant: "destructive",
-      });
+      toast.error("Failed to delete document");
     }
   };
 
-  const byLoan = useMemo(() => {
-    const grouped: Record<string, DocumentRow[]> = {};
-    documents.forEach((doc) => {
-      const loanName = doc.loans?.loan_name || "Unknown loan";
-      if (!grouped[loanName]) grouped[loanName] = [];
-      grouped[loanName].push(doc);
-    });
-    return grouped;
-  }, [documents]);
+  const filteredDocuments = useMemo(() => {
+    let filtered = [...documents];
 
-  const byLender = useMemo(() => {
-    const grouped: Record<string, DocumentRow[]> = {};
-    documents.forEach((doc) => {
-      const lenderName = doc.loans?.lenders?.name || "Unknown lender";
-      if (!grouped[lenderName]) grouped[lenderName] = [];
-      grouped[lenderName].push(doc);
-    });
-    return grouped;
-  }, [documents]);
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (doc) =>
+          doc.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          doc.notes?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (typeFilter !== "all") {
+      filtered = filtered.filter((doc) => doc.doc_type === typeFilter);
+    }
+
+    if (lenderFilter !== "all") {
+      filtered = filtered.filter((doc) => doc.loans.lender_id === lenderFilter);
+    }
+
+    if (loanFilter !== "all") {
+      filtered = filtered.filter((doc) => doc.loan_id === loanFilter);
+    }
+
+    if (expiryFilter !== "all") {
+      const today = new Date();
+      filtered = filtered.filter((doc) => {
+        if (!doc.valid_to) return expiryFilter === "no-expiry";
+        const expiryDate = parseISO(doc.valid_to);
+        const daysUntilExpiry = differenceInDays(expiryDate, today);
+
+        if (expiryFilter === "expired") return daysUntilExpiry < 0;
+        if (expiryFilter === "expiring-soon") return daysUntilExpiry >= 0 && daysUntilExpiry <= 30;
+        if (expiryFilter === "valid") return daysUntilExpiry > 30;
+        return true;
+      });
+    }
+
+    return filtered;
+  }, [documents, searchTerm, typeFilter, lenderFilter, loanFilter, expiryFilter]);
+
+  const getExpiryStatus = (validTo: string | null) => {
+    if (!validTo) return null;
+    const today = new Date();
+    const expiryDate = parseISO(validTo);
+    const daysUntilExpiry = differenceInDays(expiryDate, today);
+
+    if (daysUntilExpiry < 0) {
+      return { status: "expired", variant: "destructive" as const, label: "Expired" };
+    } else if (daysUntilExpiry <= 30) {
+      return { status: "expiring-soon", variant: "secondary" as const, label: `Expires in ${daysUntilExpiry} days` };
+    }
+    return { status: "valid", variant: "default" as const, label: `Valid until ${expiryDate.toLocaleDateString()}` };
+  };
 
   const DocumentCard = ({ doc }: { doc: DocumentRow }) => {
-    const addedOnDate = doc.added_on ? new Date(doc.added_on) : null;
-    const validToDate = doc.valid_to ? new Date(doc.valid_to) : null;
+    const expiryStatus = getExpiryStatus(doc.valid_to);
+    const addedOnDate = new Date(doc.added_on);
 
     return (
-      <Card>
+      <Card className="hover:shadow-lg transition-shadow">
         <CardContent className="pt-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3 flex-1">
-              <FileText className="h-5 w-5 text-muted-foreground mt-1" />
-              <div className="flex-1">
-                <h4 className="font-medium">{doc.label || "Untitled document"}</h4>
-                <p className="text-sm text-muted-foreground">
-                  {doc.doc_type || "Document"}
-                  {addedOnDate && (
-                    <>
-                      {" "}
-                      • Added{" "}
-                      {formatDistanceToNow(addedOnDate, {
-                        addSuffix: true,
-                      })}
-                    </>
-                  )}
-                </p>
-                {validToDate && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Valid until {validToDate.toLocaleDateString("en-IN")}
-                  </p>
-                )}
-                {doc.notes && <p className="text-sm mt-2 whitespace-pre-line">{doc.notes}</p>}
-              </div>
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-primary/10 rounded-lg">
+              <FileText className="h-6 w-6 text-primary" />
             </div>
-            <div className="flex gap-2 shrink-0">
-              {doc.file_url && (
-                <Button variant="ghost" size="sm" asChild>
-                  <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                    <Download className="h-4 w-4" />
-                  </a>
-                </Button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1">
+                  <h4 className="font-semibold text-lg mb-1">{doc.label}</h4>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {doc.doc_type && (
+                      <Badge variant="outline">{doc.doc_type}</Badge>
+                    )}
+                    <Badge variant="secondary">
+                      {doc.loans.lenders?.name || "Unknown Lender"}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Loan: {doc.loans.loan_name}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Added {formatDistanceToNow(addedOnDate, { addSuffix: true })}
+                  </p>
+                  {doc.notes && (
+                    <p className="text-sm mt-2 text-muted-foreground">{doc.notes}</p>
+                  )}
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button variant="ghost" size="sm" asChild>
+                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                      <Eye className="h-4 w-4" />
+                    </a>
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild>
+                    <a href={doc.file_url} download>
+                      <Download className="h-4 w-4" />
+                    </a>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setDocumentToDelete(doc);
+                      setDeleteDialogOpen(true);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+              {expiryStatus && (
+                <div className="mt-3 flex items-center gap-2">
+                  {expiryStatus.status === "expired" || expiryStatus.status === "expiring-soon" ? (
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                  ) : null}
+                  <Badge variant={expiryStatus.variant}>{expiryStatus.label}</Badge>
+                </div>
               )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setDocumentToDelete(doc);
-                  setDeleteDialogOpen(true);
-                }}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
             </div>
           </div>
         </CardContent>
@@ -207,10 +283,8 @@ export default function Documents() {
 
   if (loading) {
     return (
-      <div className="space-y-4 animate-pulse">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-24 bg-muted rounded-lg" />
-        ))}
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -219,8 +293,10 @@ export default function Documents() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Documents</h1>
-          <p className="text-muted-foreground">Manage loan documents and files</p>
+          <h1 className="text-4xl font-bold">Documents Manager</h1>
+          <p className="text-muted-foreground mt-2">
+            Manage and organize your loan documents
+          </p>
         </div>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
@@ -228,62 +304,123 @@ export default function Documents() {
         </Button>
       </div>
 
-      <Tabs defaultValue="by-loan" className="w-full">
-        <TabsList>
-          <TabsTrigger value="by-loan">By Loan</TabsTrigger>
-          <TabsTrigger value="by-lender">By Lender</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="by-loan" className="space-y-6 mt-6">
-          {Object.keys(byLoan).length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-muted-foreground text-center py-8">
-                  No documents uploaded yet. Add documents to your loans to see them here.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            Object.entries(byLoan).map(([loanName, docs]) => (
-              <div key={loanName} className="space-y-3">
-                <h3 className="text-lg font-semibold mb-1">{loanName}</h3>
-                {docs.map((doc) => (
-                  <DocumentCard key={doc.id} doc={doc} />
-                ))}
+      <FadeInStagger>
+        <Card>
+          <CardHeader>
+            <CardTitle>Filters</CardTitle>
+            <CardDescription>Filter documents by type, lender, loan, or expiry</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-5">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search documents..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
               </div>
-            ))
-          )}
-        </TabsContent>
-
-        <TabsContent value="by-lender" className="space-y-6 mt-6">
-          {Object.keys(byLender).length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-muted-foreground text-center py-8">
-                  No documents uploaded yet. Add documents to your loans to see them here.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            Object.entries(byLender).map(([lenderName, docs]) => (
-              <div key={lenderName} className="space-y-3">
-                <h3 className="text-lg font-semibold mb-1">{lenderName}</h3>
-                {docs.map((doc) => (
-                  <DocumentCard key={doc.id} doc={doc} />
-                ))}
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Document Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {DOC_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={lenderFilter} onValueChange={setLenderFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Lender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Lenders</SelectItem>
+                  {lenders.map((lender) => (
+                    <SelectItem key={lender.id} value={lender.id}>
+                      {lender.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={loanFilter} onValueChange={setLoanFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Loan" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Loans</SelectItem>
+                  {loans.map((loan) => (
+                    <SelectItem key={loan.id} value={loan.id}>
+                      {loan.loan_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={expiryFilter} onValueChange={setExpiryFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Expiry Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Documents</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
+                  <SelectItem value="expiring-soon">Expiring Soon (30 days)</SelectItem>
+                  <SelectItem value="valid">Valid</SelectItem>
+                  <SelectItem value="no-expiry">No Expiry Date</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredDocuments.length} of {documents.length} documents
               </div>
-            ))
-          )}
-        </TabsContent>
-      </Tabs>
+              {(searchTerm || typeFilter !== "all" || lenderFilter !== "all" || loanFilter !== "all" || expiryFilter !== "all") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setTypeFilter("all");
+                    setLenderFilter("all");
+                    setLoanFilter("all");
+                    setExpiryFilter("all");
+                  }}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredDocuments.map((doc) => (
+            <DocumentCard key={doc.id} doc={doc} />
+          ))}
+        </div>
+
+        {filteredDocuments.length === 0 && (
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              {documents.length === 0
+                ? "No documents uploaded yet. Add documents to your loans to see them here."
+                : "No documents found matching the filters."}
+            </CardContent>
+          </Card>
+        )}
+      </FadeInStagger>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Document</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{documentToDelete?.label || "this document"}&quot;? This
-              action cannot be undone and will permanently remove the document from storage.
+              Are you sure you want to delete "{documentToDelete?.label}"? This action cannot be
+              undone and will permanently remove the document from storage.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
