@@ -331,28 +331,28 @@ export default function NewDashboard() {
   };
 
   return (
-    <div className="space-y-6 md:space-y-8">
+    <div className="space-y-4 md:space-y-6 max-w-full overflow-x-hidden">
       {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-2">Complete overview of your financial health</p>
+          <h1 className="text-xl md:text-2xl font-semibold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">Complete overview of your financial health</p>
         </div>
-        <Button onClick={() => navigate("/loans/new")} size="lg" className="w-full md:w-auto">
-          <Plus className="mr-2 h-5 w-5" />
+        <Button onClick={() => navigate("/loans/new")} size="default" className="w-full md:w-auto touch-target">
+          <Plus className="mr-2 h-4 w-4 md:h-5 md:w-5" />
           Add Loan
         </Button>
       </div>
 
       {loading ? (
-        <div className="grid gap-4 md:gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <Card key={i}>
-              <CardHeader className="pb-2">
+        <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="p-4">
+              <CardHeader className="p-0 pb-3">
                 <Skeleton className="h-4 w-24" />
               </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-32 mb-2" />
+              <CardContent className="p-0">
+                <Skeleton className="h-7 w-28 mb-2" />
                 <Skeleton className="h-3 w-20" />
               </CardContent>
             </Card>
@@ -361,15 +361,15 @@ export default function NewDashboard() {
       ) : (
         <>
           {/* Top Summary Row - 6 Cards */}
-          <div className="grid gap-4 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {/* Total Outstanding */}
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
+            <Card className="hover:shadow-md transition-all">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 p-4 md:p-6">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Outstanding</CardTitle>
                 <Wallet className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl md:text-3xl font-bold">{formatINR(stats.totalOutstanding)}</div>
+              <CardContent className="p-4 md:p-6 pt-0">
+                <div className="text-2xl font-bold">{formatINR(stats.totalOutstanding)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Principal + Interest remaining
                 </p>
@@ -377,13 +377,13 @@ export default function NewDashboard() {
             </Card>
 
             {/* EMIs Due This Month */}
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">EMIs Due This Month</CardTitle>
+            <Card className="hover:shadow-md transition-all">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 p-4 md:p-6">
+                <CardTitle className="text-sm font-medium text-muted-foreground">EMIs Due This Month</CardTitle>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl md:text-3xl font-bold">{formatINR(stats.thisMonthEMI)}</div>
+              <CardContent className="p-4 md:p-6 pt-0">
+                <div className="text-2xl font-bold">{formatINR(stats.thisMonthEMI)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {stats.thisMonthEMICount} {stats.thisMonthEMICount === 1 ? 'payment' : 'payments'} this month
                 </p>
@@ -391,13 +391,13 @@ export default function NewDashboard() {
             </Card>
 
             {/* EMIs Due Next Month */}
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">EMIs Due Next Month</CardTitle>
+            <Card className="hover:shadow-md transition-all">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 p-4 md:p-6">
+                <CardTitle className="text-sm font-medium text-muted-foreground">EMIs Due Next Month</CardTitle>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl md:text-3xl font-bold">{formatINR(stats.nextMonthEMI)}</div>
+              <CardContent className="p-4 md:p-6 pt-0">
+                <div className="text-2xl font-bold">{formatINR(stats.nextMonthEMI)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {stats.nextMonthEMICount} {stats.nextMonthEMICount === 1 ? 'payment' : 'payments'} next month
                 </p>
@@ -405,13 +405,13 @@ export default function NewDashboard() {
             </Card>
 
             {/* Total Paid Till Date */}
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Paid Till Date</CardTitle>
+            <Card className="hover:shadow-md transition-all">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 p-4 md:p-6">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Paid Till Date</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl md:text-3xl font-bold text-green-600">{formatINR(stats.totalPaidToDate)}</div>
+              <CardContent className="p-4 md:p-6 pt-0">
+                <div className="text-2xl font-bold text-green-600">{formatINR(stats.totalPaidToDate)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   All EMI payments made
                 </p>
@@ -419,13 +419,13 @@ export default function NewDashboard() {
             </Card>
 
             {/* Average Interest Rate */}
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Avg Interest Rate</CardTitle>
+            <Card className="hover:shadow-md transition-all">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 p-4 md:p-6">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Avg Interest Rate</CardTitle>
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl md:text-3xl font-bold">{formatPercent(stats.avgInterestRate, 2)}</div>
+              <CardContent className="p-4 md:p-6 pt-0">
+                <div className="text-2xl font-bold">{formatPercent(stats.avgInterestRate, 2)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Weighted by outstanding balance
                 </p>
@@ -433,13 +433,13 @@ export default function NewDashboard() {
             </Card>
 
             {/* Active Loans */}
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Loans</CardTitle>
+            <Card className="hover:shadow-md transition-all">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 p-4 md:p-6">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Active Loans</CardTitle>
                 <CreditCard className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl md:text-3xl font-bold">{stats.activeLoans}</div>
+              <CardContent className="p-4 md:p-6 pt-0">
+                <div className="text-2xl font-bold">{stats.activeLoans}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Currently running
                 </p>
@@ -448,18 +448,18 @@ export default function NewDashboard() {
           </div>
 
           {/* Month-over-Month Comparison */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
+          <Card className="w-full">
+            <CardHeader className="p-4 md:p-6">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <Activity className="h-4 w-4 md:h-5 md:w-5" />
                 This Month vs Last Month
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs md:text-sm">
                 Compare EMI payments, expenses, and net balance
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <CardContent className="p-4 md:p-6 pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                 {/* EMI Comparison */}
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">EMI Payments</p>
@@ -537,17 +537,17 @@ export default function NewDashboard() {
           </Card>
 
           {/* Payoff Progress */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
+          <Card className="w-full">
+            <CardHeader className="p-4 md:p-6">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <TrendingUp className="h-4 w-4 md:h-5 md:w-5" />
                 Overall Payoff Progress
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs md:text-sm">
                 Principal paid, interest paid, and total remaining
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 md:p-6 pt-0">
               <div className="space-y-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Progress</span>
@@ -573,17 +573,17 @@ export default function NewDashboard() {
           </Card>
 
           {/* Main Content Grid - 2 columns on desktop */}
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-3 md:gap-4 lg:grid-cols-2 w-full">
             {/* Upcoming EMIs - Next 7 Days */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
+            <Card className="w-full">
+              <CardHeader className="p-4 md:p-6">
+                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                  <Clock className="h-4 w-4 md:h-5 md:w-5" />
                   Upcoming EMIs (Next 7 Days)
                 </CardTitle>
-                <CardDescription>Immediate attention required</CardDescription>
+                <CardDescription className="text-xs md:text-sm">Immediate attention required</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 md:p-6 pt-0">
                 {upcoming7DaysEMIs.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-4">No EMIs due in the next 7 days</p>
                 ) : (
@@ -619,22 +619,22 @@ export default function NewDashboard() {
             </Card>
 
             {/* Recent Bank Activity */}
-            <Card>
-              <CardHeader>
+            <Card className="w-full">
+              <CardHeader className="p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Building2 className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                      <Building2 className="h-4 w-4 md:h-5 md:w-5" />
                       Recent Bank Activity
                     </CardTitle>
-                    <CardDescription>Last 10 transactions</CardDescription>
+                    <CardDescription className="text-xs md:text-sm">Last 10 transactions</CardDescription>
                   </div>
                   <Link to="/expenses">
-                    <Button variant="ghost" size="sm">View All</Button>
+                    <Button variant="ghost" size="sm" className="text-xs md:text-sm">View All</Button>
                   </Link>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 md:p-6 pt-0">
                 {recentTransactions.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-4">No recent transactions</p>
                 ) : (
@@ -671,15 +671,15 @@ export default function NewDashboard() {
             </Card>
 
             {/* Top Expenses This Month */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Receipt className="h-5 w-5" />
+            <Card className="w-full">
+              <CardHeader className="p-4 md:p-6">
+                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                  <Receipt className="h-4 w-4 md:h-5 md:w-5" />
                   Top Expenses This Month
                 </CardTitle>
-                <CardDescription>Highest spending categories</CardDescription>
+                <CardDescription className="text-xs md:text-sm">Highest spending categories</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 md:p-6 pt-0">
                 {topExpenses.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-4">No expense data for this month</p>
                 ) : (
@@ -705,15 +705,15 @@ export default function NewDashboard() {
             </Card>
 
             {/* Alerts & Warnings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5" />
+            <Card className="w-full">
+              <CardHeader className="p-4 md:p-6">
+                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                  <AlertCircle className="h-4 w-4 md:h-5 md:w-5" />
                   Alerts & Warnings
                 </CardTitle>
-                <CardDescription>Action items requiring attention</CardDescription>
+                <CardDescription className="text-xs md:text-sm">Action items requiring attention</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 md:p-6 pt-0">
                 <div className="space-y-3">
                   {stats.overdueCount > 0 && (
                     <Alert variant="destructive">
@@ -770,27 +770,28 @@ export default function NewDashboard() {
           </div>
 
           {/* 6-Month EMI Timeline - Full Width */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
+          <Card className="w-full">
+            <CardHeader className="p-4 md:p-6">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <Activity className="h-4 w-4 md:h-5 md:w-5" />
                 6-Month EMI Timeline
               </CardTitle>
-              <CardDescription>EMI projection with payment counts for the next 6 months</CardDescription>
+              <CardDescription className="text-xs md:text-sm">EMI projection with payment counts for the next 6 months</CardDescription>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
+            <CardContent className="p-4 md:p-6 pt-0">
+              <div className="w-full overflow-x-auto -mx-2 px-2">
+                <ResponsiveContainer width="100%" height={280} minWidth={300}>
                 <BarChart data={monthlyProjection}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis 
                     dataKey="month" 
-                    fontSize={12}
-                    className="text-muted-foreground"
+                    fontSize={11}
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <YAxis 
-                    fontSize={12}
+                    fontSize={11}
                     tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
-                    className="text-muted-foreground"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <Tooltip 
                     formatter={(value: number) => formatINR(value)}
@@ -810,10 +811,11 @@ export default function NewDashboard() {
                     ))}
                   </Bar>
                 </BarChart>
-              </ResponsiveContainer>
+                </ResponsiveContainer>
+              </div>
               
               {/* Monthly breakdown below chart */}
-              <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {monthlyProjection.map((proj, index) => (
                   <div key={index} className="text-center p-3 border rounded-lg">
                     <p className="text-xs font-medium text-muted-foreground">{proj.month}</p>
@@ -826,28 +828,28 @@ export default function NewDashboard() {
           </Card>
 
           {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common tasks and shortcuts</CardDescription>
+          <Card className="w-full">
+            <CardHeader className="p-4 md:p-6">
+              <CardTitle className="text-base md:text-lg">Quick Actions</CardTitle>
+              <CardDescription className="text-xs md:text-sm">Common tasks and shortcuts</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Button variant="outline" className="h-auto flex-col gap-2 py-4" onClick={() => navigate("/loans/new")}>
+            <CardContent className="p-4 md:p-6 pt-0">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Button variant="outline" className="h-auto flex-col gap-2 py-4 touch-target text-sm" onClick={() => navigate("/loans/new")}>
                   <Plus className="h-5 w-5" />
-                  <span className="text-sm">Add Loan</span>
+                  <span>Add Loan</span>
                 </Button>
-                <Button variant="outline" className="h-auto flex-col gap-2 py-4" onClick={() => navigate("/payments")}>
+                <Button variant="outline" className="h-auto flex-col gap-2 py-4 touch-target text-sm" onClick={() => navigate("/payments")}>
                   <CreditCard className="h-5 w-5" />
-                  <span className="text-sm">Record Payment</span>
+                  <span>Record Payment</span>
                 </Button>
-                <Button variant="outline" className="h-auto flex-col gap-2 py-4" onClick={() => navigate("/emi-calendar")}>
+                <Button variant="outline" className="h-auto flex-col gap-2 py-4 touch-target text-sm" onClick={() => navigate("/emi-calendar")}>
                   <Calendar className="h-5 w-5" />
-                  <span className="text-sm">EMI Calendar</span>
+                  <span>EMI Calendar</span>
                 </Button>
-                <Button variant="outline" className="h-auto flex-col gap-2 py-4" onClick={() => navigate("/financial-insights")}>
+                <Button variant="outline" className="h-auto flex-col gap-2 py-4 touch-target text-sm" onClick={() => navigate("/financial-insights")}>
                   <Activity className="h-5 w-5" />
-                  <span className="text-sm">Full Insights</span>
+                  <span>Full Insights</span>
                 </Button>
               </div>
             </CardContent>
