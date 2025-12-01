@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,20 +10,34 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatINR, formatPercent } from "@/lib/currency";
 import { 
   Wallet, TrendingUp, AlertCircle, Plus, Calendar, 
-  CreditCard, Building2, Target, ArrowRight 
+  Target, ArrowRight 
 } from "lucide-react";
-import { format, addMonths, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from "date-fns";
+import { format } from "date-fns";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from "recharts";
 import FadeInStagger, { FadeInStaggerItem } from "@/components/FadeInStagger";
-import { calculateLoanStatsFromPayments } from "@/lib/loan-calculations";
+import {
+  fetchLoansWithAmortization,
+  calculatePortfolioStatsFromAmortization,
+  calculateNext30DaysEMI,
+  calculate6MonthProjection,
+  countOverdueEMIs,
+  calculatePayoffProgress,
+  LoanWithAmortization,
+} from "@/lib/portfolio-stats";
 
 interface DashboardStats {
   totalOutstanding: number;
   upcomingEMI: number;
+  upcomingEMICount: number;
   avgInterestRate: number;
   activeLoans: number;
   overdueCount: number;
+}
+
+interface RiskAlert {
+  type: "warning" | "error";
+  message: string;
 }
 
 export default function NewDashboard() {
@@ -32,6 +45,7 @@ export default function NewDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalOutstanding: 0,
     upcomingEMI: 0,
+    upcomingEMICount: 0,
     avgInterestRate: 0,
     activeLoans: 0,
     overdueCount: 0,
@@ -39,52 +53,19 @@ export default function NewDashboard() {
   const [loading, setLoading] = useState(true);
   const [upcomingEMIs, setUpcomingEMIs] = useState<any[]>([]);
   const [projectionData, setProjectionData] = useState<any[]>([]);
-  const [riskAlerts, setRiskAlerts] = useState<any[]>([]);
+  const [riskAlerts, setRiskAlerts] = useState<RiskAlert[]>([]);
   const [payoffProgress, setPayoffProgress] = useState({ paid: 0, remaining: 0 });
 
   useEffect(() => {
     if (user) {
       fetchDashboardData();
 
-      // Subscribe to real-time changes for loans and amortization
+      // Subscribe to real-time changes
       const channel = supabase
         .channel('dashboard-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'loans',
-          },
-          () => {
-            // Refetch dashboard data on any loan change
-            fetchDashboardData();
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'amortization_rows',
-          },
-          () => {
-            // Refetch dashboard data when amortization changes
-            fetchDashboardData();
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'payments',
-          },
-          () => {
-            // Refetch dashboard data when payments change
-            fetchDashboardData();
-          }
-        )
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'loans' }, () => fetchDashboardData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'amortization_rows' }, () => fetchDashboardData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => fetchDashboardData())
         .subscribe();
 
       return () => {
@@ -95,147 +76,93 @@ export default function NewDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch loans with amortization
-      const { data: loans } = await supabase
-        .from("loans")
-        .select(`
-          *,
-          lenders (name, logo_url),
-          amortization_rows (closing_principal, due_on, is_paid, scheduled_emi, interest_component, principal_component)
-        `)
-        .eq("status", "ACTIVE");
+      if (!user) return;
 
-      if (!loans) return;
+      // Fetch loans with amortization using shared function
+      const loans = await fetchLoansWithAmortization(user.id);
 
-      // Fetch all EMI payments for active loans
-      const loanIds = loans.map((l: any) => l.id);
-      const { data: allPayments } = await supabase
-        .from("payments")
-        .select("*")
-        .in("loan_id", loanIds);
-
-      // Group payments by loan_id
-      const paymentsByLoan = new Map<string, any[]>();
-      (allPayments || []).forEach((p: any) => {
-        const existing = paymentsByLoan.get(p.loan_id) || [];
-        existing.push(p);
-        paymentsByLoan.set(p.loan_id, existing);
-      });
-
-      let totalOut = 0;
-      let totalRate = 0;
-      let next30DaysEMI = 0;
-      let overdueCount = 0;
-      const upcomingPayments: any[] = [];
-      const alerts: any[] = [];
-      let totalPaid = 0;
-      let totalRemaining = 0;
-
-      const today = new Date();
-      const next30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-      loans.forEach((loan: any) => {
-        const loanPayments = paymentsByLoan.get(loan.id) || [];
-        
-        // Calculate stats based on actual payments
-        const stats = calculateLoanStatsFromPayments(
-          {
-            id: loan.id,
-            principal_amount: loan.principal_amount,
-            interest_rate_apy: loan.interest_rate_apy,
-            tenure_months: loan.tenure_months,
-            disbursed_on: loan.disbursed_on,
-            due_day: loan.due_day,
-            rate_type: loan.rate_type,
-            emi_amount: loan.emi_amount,
-          },
-          loanPayments
-        );
-        
-        // Use outstandingTotal (principal + interest) for total outstanding
-        totalOut += stats.outstandingTotal;
-        totalRate += loan.interest_rate_apy;
-        totalPaid += stats.totalPrincipalPaid;
-        totalRemaining += stats.outstandingTotal;
-
-        // Find upcoming EMIs from amortization rows
-        const unpaidRows = loan.amortization_rows?.filter((r: any) => !r.is_paid) || [];
-        
-        unpaidRows.forEach((row: any) => {
-          const dueDate = new Date(row.due_on);
-          const daysUntilDue = differenceInDays(dueDate, today);
-
-          if (daysUntilDue < 0) {
-            overdueCount++;
-          }
-
-          if (dueDate <= next30Days && dueDate >= today) {
-            next30DaysEMI += row.scheduled_emi;
-            upcomingPayments.push({
-              loanName: loan.loan_name,
-              lenderName: loan.lenders?.name,
-              amount: row.scheduled_emi,
-              dueDate: row.due_on,
-              daysUntilDue,
-              loanId: loan.id,
-            });
-          }
+      if (!loans || loans.length === 0) {
+        setStats({
+          totalOutstanding: 0,
+          upcomingEMI: 0,
+          upcomingEMICount: 0,
+          avgInterestRate: 0,
+          activeLoans: 0,
+          overdueCount: 0,
         });
-
-        // Risk alerts
-        if (stats.outstandingPrincipal > loan.principal_amount * 0.8) {
-          alerts.push({
-            type: "warning",
-            message: `${loan.loan_name} has high outstanding balance (${formatPercent((stats.outstandingPrincipal / loan.principal_amount) * 100, 0)} of principal)`,
-          });
-        }
-        if (loan.interest_rate_apy > 18) {
-          alerts.push({
-            type: "error",
-            message: `${loan.loan_name} has high interest rate (${formatPercent(loan.interest_rate_apy, 1)})`,
-          });
-        }
-      });
-
-      // 6-month projection
-      const projections = [];
-      for (let i = 0; i < 6; i++) {
-        const monthStart = startOfMonth(addMonths(today, i));
-        const monthEnd = endOfMonth(addMonths(today, i));
-        let monthTotal = 0;
-
-        loans.forEach((loan: any) => {
-          loan.amortization_rows?.forEach((row: any) => {
-            if (row.is_paid) return;
-            const dueDate = new Date(row.due_on);
-            if (isWithinInterval(dueDate, { start: monthStart, end: monthEnd })) {
-              monthTotal += row.scheduled_emi;
-            }
-          });
-        });
-
-        projections.push({
-          month: format(monthStart, "MMM"),
-          emi: monthTotal,
-        });
+        setUpcomingEMIs([]);
+        setProjectionData([]);
+        setRiskAlerts([]);
+        setPayoffProgress({ paid: 0, remaining: 0 });
+        setLoading(false);
+        return;
       }
 
+      const today = new Date();
+
+      // Calculate portfolio stats using shared logic
+      const portfolioStats = calculatePortfolioStatsFromAmortization(loans);
+
+      // Calculate next 30 days EMI using shared logic
+      const next30Days = calculateNext30DaysEMI(loans, today);
+
+      // Calculate 6-month projection using shared logic
+      const projections = calculate6MonthProjection(loans, today);
+
+      // Count overdue EMIs using shared logic
+      const overdueCount = countOverdueEMIs(loans, today);
+
+      // Calculate payoff progress using shared logic
+      const payoff = calculatePayoffProgress(loans);
+
+      // Generate risk alerts
+      const alerts: RiskAlert[] = generateRiskAlerts(loans, portfolioStats);
+
       setStats({
-        totalOutstanding: totalOut,
-        upcomingEMI: next30DaysEMI,
-        avgInterestRate: loans.length > 0 ? totalRate / loans.length : 0,
-        activeLoans: loans.length,
+        totalOutstanding: portfolioStats.totalOutstanding,
+        upcomingEMI: next30Days.total,
+        upcomingEMICount: next30Days.count,
+        avgInterestRate: portfolioStats.avgInterestRate,
+        activeLoans: portfolioStats.activeLoansCount,
         overdueCount,
       });
-      setUpcomingEMIs(upcomingPayments.sort((a, b) => a.daysUntilDue - b.daysUntilDue));
+
+      setUpcomingEMIs(next30Days.payments);
       setProjectionData(projections);
       setRiskAlerts(alerts.slice(0, 3));
-      setPayoffProgress({ paid: totalPaid, remaining: totalRemaining });
+      setPayoffProgress({ paid: payoff.paidPrincipal, remaining: payoff.remainingPrincipal });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const generateRiskAlerts = (loans: LoanWithAmortization[], portfolioStats: any): RiskAlert[] => {
+    const alerts: RiskAlert[] = [];
+
+    loans.forEach(loan => {
+      // Check for high outstanding (>80% of principal remaining)
+      const unpaidRows = loan.amortization_rows?.filter(r => !r.is_paid) || [];
+      const remainingPrincipal = unpaidRows.reduce((sum, row) => sum + row.principal_component, 0);
+      
+      if (remainingPrincipal > loan.principal_amount * 0.8) {
+        alerts.push({
+          type: "warning",
+          message: `${loan.loan_name} has high outstanding balance (${formatPercent((remainingPrincipal / loan.principal_amount) * 100, 0)} of principal)`,
+        });
+      }
+
+      // Check for high interest rate
+      if (loan.interest_rate_apy > 18) {
+        alerts.push({
+          type: "error",
+          message: `${loan.loan_name} has high interest rate (${formatPercent(loan.interest_rate_apy, 1)})`,
+        });
+      }
+    });
+
+    return alerts;
   };
 
   if (loading) {
@@ -294,7 +221,7 @@ export default function NewDashboard() {
             <CardContent>
               <div className="text-2xl font-bold">{formatINR(stats.upcomingEMI)}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {upcomingEMIs.length} payment{upcomingEMIs.length !== 1 ? 's' : ''} due
+                {stats.upcomingEMICount} payment{stats.upcomingEMICount !== 1 ? 's' : ''} due
               </p>
             </CardContent>
           </Card>
@@ -475,33 +402,47 @@ export default function NewDashboard() {
       </Card>
 
       {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-3">
-            <Link to="/loans">
-              <Button variant="outline" className="w-full justify-start gap-2">
-                <CreditCard className="h-4 w-4" />
-                Manage Loans
-              </Button>
-            </Link>
-            <Link to="/payments">
-              <Button variant="outline" className="w-full justify-start gap-2">
-                <Wallet className="h-4 w-4" />
-                Record Payment
-              </Button>
-            </Link>
-            <Link to="/insights">
-              <Button variant="outline" className="w-full justify-start gap-2">
-                <TrendingUp className="h-4 w-4" />
-                View Insights
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Link to="/loans">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardContent className="flex items-center gap-4 p-6">
+              <div className="p-3 rounded-full bg-primary/10">
+                <Wallet className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold">View All Loans</p>
+                <p className="text-sm text-muted-foreground">Manage your active loans</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/payments">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardContent className="flex items-center gap-4 p-6">
+              <div className="p-3 rounded-full bg-primary/10">
+                <Calendar className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold">Record Payment</p>
+                <p className="text-sm text-muted-foreground">Log EMI or prepayments</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/insights">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardContent className="flex items-center gap-4 p-6">
+              <div className="p-3 rounded-full bg-primary/10">
+                <TrendingUp className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold">AI Insights</p>
+                <p className="text-sm text-muted-foreground">Get smart recommendations</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
     </div>
   );
 }
