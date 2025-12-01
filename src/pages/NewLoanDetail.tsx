@@ -4,13 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { ArrowLeft, Calendar, TrendingUp, Building2, CreditCard, Target, Calculator, FileText, Copy, Edit } from "lucide-react";
+import { ArrowLeft, CreditCard, Target, Calculator, FileText, Copy, Edit } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import QuickPaySheet from "@/components/QuickPaySheet";
 import AIDebtAdvisor from "@/components/AIDebtAdvisor";
 import BulkEMIMarker from "@/components/BulkEMIMarker";
+import LenderAvatar from "@/components/lenders/LenderAvatar";
 
 export default function NewLoanDetail() {
   const { id } = useParams();
@@ -129,21 +129,21 @@ export default function NewLoanDetail() {
   const outstanding = unpaidRows[0]?.closing_principal || 0;
   const totalPaid = paidRows.reduce((sum, row) => sum + row.principal_component, 0);
   const logoUrl = loan.logo_url || loan.lenders?.logo_url;
-  const initials = loan.loan_name.substring(0, 2).toUpperCase();
+  const lenderName = loan.lenders?.name || "No Lender";
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
         <Button variant="ghost" size="icon" onClick={() => navigate("/loans")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <Avatar className="h-12 w-12">
-          {logoUrl ? <AvatarImage src={logoUrl} alt={loan.loan_name} /> : null}
-          <AvatarFallback className="bg-primary/10 text-primary">{initials}</AvatarFallback>
-        </Avatar>
-        <div className="flex-1">
+        <LenderAvatar name={lenderName} logoUrl={logoUrl} size="lg" className="h-12 w-12" />
+        <div className="flex-1 min-w-0">
           <h1 className="text-3xl font-bold">{loan.loan_name}</h1>
-          <p className="text-muted-foreground">{loan.lenders?.name}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <LenderAvatar name={lenderName} logoUrl={logoUrl} size="sm" />
+            <span className="text-muted-foreground">{lenderName}</span>
+          </div>
         </div>
         <Button 
           variant="outline"
