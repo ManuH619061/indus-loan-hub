@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatINR, formatPercent } from "@/lib/currency";
 import { 
   Wallet, TrendingUp, AlertCircle, Plus, Calendar, 
-  Target, ArrowRight 
+  Target, ArrowRight, CalendarDays
 } from "lucide-react";
 import { format } from "date-fns";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -402,7 +402,7 @@ export default function NewDashboard() {
       </Card>
 
       {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Link to="/loans">
           <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
             <CardContent className="flex items-center gap-4 p-6">
@@ -412,6 +412,19 @@ export default function NewDashboard() {
               <div>
                 <p className="font-semibold">View All Loans</p>
                 <p className="text-sm text-muted-foreground">Manage your active loans</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/emi-calendar">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardContent className="flex items-center gap-4 p-6">
+              <div className="p-3 rounded-full bg-primary/10">
+                <CalendarDays className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold">EMI Calendar</p>
+                <p className="text-sm text-muted-foreground">View payment schedule</p>
               </div>
             </CardContent>
           </Card>

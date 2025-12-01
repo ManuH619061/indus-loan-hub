@@ -17,6 +17,7 @@ import {
   Receipt,
   ChevronDown,
   X,
+  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -106,6 +107,7 @@ const navigation = [
   },
   { name: "Loans", href: "/loans", icon: Wallet },
   { name: "Payments", href: "/payments", icon: CreditCard },
+  { name: "EMI Calendar", href: "/emi-calendar", icon: CalendarDays },
   { name: "Lenders", href: "/lenders", icon: Building2 },
   { name: "Loan Comparison", href: "/loan-comparison", icon: Scale },
   { name: "Insights", href: "/insights", icon: FileText },
