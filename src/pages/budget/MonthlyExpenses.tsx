@@ -92,6 +92,9 @@ export default function MonthlyExpenses() {
     notes: "",
   });
 
+  const [aiCategorizing, setAiCategorizing] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<any>(null);
+
   useEffect(() => {
     if (user) {
       fetchData();
@@ -210,6 +213,52 @@ export default function MonthlyExpenses() {
       });
     }
     setOpenExpenseDialog(true);
+  };
+
+  const handleAICategorize = async () => {
+    if (!formData.description || !formData.amount) {
+      toast.error("Please enter description and amount first");
+      return;
+    }
+
+    setAiCategorizing(true);
+    setAiSuggestion(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("categorize-expense", {
+        body: {
+          description: formData.description,
+          amount: parseFloat(formData.amount),
+          groups,
+          subgroups,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.categorization) {
+        setAiSuggestion(data.categorization);
+        setFormData({
+          ...formData,
+          group_id: data.categorization.group_id,
+          subgroup_id: data.categorization.subgroup_id || "",
+        });
+        toast.success(`AI suggests: ${data.categorization.reasoning}`);
+      } else {
+        toast.error(data.error || "Failed to categorize");
+      }
+    } catch (error: any) {
+      console.error("AI categorization error:", error);
+      if (error.message?.includes("429")) {
+        toast.error("Rate limit exceeded. Please try again later.");
+      } else if (error.message?.includes("402")) {
+        toast.error("AI credits exhausted. Please add credits to continue.");
+      } else {
+        toast.error("Failed to get AI suggestion");
+      }
+    } finally {
+      setAiCategorizing(false);
+    }
   };
 
   const handleSaveExpense = async () => {
@@ -557,11 +606,37 @@ export default function MonthlyExpenses() {
             </div>
             <div className="col-span-2">
               <Label>Description*</Label>
-              <Input
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="e.g., Groceries, Taxi fare"
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={formData.description}
+                  onChange={(e) => {
+                    setFormData({ ...formData, description: e.target.value });
+                    setAiSuggestion(null);
+                  }}
+                  placeholder="e.g., Groceries, Taxi fare"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAICategorize}
+                  disabled={aiCategorizing || !formData.description || !formData.amount}
+                >
+                  {aiCategorizing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      AI...
+                    </>
+                  ) : (
+                    "🤖 AI Suggest"
+                  )}
+                </Button>
+              </div>
+              {aiSuggestion && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  AI: {aiSuggestion.reasoning} (Confidence: {aiSuggestion.confidence}%)
+                </p>
+              )}
             </div>
             <div>
               <Label>Group*</Label>

@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.debt-advisor]
 verify_jwt = false
+
+[functions.categorize-expense]
+verify_jwt = false

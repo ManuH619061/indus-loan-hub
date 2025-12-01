@@ -26,6 +26,8 @@ import FutureCashFlow from "./pages/budget/FutureCashFlow";
 import SavingsGoals from "./pages/budget/SavingsGoals";
 import BudgetReports from "./pages/budget/BudgetReports";
 import DebtPayoffCalculator from "./pages/budget/DebtPayoffCalculator";
+import CategoryManager from "./pages/budget/CategoryManager";
+import BudgetReportsPage from "./pages/budget/BudgetReportsPage";
 import BankStatementImport from "./pages/BankStatementImport";
 import BankAccountsDashboard from "./pages/banking/BankAccountsDashboard";
 import Reconciliation from "./pages/banking/Reconciliation";
@@ -64,6 +66,8 @@ function AnimatedRoutes() {
         <Route path="/budget/future-cashflow" element={<ProtectedRoute><Layout><PageTransition><FutureCashFlow /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/budget/savings-goals" element={<ProtectedRoute><Layout><PageTransition><SavingsGoals /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/budget/debt-optimizer" element={<ProtectedRoute><Layout><PageTransition><DebtPayoffCalculator /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/budget/category-manager" element={<ProtectedRoute><Layout><PageTransition><CategoryManager /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/budget/visual-reports" element={<ProtectedRoute><Layout><PageTransition><BudgetReportsPage /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/budget/reports" element={<ProtectedRoute><Layout><PageTransition><BudgetReports /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/banking/accounts" element={<ProtectedRoute><Layout><PageTransition><BankAccountsDashboard /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/banking/add-account" element={<ProtectedRoute><Layout><PageTransition><AddBankAccount /></PageTransition></Layout></ProtectedRoute>} />
