@@ -83,9 +83,11 @@ export default function NewLoan() {
 
   const [newLenderData, setNewLenderData] = useState({
     name: "",
-    type: "BANK" as const,
-    requires_sanction_letter: true,
+    type: "BANK" as "BANK" | "NBFC" | "CARD" | "FRIEND" | "OTHER",
+    contact: "",
+    notes: "",
   });
+  const [newLenderLoading, setNewLenderLoading] = useState(false);
 
   // Validation functions
   const validateField = (field: string, value: any) => {
@@ -236,12 +238,18 @@ export default function NewLoan() {
   };
 
   const handleAddLender = async () => {
-    if (!user || !newLenderData.name) return;
-    setLoading(true);
+    if (!user || !newLenderData.name.trim()) return;
+    setNewLenderLoading(true);
     try {
       const { data, error } = await supabase
         .from("lenders")
-        .insert({ ...newLenderData, user_id: user.id })
+        .insert({
+          user_id: user.id,
+          name: newLenderData.name.trim(),
+          type: newLenderData.type,
+          contact: newLenderData.contact?.trim() || null,
+          notes: newLenderData.notes?.trim() || null,
+        })
         .select()
         .single();
       
@@ -250,12 +258,12 @@ export default function NewLoan() {
       setLenders([...lenders, data]);
       setFormData({ ...formData, lender_id: data.id });
       setNewLenderOpen(false);
-      setNewLenderData({ name: "", type: "BANK", requires_sanction_letter: true });
+      setNewLenderData({ name: "", type: "BANK", contact: "", notes: "" });
       toast({ title: "Lender added successfully!" });
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error", description: error.message });
     } finally {
-      setLoading(false);
+      setNewLenderLoading(false);
     }
   };
 
@@ -1265,6 +1273,16 @@ export default function NewLoan() {
           </Button>
         )}
       </div>
+
+      {/* Add Lender Dialog */}
+      <AddCustomLenderDialog
+        open={newLenderOpen}
+        onOpenChange={setNewLenderOpen}
+        lenderData={newLenderData}
+        onDataChange={setNewLenderData}
+        onSubmit={handleAddLender}
+        loading={newLenderLoading}
+      />
     </div>
   );
 }
