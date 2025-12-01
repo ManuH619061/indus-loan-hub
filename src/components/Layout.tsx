@@ -18,6 +18,8 @@ import {
   ChevronDown,
   X,
   CalendarDays,
+  Settings as SettingsIcon,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -118,9 +120,9 @@ const navigation = [
   { 
     name: "AI Advice Manager", 
     key: "ai",
-    icon: FileText,
+    icon: Sparkles,
     children: [
-      { name: "AI Insights", href: "/insights", icon: FileText },
+      { name: "AI Insights", href: "/insights", icon: Sparkles },
       { name: "Budget AI Advice", href: "/ai/budget-advice", icon: TrendingUp },
       { name: "Expense AI Advice", href: "/ai/expense-advice", icon: Receipt },
       { name: "Loan & EMI AI Advice", href: "/ai/loan-advice", icon: Wallet },
@@ -128,6 +130,7 @@ const navigation = [
   },
   { name: "Financial Insights", href: "/financial-insights", icon: BarChart3 },
   { name: "Documents", href: "/documents", icon: FileText },
+  { name: "Settings", href: "/settings", icon: SettingsIcon },
 ];
 
 export default function Layout({ children }: LayoutProps) {

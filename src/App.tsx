@@ -36,6 +36,10 @@ import Expenses from "./pages/Expenses";
 import LoanComparison from "./pages/LoanComparison";
 import EMICalendar from "./pages/EMICalendar";
 import InstallApp from "./pages/InstallApp";
+import Settings from "./pages/Settings";
+import BudgetAIAdvice from "./pages/ai/BudgetAIAdvice";
+import ExpenseAIAdvice from "./pages/ai/ExpenseAIAdvice";
+import LoanEMIAIAdvice from "./pages/ai/LoanEMIAIAdvice";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PageTransition from "./components/PageTransition";
@@ -81,6 +85,10 @@ function AnimatedRoutes() {
         <Route path="/insights" element={<ProtectedRoute><Layout><PageTransition><NewInsights /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/financial-insights" element={<ProtectedRoute><Layout><PageTransition><FinancialInsights /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/documents" element={<ProtectedRoute><Layout><PageTransition><Documents /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Layout><PageTransition><Settings /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/ai/budget-advice" element={<ProtectedRoute><Layout><PageTransition><BudgetAIAdvice /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/ai/expense-advice" element={<ProtectedRoute><Layout><PageTransition><ExpenseAIAdvice /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/ai/loan-advice" element={<ProtectedRoute><Layout><PageTransition><LoanEMIAIAdvice /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AnimatePresence>
