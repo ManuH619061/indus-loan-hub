@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -10,213 +11,476 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import MultiLenderSelector from "@/components/MultiLenderSelector";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import FadeInStagger from "@/components/FadeInStagger";
-import { calculateReducingEMI, calculateTotalInterest } from "@/lib/emi-calculator";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { getCategoryLabel, getCategoryColor } from "@/lib/loan-apps-library";
-import type { LoanAppLibraryItem } from "@/lib/loan-apps-library";
+import { Loader2, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
+
+interface LoanWithDetails {
+  id: string;
+  loan_name: string;
+  principal_amount: number;
+  interest_rate_apy: number;
+  tenure_months: number;
+  emi_amount: number;
+  status: string;
+  disbursed_on: string;
+  lender_id: string;
+  lender?: {
+    id: string;
+    name: string;
+    type: string;
+    logo_url: string | null;
+  };
+  outstanding_principal: number;
+  outstanding_interest: number;
+  total_outstanding: number;
+  months_left: number;
+  total_interest_cost: number;
+  payoff_date: string;
+  emi_to_income: number;
+  risk_level: "Low" | "Medium" | "High";
+}
+
+interface LenderSummary {
+  lender_id: string;
+  lender_name: string;
+  lender_type: string;
+  logo_url: string | null;
+  total_loans: number;
+  total_outstanding: number;
+  avg_interest: number;
+  total_emi: number;
+  total_principal: number;
+  risk_level: "Low" | "Medium" | "High";
+}
 
 export default function LoanComparison() {
-  const [selectedApps, setSelectedApps] = useState<LoanAppLibraryItem[]>([]);
-  const [loanAmount, setLoanAmount] = useState<number>(100000);
-  const [tenureMonths, setTenureMonths] = useState<number>(12);
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [loans, setLoans] = useState<LoanWithDetails[]>([]);
+  const [lenders, setLenders] = useState<any[]>([]);
+  const [monthlyIncome, setMonthlyIncome] = useState(0);
+  const [view, setView] = useState<"loans" | "lenders">("loans");
 
-  const comparisonData = useMemo(() => {
-    return selectedApps.map((app) => {
-      const avgInterest = (app.typical_interest_min + app.typical_interest_max) / 2;
-      const emi = calculateReducingEMI(loanAmount, avgInterest, tenureMonths);
-      const totalInterest = calculateTotalInterest(loanAmount, emi, tenureMonths);
-      const totalCost = loanAmount + totalInterest;
+  // Filters
+  const [selectedLender, setSelectedLender] = useState<string>("all");
+  const [minInterest, setMinInterest] = useState<string>("");
+  const [maxInterest, setMaxInterest] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
-      return {
-        id: app.id,
-        name: app.name,
-        category: app.category,
-        logo_url: app.logo_url,
-        minInterest: app.typical_interest_min,
-        maxInterest: app.typical_interest_max,
-        avgInterest,
-        emi,
-        totalInterest,
-        totalCost,
-      };
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
+  const fetchData = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      // Fetch user profile for income
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("monthly_income")
+        .eq("id", user.id)
+        .single();
+
+      setMonthlyIncome(profile?.monthly_income || 0);
+
+      // Fetch lenders
+      const { data: lendersData } = await supabase
+        .from("lenders")
+        .select("*")
+        .eq("user_id", user.id);
+
+      setLenders(lendersData || []);
+
+      // Fetch loans with amortization
+      const { data: loansData } = await supabase
+        .from("loans")
+        .select(`
+          *,
+          lender:lenders(id, name, type, logo_url),
+          amortization_rows(*)
+        `)
+        .eq("user_id", user.id);
+
+      if (loansData) {
+        const processedLoans = loansData.map((loan: any) => {
+          const unpaidRows = loan.amortization_rows?.filter((row: any) => !row.is_paid) || [];
+          const allRows = loan.amortization_rows || [];
+
+          const outstanding_principal = unpaidRows.reduce(
+            (sum: number, row: any) => sum + row.principal_component,
+            0
+          );
+          const outstanding_interest = unpaidRows.reduce(
+            (sum: number, row: any) => sum + row.interest_component,
+            0
+          );
+          const total_interest_cost = allRows.reduce(
+            (sum: number, row: any) => sum + row.interest_component,
+            0
+          );
+
+          const months_left = unpaidRows.length;
+          const lastRow = unpaidRows[unpaidRows.length - 1];
+          const payoff_date = lastRow?.due_on || loan.disbursed_on;
+
+          const emi_to_income = monthlyIncome > 0 ? ((loan.emi_amount || 0) / monthlyIncome) * 100 : 0;
+
+          let risk_level: "Low" | "Medium" | "High" = "Low";
+          if (loan.interest_rate_apy > 20 || emi_to_income > 40) {
+            risk_level = "High";
+          } else if (loan.interest_rate_apy > 15 || emi_to_income > 30) {
+            risk_level = "Medium";
+          }
+
+          return {
+            ...loan,
+            outstanding_principal,
+            outstanding_interest,
+            total_outstanding: outstanding_principal + outstanding_interest,
+            months_left,
+            total_interest_cost,
+            payoff_date,
+            emi_to_income,
+            risk_level,
+          };
+        });
+
+        setLoans(processedLoans);
+      }
+    } catch (error) {
+      toast.error("Failed to fetch loan data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredLoans = useMemo(() => {
+    let filtered = [...loans];
+
+    if (selectedLender !== "all") {
+      filtered = filtered.filter((loan) => loan.lender_id === selectedLender);
+    }
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((loan) => loan.status === statusFilter);
+    }
+
+    if (minInterest) {
+      filtered = filtered.filter((loan) => loan.interest_rate_apy >= parseFloat(minInterest));
+    }
+
+    if (maxInterest) {
+      filtered = filtered.filter((loan) => loan.interest_rate_apy <= parseFloat(maxInterest));
+    }
+
+    return filtered.sort((a, b) => b.total_outstanding - a.total_outstanding);
+  }, [loans, selectedLender, statusFilter, minInterest, maxInterest]);
+
+  const lenderSummaries = useMemo(() => {
+    const summaryMap: Record<string, LenderSummary> = {};
+
+    filteredLoans.forEach((loan) => {
+      const lenderId = loan.lender_id;
+      if (!summaryMap[lenderId]) {
+        summaryMap[lenderId] = {
+          lender_id: lenderId,
+          lender_name: loan.lender?.name || "Unknown",
+          lender_type: loan.lender?.type || "OTHER",
+          logo_url: loan.lender?.logo_url || null,
+          total_loans: 0,
+          total_outstanding: 0,
+          avg_interest: 0,
+          total_emi: 0,
+          total_principal: 0,
+          risk_level: "Low",
+        };
+      }
+
+      const summary = summaryMap[lenderId];
+      summary.total_loans += 1;
+      summary.total_outstanding += loan.total_outstanding;
+      summary.total_emi += loan.emi_amount || 0;
+      summary.total_principal += loan.principal_amount;
     });
-  }, [selectedApps, loanAmount, tenureMonths]);
 
-  const chartData = comparisonData.map((data) => ({
-    name: data.name,
-    EMI: data.emi,
-    "Total Interest": data.totalInterest,
-    "Total Cost": data.totalCost,
-  }));
+    // Calculate averages and risk
+    Object.values(summaryMap).forEach((summary) => {
+      const lenderLoans = filteredLoans.filter((l) => l.lender_id === summary.lender_id);
+      summary.avg_interest =
+        lenderLoans.reduce((sum, l) => sum + l.interest_rate_apy, 0) / lenderLoans.length;
 
-  const filteredComparison =
-    categoryFilter === "all"
-      ? comparisonData
-      : comparisonData.filter((d) => d.category === categoryFilter);
+      const emi_to_income = monthlyIncome > 0 ? (summary.total_emi / monthlyIncome) * 100 : 0;
+      if (summary.avg_interest > 20 || emi_to_income > 40) {
+        summary.risk_level = "High";
+      } else if (summary.avg_interest > 15 || emi_to_income > 30) {
+        summary.risk_level = "Medium";
+      }
+    });
+
+    return Object.values(summaryMap).sort((a, b) => b.total_outstanding - a.total_outstanding);
+  }, [filteredLoans, monthlyIncome]);
+
+  const getRiskBadge = (risk: string) => {
+    const variants = {
+      Low: "default",
+      Medium: "secondary",
+      High: "destructive",
+    };
+    return (
+      <Badge variant={variants[risk as keyof typeof variants] as any}>
+        {risk === "High" && <AlertTriangle className="h-3 w-3 mr-1" />}
+        {risk}
+      </Badge>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-4xl font-bold">Loan Comparison Tool</h1>
+        <h1 className="text-4xl font-bold">Loan & Lender Comparison</h1>
         <p className="text-muted-foreground mt-2">
-          Compare interest rates, EMIs, and total costs across lenders
+          Advanced comparison of your loans and lenders with detailed metrics
         </p>
       </div>
 
       <FadeInStagger>
         <Card>
           <CardHeader>
-            <CardTitle>Comparison Filters</CardTitle>
+            <CardTitle>Filters</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               <div className="space-y-2">
-                <Label htmlFor="loanAmount">Loan Amount (₹)</Label>
-                <Input
-                  id="loanAmount"
-                  type="number"
-                  value={loanAmount}
-                  onChange={(e) => setLoanAmount(Number(e.target.value))}
-                  min={1000}
-                  step={1000}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tenure">Tenure (Months)</Label>
-                <Input
-                  id="tenure"
-                  type="number"
-                  value={tenureMonths}
-                  onChange={(e) => setTenureMonths(Number(e.target.value))}
-                  min={1}
-                  max={360}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="category">Category Filter</Label>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger id="category">
+                <Label htmlFor="lender">Lender</Label>
+                <Select value={selectedLender} onValueChange={setSelectedLender}>
+                  <SelectTrigger id="lender">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="BANK">Banks</SelectItem>
-                    <SelectItem value="NBFC">NBFCs</SelectItem>
-                    <SelectItem value="INSTANT_LOAN">Instant Loans</SelectItem>
-                    <SelectItem value="CREDIT_CARD">Credit Cards</SelectItem>
-                    <SelectItem value="BNPL">Buy Now Pay Later</SelectItem>
-                    <SelectItem value="SALARY_ADVANCE">Salary Advance</SelectItem>
+                    <SelectItem value="all">All Lenders</SelectItem>
+                    {lenders.map((lender) => (
+                      <SelectItem key={lender.id} value={lender.id}>
+                        {lender.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger id="status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="ACTIVE">Active</SelectItem>
+                    <SelectItem value="CLOSED">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="minInterest">Min Interest (%)</Label>
+                <Input
+                  id="minInterest"
+                  type="number"
+                  placeholder="0"
+                  value={minInterest}
+                  onChange={(e) => setMinInterest(e.target.value)}
+                  step="0.1"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="maxInterest">Max Interest (%)</Label>
+                <Input
+                  id="maxInterest"
+                  type="number"
+                  placeholder="50"
+                  value={maxInterest}
+                  onChange={(e) => setMaxInterest(e.target.value)}
+                  step="0.1"
+                />
+              </div>
             </div>
-            <MultiLenderSelector
-              selectedApps={selectedApps}
-              onSelectionChange={setSelectedApps}
-              maxSelection={4}
-            />
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredLoans.length} of {loans.length} loans
+              </div>
+              <Button variant="outline" size="sm" onClick={() => {
+                setSelectedLender("all");
+                setStatusFilter("all");
+                setMinInterest("");
+                setMaxInterest("");
+              }}>
+                Reset Filters
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        {filteredComparison.length > 0 && (
-          <>
+        <Tabs value={view} onValueChange={(v) => setView(v as any)}>
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="loans">Loans View</TabsTrigger>
+            <TabsTrigger value="lenders">Lenders View</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="loans" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Visual Comparison</CardTitle>
+                <CardTitle>Individual Loan Comparison</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="name" className="text-xs" />
-                    <YAxis className="text-xs" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--background))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "6px",
-                      }}
-                      formatter={(value: number) => formatINR(value)}
-                    />
-                    <Legend />
-                    <Bar dataKey="EMI" fill="hsl(var(--primary))" />
-                    <Bar dataKey="Total Interest" fill="hsl(var(--destructive))" />
-                    <Bar dataKey="Total Cost" fill="hsl(var(--warning))" />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Loan</TableHead>
+                        <TableHead>Lender</TableHead>
+                        <TableHead className="text-right">Principal</TableHead>
+                        <TableHead className="text-right">Outstanding</TableHead>
+                        <TableHead className="text-right">EMI</TableHead>
+                        <TableHead className="text-right">Interest</TableHead>
+                        <TableHead className="text-right">Months Left</TableHead>
+                        <TableHead className="text-right">Total Interest</TableHead>
+                        <TableHead>Payoff Date</TableHead>
+                        <TableHead className="text-right">EMI/Income</TableHead>
+                        <TableHead>Risk</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredLoans.map((loan) => (
+                        <TableRow key={loan.id}>
+                          <TableCell className="font-medium">{loan.loan_name}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {loan.lender?.logo_url ? (
+                                <img
+                                  src={loan.lender.logo_url}
+                                  alt={loan.lender.name}
+                                  className="w-6 h-6 rounded object-contain"
+                                />
+                              ) : null}
+                              {loan.lender?.name || "Unknown"}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">{formatINR(loan.principal_amount)}</TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {formatINR(loan.total_outstanding)}
+                          </TableCell>
+                          <TableCell className="text-right">{formatINR(loan.emi_amount || 0)}</TableCell>
+                          <TableCell className="text-right">{formatPercent(loan.interest_rate_apy)}</TableCell>
+                          <TableCell className="text-right">{loan.months_left}</TableCell>
+                          <TableCell className="text-right text-destructive">
+                            {formatINR(loan.total_interest_cost)}
+                          </TableCell>
+                          <TableCell>
+                            {new Date(loan.payoff_date).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatPercent(loan.emi_to_income, 1)}
+                          </TableCell>
+                          <TableCell>{getRiskBadge(loan.risk_level)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {filteredLoans.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    No loans found matching the filters
+                  </div>
+                )}
               </CardContent>
             </Card>
+          </TabsContent>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              {filteredComparison.map((data) => (
-                <Card key={data.id}>
+          <TabsContent value="lenders" className="space-y-4">
+            <div className="grid gap-4">
+              {lenderSummaries.map((summary) => (
+                <Card key={summary.lender_id}>
                   <CardHeader>
-                    <div className="flex items-start gap-3">
-                      {data.logo_url ? (
-                        <img
-                          src={data.logo_url}
-                          alt={data.name}
-                          className="w-12 h-12 rounded-lg object-contain"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-lg font-semibold">
-                          {data.name.substring(0, 2).toUpperCase()}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {summary.logo_url ? (
+                          <img
+                            src={summary.logo_url}
+                            alt={summary.lender_name}
+                            className="w-12 h-12 rounded-lg object-contain"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-lg font-semibold">
+                            {summary.lender_name.substring(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <CardTitle className="text-xl">{summary.lender_name}</CardTitle>
+                          <Badge variant="outline" className="mt-1">
+                            {summary.lender_type}
+                          </Badge>
                         </div>
-                      )}
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{data.name}</CardTitle>
-                        <Badge
-                          variant="outline"
-                          className={`mt-1 ${getCategoryColor(data.category)}`}
-                        >
-                          {getCategoryLabel(data.category)}
-                        </Badge>
                       </div>
+                      {getRiskBadge(summary.risk_level)}
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Interest Range</span>
-                      <span className="font-semibold">
-                        {formatPercent(data.minInterest, 2)} - {formatPercent(data.maxInterest, 2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Avg. Interest</span>
-                      <span className="font-semibold">{formatPercent(data.avgInterest, 2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Monthly EMI</span>
-                      <span className="font-semibold text-primary">{formatINR(data.emi)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Total Interest</span>
-                      <span className="font-semibold text-destructive">
-                        {formatINR(data.totalInterest)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t">
-                      <span className="font-medium">Total Cost</span>
-                      <span className="font-bold text-lg">{formatINR(data.totalCost)}</span>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                      <div>
+                        <div className="text-sm text-muted-foreground">Total Loans</div>
+                        <div className="text-2xl font-bold">{summary.total_loans}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Outstanding</div>
+                        <div className="text-2xl font-bold">{formatINR(summary.total_outstanding)}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Total EMI</div>
+                        <div className="text-2xl font-bold">{formatINR(summary.total_emi)}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Avg Interest</div>
+                        <div className="text-2xl font-bold">{formatPercent(summary.avg_interest)}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Total Principal</div>
+                        <div className="text-2xl font-bold">{formatINR(summary.total_principal)}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">EMI/Income</div>
+                        <div className="text-2xl font-bold">
+                          {formatPercent(monthlyIncome > 0 ? (summary.total_emi / monthlyIncome) * 100 : 0, 1)}
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
-          </>
-        )}
-
-        {selectedApps.length === 0 && (
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              Select lenders above to start comparing loan offers
-            </CardContent>
-          </Card>
-        )}
+            {lenderSummaries.length === 0 && (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  No lenders found matching the filters
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
       </FadeInStagger>
     </div>
   );
