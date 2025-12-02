@@ -1132,6 +1132,7 @@ export type Database = {
         Row: {
           created_at: string | null
           currency: string | null
+          display_mode: string | null
           email: string
           id: string
           monthly_income: number | null
@@ -1142,6 +1143,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           currency?: string | null
+          display_mode?: string | null
           email: string
           id: string
           monthly_income?: number | null
@@ -1152,6 +1154,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           currency?: string | null
+          display_mode?: string | null
           email?: string
           id?: string
           monthly_income?: number | null
