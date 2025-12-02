@@ -220,6 +220,60 @@ All colors MUST be HSL.
   }
 }
 
+/* Mobile View Optimizations - Apply when .mobile-view class is present */
+.mobile-view {
+  /* Force single column layouts */
+  --mobile-padding: 0.75rem;
+  --mobile-gap: 1rem;
+}
+
+.mobile-view .grid {
+  grid-template-columns: 1fr !important;
+}
+
+.mobile-view .space-y-4 > * + * {
+  margin-top: 1rem;
+}
+
+.mobile-view .space-y-6 > * + * {
+  margin-top: 1.5rem;
+}
+
+/* Larger touch targets in mobile view */
+.mobile-view button,
+.mobile-view a,
+.mobile-view [role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Mobile typography */
+.mobile-view h1 {
+  font-size: 1.75rem;
+  line-height: 2rem;
+}
+
+.mobile-view h2 {
+  font-size: 1.5rem;
+  line-height: 1.75rem;
+}
+
+.mobile-view h3 {
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+}
+
+.mobile-view p,
+.mobile-view label {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+/* Card adjustments for mobile */
+.mobile-view .card {
+  border-radius: 0.75rem;
+}
+
 /* Mobile optimizations */
 @layer utilities {
   .safe-top {

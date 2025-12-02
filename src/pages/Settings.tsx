@@ -28,12 +28,14 @@ import FadeInStagger from "@/components/FadeInStagger";
 import { useTheme } from "next-themes";
 import BackupManager from "@/pages/BackupManager";
 import { usePWA } from "@/hooks/usePWA";
+import { useDisplayMode, DisplayMode } from "@/hooks/useDisplayMode";
 
 export default function Settings() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const { isInstallable, isInstalled, installApp } = usePWA();
+  const { displayMode, setDisplayMode } = useDisplayMode();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [installing, setInstalling] = useState(false);
@@ -204,10 +206,14 @@ export default function Settings() {
 
       <FadeInStagger>
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full max-w-3xl grid-cols-7">
+          <TabsList className="grid w-full max-w-3xl grid-cols-4 md:grid-cols-7">
             <TabsTrigger value="profile">
               <User className="h-4 w-4 mr-2" />
               <span className="hidden md:inline">Profile</span>
+            </TabsTrigger>
+            <TabsTrigger value="display">
+              <Smartphone className="h-4 w-4 mr-2" />
+              <span className="hidden md:inline">Display</span>
             </TabsTrigger>
             <TabsTrigger value="appearance">
               <Palette className="h-4 w-4 mr-2" />
@@ -300,6 +306,77 @@ export default function Settings() {
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="display">
+            <Card>
+              <CardHeader>
+                <CardTitle>Display Mode</CardTitle>
+                <CardDescription>
+                  Choose how you want to view the app on different devices
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1 flex-1">
+                      <Label>View Mode</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Control the layout and navigation style
+                      </p>
+                    </div>
+                    <Select value={displayMode} onValueChange={(value: DisplayMode) => setDisplayMode(value)}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">
+                          <div className="flex items-center gap-2">
+                            <Smartphone className="h-4 w-4" />
+                            Auto (Recommended)
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="mobile">
+                          <div className="flex items-center gap-2">
+                            <Smartphone className="h-4 w-4" />
+                            Mobile View
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="desktop">
+                          <div className="flex items-center gap-2">
+                            <SettingsIcon className="h-4 w-4" />
+                            Desktop/Web View
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Separator />
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <div className="rounded-full bg-primary/10 p-1.5 mt-0.5">
+                        <Smartphone className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="space-y-1 flex-1">
+                        <p className="text-sm font-medium">Display Mode Options</p>
+                        <ul className="text-xs text-muted-foreground space-y-1.5 list-disc list-inside">
+                          <li><strong>Auto:</strong> Automatically switches between mobile and desktop layouts based on your screen size (mobile if width &lt; 768px)</li>
+                          <li><strong>Mobile View:</strong> Always shows mobile-optimized layout with hamburger menu and single-column cards, even on larger screens</li>
+                          <li><strong>Desktop/Web View:</strong> Always shows the desktop layout with sidebar and multi-column cards</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  {displayMode === "mobile" && (
+                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+                      <p className="text-sm text-primary">
+                        <strong>Mobile View Active:</strong> You'll see a Zoho-style mobile layout with hamburger menu and optimized touch targets.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
