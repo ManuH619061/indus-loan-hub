@@ -457,22 +457,26 @@ export default function Settings() {
                         <div className="space-y-1">
                           <Label>Install App</Label>
                           <p className="text-sm text-muted-foreground">
-                            {isInstallable 
-                              ? "Click the button below to install the app on your device"
-                              : "Installation is not available on this device or browser"}
+                            Install the app on your device for the best experience
                           </p>
                         </div>
                         <Button
                           size="lg"
-                          disabled={!isInstallable || installing}
+                          disabled={installing}
                           onClick={async () => {
                             setInstalling(true);
                             try {
-                              const installed = await installApp();
-                              if (installed) {
-                                toast.success("App installed successfully!");
+                              if (isInstallable) {
+                                const installed = await installApp();
+                                if (installed) {
+                                  toast.success("App installed successfully!");
+                                } else {
+                                  toast.info("Installation was cancelled");
+                                }
                               } else {
-                                toast.info("Installation was cancelled");
+                                // Fallback: Navigate to install instructions page
+                                navigate("/install");
+                                toast.info("Follow the instructions to install the app");
                               }
                             } catch (error) {
                               toast.error("Failed to install app");
