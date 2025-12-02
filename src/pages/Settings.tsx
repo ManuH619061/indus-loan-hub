@@ -21,7 +21,8 @@ import {
   Moon, 
   Sun,
   Loader2,
-  Calendar
+  Calendar,
+  Smartphone
 } from "lucide-react";
 import FadeInStagger from "@/components/FadeInStagger";
 import { useTheme } from "next-themes";
@@ -55,6 +56,19 @@ export default function Settings() {
     start_of_month: 1,
     default_landing_page: "/dashboard",
   });
+
+  // PWA Install settings
+  const [pwaSettings, setPwaSettings] = useState({
+    auto_show_prompt: true,
+  });
+
+  useEffect(() => {
+    // Load PWA settings from localStorage
+    const autoShow = localStorage.getItem("pwa-auto-show-prompt");
+    if (autoShow !== null) {
+      setPwaSettings({ auto_show_prompt: autoShow === "true" });
+    }
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -187,7 +201,7 @@ export default function Settings() {
 
       <FadeInStagger>
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full max-w-2xl grid-cols-6">
+          <TabsList className="grid w-full max-w-3xl grid-cols-7">
             <TabsTrigger value="profile">
               <User className="h-4 w-4 mr-2" />
               <span className="hidden md:inline">Profile</span>
@@ -199,6 +213,10 @@ export default function Settings() {
             <TabsTrigger value="notifications">
               <Bell className="h-4 w-4 mr-2" />
               <span className="hidden md:inline">Notifications</span>
+            </TabsTrigger>
+            <TabsTrigger value="app-install">
+              <Smartphone className="h-4 w-4 mr-2" />
+              <span className="hidden md:inline">App Install</span>
             </TabsTrigger>
             <TabsTrigger value="defaults">
               <SettingsIcon className="h-4 w-4 mr-2" />
@@ -401,6 +419,73 @@ export default function Settings() {
                   <Button onClick={() => toast.success("Notification preferences saved")}>
                     Save Preferences
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="app-install">
+            <Card>
+              <CardHeader>
+                <CardTitle>App Install Settings</CardTitle>
+                <CardDescription>
+                  Control how the PWA install prompt behaves
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label>Auto-show Install Prompt</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Automatically show the install prompt after logging in
+                      </p>
+                    </div>
+                    <Switch
+                      checked={pwaSettings.auto_show_prompt}
+                      onCheckedChange={(checked) => {
+                        setPwaSettings({ auto_show_prompt: checked });
+                        localStorage.setItem("pwa-auto-show-prompt", checked.toString());
+                        toast.success(checked ? "Install prompt will auto-show" : "Install prompt disabled");
+                      }}
+                    />
+                  </div>
+                  <Separator />
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label>Reset Install Prompt</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Clear the dismissed state and show the install prompt again
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        localStorage.removeItem("pwa-prompt-dismissed");
+                        sessionStorage.removeItem("pwa-prompt-shown-session");
+                        localStorage.removeItem("pwa-installed");
+                        toast.success("Install prompt reset. Reload the page to see it again.");
+                      }}
+                    >
+                      Reset Install Prompt
+                    </Button>
+                  </div>
+                  <Separator />
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label>Manual Install</Label>
+                      <p className="text-sm text-muted-foreground">
+                        View installation instructions for your device
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => navigate("/install")}
+                    >
+                      <Smartphone className="h-4 w-4 mr-2" />
+                      View Install Instructions
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

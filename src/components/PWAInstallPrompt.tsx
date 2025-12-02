@@ -59,7 +59,11 @@ export const PWAInstallPrompt = () => {
 
   // Show prompt after user logs in (only once per session)
   useEffect(() => {
-    if (user && !isStandalone && !hasShownOnce && (deferredPrompt || isIOS)) {
+    // Check if auto-show is enabled
+    const autoShow = localStorage.getItem("pwa-auto-show-prompt");
+    const shouldAutoShow = autoShow === null || autoShow === "true"; // Default to true if not set
+
+    if (user && !isStandalone && !hasShownOnce && (deferredPrompt || isIOS) && shouldAutoShow) {
       const timer = setTimeout(() => {
         setShowPrompt(true);
         setHasShownOnce(true);
