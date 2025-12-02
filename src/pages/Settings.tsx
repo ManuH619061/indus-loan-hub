@@ -27,13 +27,16 @@ import {
 import FadeInStagger from "@/components/FadeInStagger";
 import { useTheme } from "next-themes";
 import BackupManager from "@/pages/BackupManager";
+import { usePWA } from "@/hooks/usePWA";
 
 export default function Settings() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const { isInstallable, isInstalled, installApp } = usePWA();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [installing, setInstalling] = useState(false);
 
   // Profile settings
   const [profile, setProfile] = useState({
@@ -433,7 +436,69 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Install Status */}
+                {isInstalled && (
+                  <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-primary">
+                      <Smartphone className="h-5 w-5" />
+                      <span className="font-medium">App is installed</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      You're using the installed version of Loan Hub
+                    </p>
+                  </div>
+                )}
+
                 <div className="space-y-4">
+                  {/* Install Now Button */}
+                  {!isInstalled && (
+                    <>
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <Label>Install App</Label>
+                          <p className="text-sm text-muted-foreground">
+                            {isInstallable 
+                              ? "Click the button below to install the app on your device"
+                              : "Installation is not available on this device or browser"}
+                          </p>
+                        </div>
+                        <Button
+                          size="lg"
+                          disabled={!isInstallable || installing}
+                          onClick={async () => {
+                            setInstalling(true);
+                            try {
+                              const installed = await installApp();
+                              if (installed) {
+                                toast.success("App installed successfully!");
+                              } else {
+                                toast.info("Installation was cancelled");
+                              }
+                            } catch (error) {
+                              toast.error("Failed to install app");
+                            } finally {
+                              setInstalling(false);
+                            }
+                          }}
+                          className="w-full sm:w-auto"
+                        >
+                          {installing ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Installing...
+                            </>
+                          ) : (
+                            <>
+                              <Download className="h-4 w-4 mr-2" />
+                              Install App Now
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <Separator />
+                    </>
+                  )}
+
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
                       <Label>Auto-show Install Prompt</Label>
