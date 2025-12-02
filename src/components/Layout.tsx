@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useDisplayMode } from "@/hooks/useDisplayMode";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Hook for swipe-to-open gesture
 function useSwipeToOpen(onOpen: () => void, edgeThreshold = 30, minSwipeDistance = 50) {
@@ -139,6 +141,8 @@ export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { isMobileLayout } = useDisplayMode();
+  const isMobileDevice = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     banking: false,
@@ -316,21 +320,48 @@ export default function Layout({ children }: LayoutProps) {
     </>
   );
 
+  // Show mobile layout if: display mode is "mobile" OR display mode is "auto" and screen is small
+  const showMobileLayout = isMobileLayout;
+
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden max-w-full">
-      {/* Mobile Header - Larger and more app-like */}
-      <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur-sm supports-[backdrop-filter]:bg-card/80 safe-top">
-        <div className="flex h-14 md:h-14 items-center px-3 md:px-6 max-w-full">
-          {/* Mobile Menu Button - Always visible on mobile */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="md:hidden h-10 w-10 touch-target mr-2 flex-shrink-0"
-            onClick={() => setMobileMenuOpen(true)}
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
+    <div className={cn(
+      "min-h-screen bg-background overflow-x-hidden max-w-full",
+      showMobileLayout && "mobile-view"
+    )}>
+      {/* Header - Mobile style when mobile layout is active */}
+      <header className={cn(
+        "sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur-sm supports-[backdrop-filter]:bg-card/80 safe-top",
+        showMobileLayout && "shadow-sm"
+      )}>
+        <div className={cn(
+          "flex items-center px-3 max-w-full",
+          showMobileLayout ? "h-14" : "h-14 md:h-14 md:px-6"
+        )}>
+          {/* Hamburger Menu Button - Show when mobile layout is active */}
+          {showMobileLayout && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-10 w-10 touch-target mr-2 flex-shrink-0"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+
+          {/* Desktop Menu Button - Only visible when NOT in mobile layout on small screens */}
+          {!showMobileLayout && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="md:hidden h-10 w-10 touch-target mr-2 flex-shrink-0"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
 
           {/* Mobile Drawer */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -397,40 +428,62 @@ export default function Layout({ children }: LayoutProps) {
 
           {/* Logo */}
           <div className="flex items-center gap-2 md:gap-3 md:ml-0 flex-1 min-w-0">
-            <div className="hidden md:flex items-center gap-2">
+            {!showMobileLayout && (
+              <div className="hidden md:flex items-center gap-2">
+                <div className="p-1.5 bg-gradient-primary rounded-lg flex-shrink-0">
+                  <Wallet className="h-4 w-4 text-primary-foreground" />
+                </div>
+                <span className="font-semibold text-base truncate">Loan Tracker</span>
+              </div>
+            )}
+            <div className={cn(
+              "flex items-center gap-2",
+              showMobileLayout ? "" : "md:hidden"
+            )}>
               <div className="p-1.5 bg-gradient-primary rounded-lg flex-shrink-0">
                 <Wallet className="h-4 w-4 text-primary-foreground" />
               </div>
               <span className="font-semibold text-base truncate">Loan Tracker</span>
             </div>
-            <span className="md:hidden font-semibold text-base truncate">Loan Tracker</span>
           </div>
 
-          {/* Desktop User Info */}
-          <div className="hidden md:flex items-center gap-3 flex-shrink-0">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground text-xs">Signed in as</span>
-              <span className="font-medium text-xs truncate max-w-[150px]">{user?.email}</span>
+          {/* Desktop User Info - Hide in mobile layout */}
+          {!showMobileLayout && (
+            <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground text-xs">Signed in as</span>
+                <span className="font-medium text-xs truncate max-w-[150px]">{user?.email}</span>
+              </div>
+              <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-xs">
+                <LogOut className="h-4 w-4 mr-1" />
+                Sign Out
+              </Button>
             </div>
-            <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-xs">
-              <LogOut className="h-4 w-4 mr-1" />
-              Sign Out
-            </Button>
-          </div>
+          )}
         </div>
       </header>
 
       <div className="flex overflow-x-hidden">
-        {/* Sidebar - Desktop Only */}
-        <aside className="hidden md:flex w-60 flex-col fixed inset-y-0 top-14 border-r bg-card overflow-y-auto">
-          <nav className="flex-1 p-3 space-y-1 scrollbar-hide">
-            <NavItems isMobile={false} />
-          </nav>
-        </aside>
+        {/* Sidebar - Desktop Only (Hide in mobile layout) */}
+        {!showMobileLayout && (
+          <aside className="hidden md:flex w-60 flex-col fixed inset-y-0 top-14 border-r bg-card overflow-y-auto">
+            <nav className="flex-1 p-3 space-y-1 scrollbar-hide">
+              <NavItems isMobile={false} />
+            </nav>
+          </aside>
+        )}
 
         {/* Main Content */}
-        <main className="flex-1 md:ml-60 w-full overflow-x-hidden">
-          <div className="p-3 md:p-4 lg:p-6 max-w-[1400px] mx-auto w-full">
+        <main className={cn(
+          "flex-1 w-full overflow-x-hidden",
+          !showMobileLayout && "md:ml-60"
+        )}>
+          <div className={cn(
+            "mx-auto w-full",
+            showMobileLayout 
+              ? "p-3 max-w-full" 
+              : "p-3 md:p-4 lg:p-6 max-w-[1400px]"
+          )}>
             {children}
           </div>
         </main>
