@@ -23,7 +23,8 @@ export default defineConfig(({ mode }) => ({
         theme_color: "#3b82f6",
         background_color: "#ffffff",
         display: "standalone",
-        orientation: "portrait-primary",
+        orientation: "any",
+        prefer_related_applications: false,
         scope: "/",
         start_url: "/dashboard",
         icons: [

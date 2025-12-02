@@ -71,6 +71,92 @@ const InstallApp = () => {
     { icon: Smartphone, title: "Native Feel", description: "Full screen app experience" },
   ];
 
+  // Home screen preview component
+  const HomeScreenPreview = () => (
+    <div className="relative bg-gradient-to-b from-primary/5 to-background rounded-2xl p-8 border border-border/50">
+      <div className="text-center mb-6">
+        <h3 className="text-sm font-semibold text-foreground mb-1">Preview on Home Screen</h3>
+        <p className="text-xs text-muted-foreground">This is how it will appear on your device</p>
+      </div>
+      
+      {/* Mock home screen with app icon */}
+      <div className="max-w-[280px] mx-auto">
+        <div className="bg-gradient-to-br from-muted/30 to-muted/60 rounded-3xl p-6 shadow-inner border border-border/30">
+          {/* Time and status bar */}
+          <div className="flex justify-between items-center mb-8 text-xs text-muted-foreground">
+            <span>9:41</span>
+            <div className="flex gap-1">
+              <div className="w-4 h-3 bg-muted-foreground/40 rounded-sm"></div>
+              <div className="w-2 h-3 bg-muted-foreground/60 rounded-sm"></div>
+              <div className="w-2 h-3 bg-muted-foreground/80 rounded-sm"></div>
+            </div>
+          </div>
+          
+          {/* App icons grid */}
+          <div className="grid grid-cols-4 gap-4">
+            {/* Dummy icons */}
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex flex-col items-center gap-1 opacity-40">
+                <div className="w-14 h-14 bg-muted-foreground/20 rounded-2xl"></div>
+                <div className="w-10 h-2 bg-muted-foreground/20 rounded"></div>
+              </div>
+            ))}
+            
+            {/* Highlighted app icon */}
+            <motion.div 
+              className="flex flex-col items-center gap-1 col-span-1"
+              animate={{ 
+                scale: [1, 1.05, 1],
+              }}
+              transition={{ 
+                duration: 2, 
+                repeat: Infinity,
+                repeatDelay: 1
+              }}
+            >
+              <div className="relative">
+                <div className="w-14 h-14 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-lg flex items-center justify-center border-2 border-primary/20 overflow-hidden">
+                  <img 
+                    src="/pwa-192x192.png" 
+                    alt="Loan Hub" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center animate-pulse">
+                  <CheckCircle2 className="w-3 h-3 text-white" />
+                </div>
+              </div>
+              <div className="text-[10px] font-medium text-foreground text-center leading-tight">
+                Loan Hub
+              </div>
+            </motion.div>
+            
+            {/* More dummy icons */}
+            {[1, 2, 3].map((i) => (
+              <div key={`b-${i}`} className="flex flex-col items-center gap-1 opacity-40">
+                <div className="w-14 h-14 bg-muted-foreground/20 rounded-2xl"></div>
+                <div className="w-10 h-2 bg-muted-foreground/20 rounded"></div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Dock */}
+          <div className="mt-8 pt-6 border-t border-border/30">
+            <div className="flex justify-center gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={`dock-${i}`} className="w-14 h-14 bg-muted-foreground/20 rounded-2xl opacity-40"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="mt-4 text-center text-xs text-muted-foreground">
+        Tap the icon to launch the app full-screen
+      </div>
+    </div>
+  );
+
   if (isInstalled) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -154,11 +240,21 @@ const InstallApp = () => {
 
       {/* Content */}
       <div className="max-w-lg mx-auto px-4 -mt-16 pb-8 relative z-10">
-        {/* Features Card */}
+        {/* Home Screen Preview */}
         <motion.div
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
+          className="mb-5"
+        >
+          <HomeScreenPreview />
+        </motion.div>
+
+        {/* Features Card */}
+        <motion.div
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.6 }}
           className="bg-card border border-border rounded-2xl shadow-xl p-5 md:p-6 mb-5"
         >
           <h2 className="font-semibold text-foreground mb-4 text-base">Why install?</h2>
@@ -168,7 +264,7 @@ const InstallApp = () => {
                 key={feature.title}
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.5 + index * 0.1 }}
+                transition={{ delay: 0.7 + index * 0.1 }}
                 className="flex flex-col items-center text-center p-4 rounded-xl bg-muted/50 hover:bg-muted/70 transition-colors"
               >
                 <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-3">
@@ -185,7 +281,7 @@ const InstallApp = () => {
         <motion.div
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.8 }}
+          transition={{ delay: 1.0 }}
           className="bg-card border border-border rounded-2xl shadow-xl p-5 md:p-6"
         >
           {deferredPrompt ? (
