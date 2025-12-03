@@ -14,7 +14,6 @@ serve(async (req) => {
   try {
     const { message, conversationHistory } = await req.json();
     
-    // Get user from auth header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -27,7 +26,6 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify user
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
@@ -38,155 +36,236 @@ serve(async (req) => {
       });
     }
 
-    // Fetch user's financial data for context
     const userId = user.id;
-
-    // Fetch loans with lenders
-    const { data: loans } = await supabase
-      .from("loans")
-      .select(`
-        id, loan_name, principal_amount, interest_rate_apy, tenure_months,
-        emi_amount, disbursed_on, status, closure_date,
-        lenders(name)
-      `)
-      .eq("user_id", userId);
-
-    // Fetch amortization rows for next 12 months
     const today = new Date();
-    const next12Months = new Date();
-    next12Months.setMonth(next12Months.getMonth() + 12);
+    const currentMonth = today.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    // Fetch ALL comprehensive data in parallel
+    const [
+      loansResult,
+      bankAccountsResult,
+      profileResult,
+      budgetsResult,
+      incomeSourcesResult,
+      salarySettingsResult,
+      savingsGoalsResult,
+      expenseGroupsResult,
+      expenseSubgroupsResult,
+      monthlyExpensesResult,
+    ] = await Promise.all([
+      supabase.from("loans").select(`
+        id, loan_name, principal_amount, interest_rate_apy, tenure_months,
+        emi_amount, disbursed_on, status, closure_date, loan_type, rate_type,
+        compounding, processing_fee, due_day, auto_debit, autopay_bank,
+        lenders(id, name, type, contact, app_link)
+      `).eq("user_id", userId),
+      supabase.from("bank_accounts").select("*").eq("user_id", userId).eq("is_active", true),
+      supabase.from("profiles").select("*").eq("id", userId).single(),
+      supabase.from("monthly_budgets").select("*").eq("user_id", userId).order("month_year", { ascending: false }).limit(12),
+      supabase.from("income_sources").select("*").eq("user_id", userId).eq("is_active", true),
+      supabase.from("salary_settings").select("*").eq("user_id", userId).single(),
+      supabase.from("savings_goals").select("*").eq("user_id", userId).eq("is_active", true),
+      supabase.from("expense_groups").select("*").eq("user_id", userId),
+      supabase.from("expense_subgroups").select("*").eq("user_id", userId),
+      supabase.from("monthly_expenses").select("*").eq("user_id", userId).order("expense_date", { ascending: false }).limit(500),
+    ]);
+
+    const loans = loansResult.data || [];
+    const bankAccounts = bankAccountsResult.data || [];
+    const profile = profileResult.data;
+    const budgets = budgetsResult.data || [];
+    const incomeSources = incomeSourcesResult.data || [];
+    const salarySettings = salarySettingsResult.data;
+    const savingsGoals = savingsGoalsResult.data || [];
+    const expenseGroups = expenseGroupsResult.data || [];
+    const expenseSubgroups = expenseSubgroupsResult.data || [];
+    const monthlyExpenses = monthlyExpensesResult.data || [];
+
+    // Fetch amortization for all loans (next 18 months for projections)
+    const next18Months = new Date();
+    next18Months.setMonth(next18Months.getMonth() + 18);
     
     const { data: amortizationRows } = await supabase
       .from("amortization_rows")
-      .select("loan_id, period_no, due_on, scheduled_emi, principal_component, interest_component, is_paid, closing_principal")
-      .in("loan_id", loans?.map(l => l.id) || [])
-      .gte("due_on", today.toISOString().split("T")[0])
-      .lte("due_on", next12Months.toISOString().split("T")[0])
+      .select("*")
+      .in("loan_id", loans.map(l => l.id))
       .order("due_on");
+
+    // Fetch transactions (last 6 months for better analysis)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    const { data: transactions } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .gte("transaction_date", sixMonthsAgo.toISOString().split("T")[0])
+      .order("transaction_date", { ascending: false });
 
     // Fetch payments history
     const { data: payments } = await supabase
       .from("payments")
-      .select("loan_id, paid_on, amount, payment_type")
-      .in("loan_id", loans?.map(l => l.id) || [])
-      .order("paid_on", { ascending: false })
-      .limit(50);
-
-    // Fetch monthly budgets
-    const { data: budgets } = await supabase
-      .from("monthly_budgets")
       .select("*")
-      .eq("user_id", userId)
-      .order("month_year", { ascending: false })
-      .limit(6);
+      .in("loan_id", loans.map(l => l.id))
+      .order("paid_on", { ascending: false })
+      .limit(100);
 
-    // Fetch transactions (last 3 months)
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    // Calculate comprehensive metrics
+    const activeLoans = loans.filter(l => l.status === "ACTIVE");
+    const allAmortization = amortizationRows || [];
     
-    const { data: transactions } = await supabase
-      .from("transactions")
-      .select("transaction_date, narration, debit, credit, category, subcategory, is_transfer")
-      .eq("user_id", userId)
-      .gte("transaction_date", threeMonthsAgo.toISOString().split("T")[0])
-      .order("transaction_date", { ascending: false })
-      .limit(200);
+    // EMI projections by month (next 12 months)
+    const emiProjections: Record<string, { total: number; loans: { name: string; amount: number; dueDate: string }[] }> = {};
+    for (let i = 0; i < 12; i++) {
+      const targetMonth = new Date(today.getFullYear(), today.getMonth() + i, 1);
+      const monthKey = targetMonth.toLocaleString('default', { month: 'short', year: 'numeric' });
+      const monthEMIs = allAmortization.filter(r => {
+        const dueDate = new Date(r.due_on);
+        return dueDate.getMonth() === targetMonth.getMonth() && 
+               dueDate.getFullYear() === targetMonth.getFullYear() &&
+               !r.is_paid;
+      });
+      emiProjections[monthKey] = {
+        total: monthEMIs.reduce((sum, e) => sum + (e.scheduled_emi || 0), 0),
+        loans: monthEMIs.map(e => {
+          const loan = loans.find(l => l.id === e.loan_id);
+          return { name: loan?.loan_name || "Unknown", amount: e.scheduled_emi || 0, dueDate: e.due_on };
+        })
+      };
+    }
 
-    // Fetch bank accounts
-    const { data: bankAccounts } = await supabase
-      .from("bank_accounts")
-      .select("bank_name, account_type, book_balance, account_number_masked")
-      .eq("user_id", userId)
-      .eq("is_active", true);
+    // Loans closing analysis
+    const loansClosingAnalysis = activeLoans.map(loan => {
+      const loanAmort = allAmortization.filter(r => r.loan_id === loan.id && !r.is_paid);
+      const lastEMI = loanAmort[loanAmort.length - 1];
+      const totalRemaining = loanAmort.reduce((sum, r) => sum + (r.scheduled_emi || 0), 0);
+      const totalInterestRemaining = loanAmort.reduce((sum, r) => sum + (r.interest_component || 0), 0);
+      const outstandingPrincipal = loanAmort[0]?.opening_principal || 0;
+      
+      return {
+        name: loan.loan_name,
+        lender: (loan.lenders as any)?.name || "Unknown",
+        emi: loan.emi_amount,
+        interestRate: loan.interest_rate_apy,
+        remainingEMIs: loanAmort.length,
+        closingDate: lastEMI?.due_on || "Unknown",
+        outstandingPrincipal,
+        totalRemaining,
+        totalInterestRemaining,
+        dueDay: loan.due_day,
+      };
+    }).sort((a, b) => a.remainingEMIs - b.remainingEMIs);
 
-    // Fetch profile for income
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("monthly_income, currency")
-      .eq("id", userId)
-      .single();
-
-    // Build context summary
-    const currentMonth = today.toLocaleString('default', { month: 'long', year: 'numeric' });
-    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-    const nextMonthName = nextMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
-
-    // Calculate expense summaries
-    const expensesByMonth: Record<string, Record<string, number>> = {};
-    transactions?.forEach(t => {
+    // Expense analysis by category and month
+    const expensesByMonthCategory: Record<string, Record<string, number>> = {};
+    const expensesByGroup: Record<string, number> = {};
+    
+    (transactions || []).forEach(t => {
       if (t.debit && !t.is_transfer) {
-        const month = new Date(t.transaction_date).toLocaleString('default', { month: 'long', year: 'numeric' });
-        if (!expensesByMonth[month]) expensesByMonth[month] = {};
+        const month = new Date(t.transaction_date).toLocaleString('default', { month: 'short', year: 'numeric' });
         const category = t.category || "Uncategorized";
-        expensesByMonth[month][category] = (expensesByMonth[month][category] || 0) + t.debit;
+        if (!expensesByMonthCategory[month]) expensesByMonthCategory[month] = {};
+        expensesByMonthCategory[month][category] = (expensesByMonthCategory[month][category] || 0) + t.debit;
+        expensesByGroup[category] = (expensesByGroup[category] || 0) + t.debit;
       }
     });
 
-    // Calculate upcoming EMIs
-    const upcomingEMIs = amortizationRows?.filter(r => !r.is_paid) || [];
-    const nextMonthEMIs = upcomingEMIs.filter(r => {
-      const dueDate = new Date(r.due_on);
-      return dueDate.getMonth() === nextMonth.getMonth() && dueDate.getFullYear() === nextMonth.getFullYear();
+    // Monthly expenses from expense tracker
+    const expenseTrackerByMonth: Record<string, { total: number; byGroup: Record<string, number> }> = {};
+    monthlyExpenses.forEach(e => {
+      const month = new Date(e.expense_date).toLocaleString('default', { month: 'short', year: 'numeric' });
+      if (!expenseTrackerByMonth[month]) expenseTrackerByMonth[month] = { total: 0, byGroup: {} };
+      expenseTrackerByMonth[month].total += e.amount;
+      const group = expenseGroups.find(g => g.id === e.group_id);
+      const groupName = group?.name || "Other";
+      expenseTrackerByMonth[month].byGroup[groupName] = (expenseTrackerByMonth[month].byGroup[groupName] || 0) + e.amount;
     });
 
-    // Find loans closing soon
-    const loansClosingSoon = loans?.filter(l => {
-      if (l.status !== "ACTIVE") return false;
-      const remainingEMIs = amortizationRows?.filter(r => r.loan_id === l.id && !r.is_paid) || [];
-      return remainingEMIs.length > 0 && remainingEMIs.length <= 3;
-    }) || [];
+    // Cash flow projections
+    const totalBankBalance = bankAccounts.reduce((sum, a) => sum + (a.book_balance || 0), 0);
+    const monthlyIncome = profile?.monthly_income || salarySettings?.base_salary || 0;
+    const latestBudget = budgets[0];
 
-    // Build structured context
+    // Calculate budget vs actual
+    const currentMonthKey = today.toLocaleString('default', { month: 'short', year: 'numeric' });
+    const currentMonthExpenses = expensesByMonthCategory[currentMonthKey] || {};
+    const totalCurrentMonthExpenses = Object.values(currentMonthExpenses).reduce((sum, amt) => sum + amt, 0);
+
+    // Build comprehensive context
     const financialContext = `
-## User's Financial Data (as of ${today.toLocaleDateString()})
+## COMPLETE FINANCIAL DATA (as of ${today.toLocaleDateString('en-IN')})
+Current Month: ${currentMonth}
 
-### Active Loans (${loans?.filter(l => l.status === "ACTIVE").length || 0} total):
-${loans?.filter(l => l.status === "ACTIVE").map(l => {
-  const lenderData = l.lenders as unknown as { name: string } | { name: string }[] | null;
-  const lenderName = Array.isArray(lenderData) ? lenderData[0]?.name : lenderData?.name || "Unknown Lender";
-  const remainingEMIs = amortizationRows?.filter(r => r.loan_id === l.id && !r.is_paid) || [];
-  const outstandingPrincipal = remainingEMIs[0]?.closing_principal || 0;
-  return `- ${l.loan_name} (${lenderName}): Principal ₹${l.principal_amount?.toLocaleString()}, Rate ${l.interest_rate_apy}%, EMI ₹${l.emi_amount?.toLocaleString() || "N/A"}, ${remainingEMIs.length} EMIs remaining, Outstanding: ₹${outstandingPrincipal.toLocaleString()}`;
-}).join("\n") || "No active loans"}
+### 📊 OVERVIEW METRICS
+- Total Bank Balance: ₹${totalBankBalance.toLocaleString('en-IN')}
+- Monthly Income: ₹${monthlyIncome.toLocaleString('en-IN')}
+- Active Loans: ${activeLoans.length}
+- Total Outstanding: ₹${loansClosingAnalysis.reduce((sum, l) => sum + l.outstandingPrincipal, 0).toLocaleString('en-IN')}
+- Total Monthly EMI: ₹${activeLoans.reduce((sum, l) => sum + (l.emi_amount || 0), 0).toLocaleString('en-IN')}
 
-### Upcoming EMIs for ${nextMonthName}:
-${nextMonthEMIs.map(e => {
-  const loan = loans?.find(l => l.id === e.loan_id);
-  return `- ${loan?.loan_name}: ₹${e.scheduled_emi?.toLocaleString()} due on ${e.due_on}`;
-}).join("\n") || "No EMIs due next month"}
+### 🏦 BANK ACCOUNTS (${bankAccounts.length} accounts)
+${bankAccounts.map(a => `| ${a.bank_name} | ${a.account_type} | ₹${a.book_balance?.toLocaleString('en-IN')} | ${a.account_number_masked} |`).join('\n') || "No accounts"}
 
-Total EMI for ${nextMonthName}: ₹${nextMonthEMIs.reduce((sum, e) => sum + (e.scheduled_emi || 0), 0).toLocaleString()}
+### 💳 ACTIVE LOANS DETAILED (${activeLoans.length} loans)
+${loansClosingAnalysis.map(l => `
+**${l.name}** (${l.lender})
+- EMI: ₹${l.emi?.toLocaleString('en-IN')} | Rate: ${l.interestRate}% | Due Day: ${l.dueDay || 'N/A'}
+- Remaining: ${l.remainingEMIs} EMIs | Closes: ${l.closingDate}
+- Outstanding Principal: ₹${l.outstandingPrincipal.toLocaleString('en-IN')}
+- Total to Pay: ₹${l.totalRemaining.toLocaleString('en-IN')} (Interest: ₹${l.totalInterestRemaining.toLocaleString('en-IN')})
+`).join('\n') || "No active loans"}
 
-### Loans Closing Soon (within 3 EMIs):
-${loansClosingSoon.map(l => {
-  const remainingEMIs = amortizationRows?.filter(r => r.loan_id === l.id && !r.is_paid) || [];
-  const lastEMI = remainingEMIs[remainingEMIs.length - 1];
-  return `- ${l.loan_name}: ${remainingEMIs.length} EMIs left, closes around ${lastEMI?.due_on || "Unknown"}`;
-}).join("\n") || "No loans closing soon"}
+### 📅 EMI SCHEDULE (Next 12 Months)
+${Object.entries(emiProjections).map(([month, data]) => 
+  `**${month}**: ₹${data.total.toLocaleString('en-IN')} total\n${data.loans.map(l => `  - ${l.name}: ₹${l.amount.toLocaleString('en-IN')} (${l.dueDate})`).join('\n')}`
+).join('\n\n')}
 
-### Bank Accounts:
-${bankAccounts?.map(a => `- ${a.bank_name} (${a.account_type}): ₹${a.book_balance?.toLocaleString()}`).join("\n") || "No bank accounts"}
-Total Balance: ₹${bankAccounts?.reduce((sum, a) => sum + (a.book_balance || 0), 0).toLocaleString() || 0}
+### 🎯 LOANS CLOSING SOON
+${loansClosingAnalysis.filter(l => l.remainingEMIs <= 6).map(l => 
+  `- **${l.name}**: ${l.remainingEMIs} EMIs left, closes ${l.closingDate}, ₹${l.totalRemaining.toLocaleString('en-IN')} remaining`
+).join('\n') || "No loans closing within 6 months"}
 
-### Monthly Income: ₹${profile?.monthly_income?.toLocaleString() || "Not set"}
+### 💰 INCOME SOURCES
+${incomeSources.length > 0 ? incomeSources.map(i => `- ${i.name}: ₹${i.amount.toLocaleString('en-IN')} (${i.frequency})`).join('\n') : `- Primary Salary: ₹${monthlyIncome.toLocaleString('en-IN')}`}
+${salarySettings ? `\nSalary Settings: Base ₹${salarySettings.base_salary.toLocaleString('en-IN')}, ${salarySettings.increment_type} increment of ${salarySettings.increment_value}% in month ${salarySettings.increment_month}` : ''}
 
-### Recent Expenses by Category (Last 3 months):
-${Object.entries(expensesByMonth).map(([month, categories]) => {
-  const total = Object.values(categories).reduce((sum, amt) => sum + amt, 0);
-  const topCategories = Object.entries(categories)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([cat, amt]) => `  - ${cat}: ₹${amt.toLocaleString()}`)
-    .join("\n");
-  return `${month} (Total: ₹${total.toLocaleString()}):\n${topCategories}`;
-}).join("\n\n") || "No expense data"}
+### 📊 EXPENSES BY MONTH (Last 6 months from transactions)
+${Object.entries(expensesByMonthCategory).slice(0, 6).map(([month, cats]) => {
+  const total = Object.values(cats).reduce((sum, amt) => sum + amt, 0);
+  const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+  return `**${month}** (Total: ₹${total.toLocaleString('en-IN')}):\n${sorted.slice(0, 5).map(([cat, amt]) => `  - ${cat}: ₹${amt.toLocaleString('en-IN')}`).join('\n')}`;
+}).join('\n\n') || "No expense data"}
 
-### Latest Budget (${budgets?.[0]?.month_year || "Not set"}):
-${budgets?.[0] ? `
-- Salary: ₹${budgets[0].salary?.toLocaleString() || 0}
-- Fixed expenses (rent, utilities, etc.): ₹${((budgets[0].rent || 0) + (budgets[0].utilities || 0) + (budgets[0].insurance || 0) + (budgets[0].subscriptions || 0)).toLocaleString()}
-- Savings target: ₹${budgets[0].savings_investments?.toLocaleString() || 0}
+### 📝 EXPENSE TRACKER BY MONTH (from Expense Manager)
+${Object.entries(expenseTrackerByMonth).slice(0, 6).map(([month, data]) => {
+  const sorted = Object.entries(data.byGroup).sort((a, b) => b[1] - a[1]);
+  return `**${month}** (Total: ₹${data.total.toLocaleString('en-IN')}):\n${sorted.slice(0, 5).map(([grp, amt]) => `  - ${grp}: ₹${amt.toLocaleString('en-IN')}`).join('\n')}`;
+}).join('\n\n') || "No tracked expenses"}
+
+### 📋 BUDGET PLANNER
+${latestBudget ? `
+**${latestBudget.month_year}** Budget:
+- Income: Salary ₹${latestBudget.salary?.toLocaleString('en-IN') || 0} + Side ₹${latestBudget.side_income?.toLocaleString('en-IN') || 0} + Other ₹${latestBudget.other_income?.toLocaleString('en-IN') || 0}
+- Fixed: Rent ₹${latestBudget.rent?.toLocaleString('en-IN') || 0}, Utilities ₹${latestBudget.utilities?.toLocaleString('en-IN') || 0}, Insurance ₹${latestBudget.insurance?.toLocaleString('en-IN') || 0}, Subscriptions ₹${latestBudget.subscriptions?.toLocaleString('en-IN') || 0}
+- Variable: Food ₹${latestBudget.food?.toLocaleString('en-IN') || 0}, Transport ₹${latestBudget.transport?.toLocaleString('en-IN') || 0}, Shopping ₹${latestBudget.shopping?.toLocaleString('en-IN') || 0}, Travel ₹${latestBudget.travel?.toLocaleString('en-IN') || 0}
+- Savings Target: ₹${latestBudget.savings_investments?.toLocaleString('en-IN') || 0}
+- Extra EMI Planned: ₹${latestBudget.extra_emi_amount?.toLocaleString('en-IN') || 0}
+- Strategy: ${latestBudget.strategy || 'normal'}
 ` : "No budget set"}
+
+### 🎯 SAVINGS GOALS
+${savingsGoals.map(g => `- ${g.name}: Target ₹${g.target_amount.toLocaleString('en-IN')} by ${g.target_date}, Current ₹${(g.current_amount || 0).toLocaleString('en-IN')}, Monthly ₹${(g.monthly_contribution || 0).toLocaleString('en-IN')}`).join('\n') || "No savings goals set"}
+
+### ⚙️ SETTINGS
+- Currency: ${profile?.currency || 'INR'}
+- Display Mode: ${profile?.display_mode || 'auto'}
+- Timezone: ${profile?.timezone || 'Asia/Kolkata'}
+
+### 📈 CALCULATED INSIGHTS
+- Monthly EMI Burden: ₹${activeLoans.reduce((sum, l) => sum + (l.emi_amount || 0), 0).toLocaleString('en-IN')} (${((activeLoans.reduce((sum, l) => sum + (l.emi_amount || 0), 0) / monthlyIncome) * 100).toFixed(1)}% of income)
+- Highest Interest Loan: ${loansClosingAnalysis.sort((a, b) => b.interestRate - a.interestRate)[0]?.name || 'N/A'} at ${loansClosingAnalysis.sort((a, b) => b.interestRate - a.interestRate)[0]?.interestRate || 0}%
+- Current Month Expenses: ₹${totalCurrentMonthExpenses.toLocaleString('en-IN')}
+- Free Cash Flow (Est): ₹${(monthlyIncome - activeLoans.reduce((sum, l) => sum + (l.emi_amount || 0), 0) - totalCurrentMonthExpenses).toLocaleString('en-IN')}
 `;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -197,21 +276,50 @@ ${budgets?.[0] ? `
       });
     }
 
-    const systemPrompt = `You are a helpful financial advisor chatbot for a personal finance app. You have access to the user's real financial data and must answer questions accurately based on this data.
+    const systemPrompt = `You are an expert personal finance advisor chatbot with deep understanding of Indian personal finance. You have access to the user's COMPLETE financial data and must provide accurate, specific, and actionable insights.
 
-IMPORTANT RULES:
-1. Always be specific with numbers, dates, and loan names
-2. Keep responses concise and actionable (2-4 sentences max unless detailed breakdown requested)
-3. Use ₹ symbol for Indian Rupees
-4. Format numbers with commas for readability
-5. If data is missing or question cannot be answered, clearly state what data is needed
-6. You are READ-ONLY - never suggest you can make changes to their data
-7. Be helpful and provide practical advice when appropriate
-8. For prepayment questions, suggest targeting high-interest loans first unless asked otherwise
+## YOUR RESPONSE STYLE
+
+For EVERY answer, follow this structure:
+
+### 1. SUMMARY (1-2 lines)
+Start with a clear, direct answer to the question with specific numbers.
+
+### 2. BREAKDOWN TABLE
+Use markdown tables to show data clearly:
+| Loan/Category | Amount | Details |
+|---------------|--------|---------|
+
+### 3. ANALYSIS (2-3 sentences)
+Explain WHY this is happening and its IMPACT on their finances.
+
+### 4. RECOMMENDATIONS (2-3 bullet points)
+Specific, actionable suggestions based on THEIR data.
+
+## RULES
+
+1. **Always use specific data**: Never give generic advice. Reference actual loan names, amounts, dates from the data.
+2. **Use ₹ symbol** and Indian number formatting (lakhs/crores where appropriate)
+3. **Be time-aware**: Understand "this month", "next month", "next 3/6/12 months" properly
+4. **For prepayment questions**: Calculate actual interest savings, recommend highest-interest-first (avalanche) or smallest-balance-first (snowball) based on context
+5. **For cash flow**: Consider ALL income sources, EMIs, fixed expenses, and variable expenses
+6. **READ-ONLY**: Never suggest you can modify their data
+7. **Missing data**: If data is missing, tell them specifically what to fill in which section of the app
+8. **Projections**: For future months, use their budget/income data to project
+9. **Comparisons**: When comparing months, show percentage changes
+
+## EXAMPLE QUESTIONS YOU MUST HANDLE WELL
+
+- "Next month which loans will close?" → List loans with ≤1 EMI remaining for next month
+- "How much EMI do I need to pay next month?" → Sum all EMIs due next month with breakdown
+- "Which lender will take more money in next 3 months?" → Sum EMIs by lender for 3 months
+- "Where am I overspending vs budget?" → Compare actual vs budget by category
+- "If I add ₹5000 extra monthly, which loan first?" → Calculate interest savings for each loan
+- "What's my cash flow trend for 6 months?" → Project income - (EMIs + expenses) monthly
+- "Which expense category is highest this month vs last?" → Compare with percentage change
 
 ${financialContext}`;
 
-    // Build messages array
     const messages = [
       { role: "system", content: systemPrompt },
       ...(conversationHistory || []),

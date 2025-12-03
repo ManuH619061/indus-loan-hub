@@ -3,38 +3,88 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Send, Bot, User, Sparkles, Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Send, Bot, User, Sparkles, Loader2, ExternalLink } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import ReactMarkdown from "react-markdown";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
 }
 
-const quickQuestions = [
+const initialQuickQuestions = [
   "How much EMI do I need to pay next month?",
-  "Which loan closes next?",
+  "Which loan closes next and when?",
   "What's my highest expense category this month?",
-  "Compare my November and December expenses",
+  "Compare my expenses: this month vs last month",
   "If I prepay ₹5,000, which loan should I target?",
   "What's my total outstanding loan amount?",
+  "What will be my cash flow for the next 3 months?",
+  "Where am I overspending compared to my budget?",
 ];
+
+const followUpQuestions: Record<string, string[]> = {
+  emi: [
+    "Show me next 3 months EMI breakdown",
+    "Which loan has the highest EMI?",
+    "How much total interest will I pay?",
+  ],
+  loan: [
+    "Which loan has the highest interest rate?",
+    "How much can I save by closing this loan early?",
+    "What if I add ₹3,000 extra every month?",
+  ],
+  expense: [
+    "Show me month-wise expense trend",
+    "Which category increased the most?",
+    "How much am I over budget?",
+  ],
+  cashflow: [
+    "Show 6 months cash flow projection",
+    "What's my savings potential?",
+    "When will I be EMI-free?",
+  ],
+};
 
 export default function AIChatAdvisor() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>(initialQuickQuestions.slice(0, 6));
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
-    // Scroll to bottom when messages change
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // Update suggested questions based on conversation context
+  useEffect(() => {
+    if (messages.length === 0) {
+      setSuggestedQuestions(initialQuickQuestions.slice(0, 6));
+      return;
+    }
+
+    const lastUserMsg = [...messages].reverse().find(m => m.role === "user")?.content.toLowerCase() || "";
+    
+    if (lastUserMsg.includes("emi") || lastUserMsg.includes("payment")) {
+      setSuggestedQuestions([...followUpQuestions.emi, ...initialQuickQuestions.slice(0, 3)]);
+    } else if (lastUserMsg.includes("loan") || lastUserMsg.includes("close") || lastUserMsg.includes("prepay")) {
+      setSuggestedQuestions([...followUpQuestions.loan, ...initialQuickQuestions.slice(0, 3)]);
+    } else if (lastUserMsg.includes("expense") || lastUserMsg.includes("spending") || lastUserMsg.includes("category")) {
+      setSuggestedQuestions([...followUpQuestions.expense, ...initialQuickQuestions.slice(0, 3)]);
+    } else if (lastUserMsg.includes("cash") || lastUserMsg.includes("flow") || lastUserMsg.includes("savings")) {
+      setSuggestedQuestions([...followUpQuestions.cashflow, ...initialQuickQuestions.slice(0, 3)]);
+    } else {
+      setSuggestedQuestions(initialQuickQuestions.slice(0, 6));
     }
   }, [messages]);
 
@@ -66,7 +116,7 @@ export default function AIChatAdvisor() {
           },
           body: JSON.stringify({
             message: messageText.trim(),
-            conversationHistory: messages.slice(-10), // Keep last 10 messages for context
+            conversationHistory: messages.slice(-10),
           }),
         }
       );
@@ -88,7 +138,6 @@ export default function AIChatAdvisor() {
         throw new Error("No response body");
       }
 
-      // Create assistant message placeholder
       setMessages(prev => [...prev, { role: "assistant", content: "" }]);
 
       const reader = response.body.getReader();
@@ -101,7 +150,6 @@ export default function AIChatAdvisor() {
 
         buffer += decoder.decode(value, { stream: true });
 
-        // Process SSE lines
         let newlineIndex: number;
         while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
           let line = buffer.slice(0, newlineIndex);
@@ -128,14 +176,12 @@ export default function AIChatAdvisor() {
               });
             }
           } catch {
-            // Incomplete JSON, put back and continue
             buffer = line + "\n" + buffer;
             break;
           }
         }
       }
 
-      // Final flush
       if (buffer.trim()) {
         for (let raw of buffer.split("\n")) {
           if (!raw) continue;
@@ -178,6 +224,27 @@ export default function AIChatAdvisor() {
     sendMessage(question);
   };
 
+  const QuickLinks = () => (
+    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/50">
+      <span className="text-xs text-muted-foreground mr-1">Quick links:</span>
+      <Link to="/loans" className="text-xs text-primary hover:underline flex items-center gap-1">
+        Loans <ExternalLink className="h-3 w-3" />
+      </Link>
+      <Link to="/emi-calendar" className="text-xs text-primary hover:underline flex items-center gap-1">
+        EMI Calendar <ExternalLink className="h-3 w-3" />
+      </Link>
+      <Link to="/expenses" className="text-xs text-primary hover:underline flex items-center gap-1">
+        Expenses <ExternalLink className="h-3 w-3" />
+      </Link>
+      <Link to="/budget" className="text-xs text-primary hover:underline flex items-center gap-1">
+        Budget <ExternalLink className="h-3 w-3" />
+      </Link>
+      <Link to="/banking" className="text-xs text-primary hover:underline flex items-center gap-1">
+        Banking <ExternalLink className="h-3 w-3" />
+      </Link>
+    </div>
+  );
+
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)]">
       {/* Header */}
@@ -190,13 +257,13 @@ export default function AIChatAdvisor() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-gradient-primary flex items-center justify-center">
+        <div className="flex items-center gap-3 flex-1">
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
             <Sparkles className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
             <h1 className="font-semibold text-lg">AI Financial Advisor</h1>
-            <p className="text-xs text-muted-foreground">Ask questions about your finances</p>
+            <p className="text-xs text-muted-foreground">Smart insights from your financial data</p>
           </div>
         </div>
       </div>
@@ -205,27 +272,43 @@ export default function AIChatAdvisor() {
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-6 py-8">
-            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <Bot className="h-8 w-8 text-primary" />
+            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+              <Bot className="h-10 w-10 text-primary" />
             </div>
-            <div className="space-y-2 max-w-md">
-              <h2 className="text-xl font-semibold">Hi! I'm your AI Financial Advisor</h2>
+            <div className="space-y-2 max-w-lg">
+              <h2 className="text-xl font-semibold">Hi! I'm your Smart Financial Advisor</h2>
               <p className="text-muted-foreground text-sm">
-                I can answer questions about your loans, EMIs, expenses, budgets, and bank accounts. 
-                Try asking me something!
+                I analyze your loans, EMIs, expenses, budgets, bank accounts, and income to give you 
+                personalized insights with detailed breakdowns and actionable recommendations.
               </p>
             </div>
             
+            {/* Feature Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full max-w-2xl">
+              {[
+                { icon: "📊", title: "EMI Analysis", desc: "Monthly projections" },
+                { icon: "💰", title: "Cash Flow", desc: "Income vs expenses" },
+                { icon: "🎯", title: "Prepayment", desc: "Optimal strategies" },
+                { icon: "📈", title: "Trends", desc: "Spending patterns" },
+              ].map((f, i) => (
+                <Card key={i} className="p-3 text-center bg-muted/50">
+                  <div className="text-2xl mb-1">{f.icon}</div>
+                  <div className="text-sm font-medium">{f.title}</div>
+                  <div className="text-xs text-muted-foreground">{f.desc}</div>
+                </Card>
+              ))}
+            </div>
+            
             {/* Quick Questions */}
-            <div className="w-full max-w-lg space-y-2">
-              <p className="text-xs text-muted-foreground font-medium">Quick questions:</p>
+            <div className="w-full max-w-2xl space-y-3">
+              <p className="text-xs text-muted-foreground font-medium">Try asking:</p>
               <div className="flex flex-wrap gap-2 justify-center">
-                {quickQuestions.slice(0, 4).map((question, index) => (
+                {suggestedQuestions.slice(0, isMobile ? 4 : 6).map((question, index) => (
                   <Button
                     key={index}
                     variant="outline"
                     size="sm"
-                    className="text-xs h-auto py-2 px-3 whitespace-normal text-left"
+                    className="text-xs h-auto py-2 px-3 whitespace-normal text-left max-w-[200px]"
                     onClick={() => handleQuickQuestion(question)}
                   >
                     {question}
@@ -235,28 +318,85 @@ export default function AIChatAdvisor() {
             </div>
           </div>
         ) : (
-          <div className="space-y-4 pb-4">
+          <div className="space-y-4 pb-4 max-w-4xl mx-auto">
             {messages.map((msg, index) => (
               <div
                 key={index}
                 className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 {msg.role === "assistant" && (
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0 mt-1">
                     <Bot className="h-4 w-4 text-primary" />
                   </div>
                 )}
                 <Card
-                  className={`p-3 max-w-[85%] md:max-w-[70%] ${
+                  className={`p-4 ${
                     msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
+                      ? "bg-primary text-primary-foreground max-w-[85%] md:max-w-[60%]"
+                      : "bg-card border max-w-[95%] md:max-w-[85%]"
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{msg.content || (isLoading && index === messages.length - 1 ? "Thinking..." : "")}</p>
+                  {msg.role === "assistant" ? (
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown
+                        components={{
+                          table: ({ children }) => (
+                            <div className="overflow-x-auto my-3">
+                              <table className="min-w-full text-sm border-collapse border border-border rounded-lg">
+                                {children}
+                              </table>
+                            </div>
+                          ),
+                          thead: ({ children }) => (
+                            <thead className="bg-muted/50">{children}</thead>
+                          ),
+                          th: ({ children }) => (
+                            <th className="px-3 py-2 text-left font-medium border-b border-border">{children}</th>
+                          ),
+                          td: ({ children }) => (
+                            <td className="px-3 py-2 border-b border-border/50">{children}</td>
+                          ),
+                          h1: ({ children }) => (
+                            <h1 className="text-lg font-bold mt-4 mb-2 text-foreground">{children}</h1>
+                          ),
+                          h2: ({ children }) => (
+                            <h2 className="text-base font-semibold mt-3 mb-2 text-foreground">{children}</h2>
+                          ),
+                          h3: ({ children }) => (
+                            <h3 className="text-sm font-semibold mt-2 mb-1 text-foreground">{children}</h3>
+                          ),
+                          p: ({ children }) => (
+                            <p className="my-2 text-sm leading-relaxed">{children}</p>
+                          ),
+                          ul: ({ children }) => (
+                            <ul className="my-2 ml-4 list-disc space-y-1">{children}</ul>
+                          ),
+                          ol: ({ children }) => (
+                            <ol className="my-2 ml-4 list-decimal space-y-1">{children}</ol>
+                          ),
+                          li: ({ children }) => (
+                            <li className="text-sm">{children}</li>
+                          ),
+                          strong: ({ children }) => (
+                            <strong className="font-semibold text-foreground">{children}</strong>
+                          ),
+                          code: ({ children }) => (
+                            <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>
+                          ),
+                        }}
+                      >
+                        {msg.content || (isLoading && index === messages.length - 1 ? "Analyzing your data..." : "")}
+                      </ReactMarkdown>
+                      {msg.content && index === messages.length - 1 && !isLoading && (
+                        <QuickLinks />
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  )}
                 </Card>
                 {msg.role === "user" && (
-                  <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                  <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 mt-1">
                     <User className="h-4 w-4" />
                   </div>
                 )}
@@ -264,13 +404,13 @@ export default function AIChatAdvisor() {
             ))}
             {isLoading && messages[messages.length - 1]?.role === "user" && (
               <div className="flex gap-3 justify-start">
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0">
                   <Bot className="h-4 w-4 text-primary" />
                 </div>
-                <Card className="p-3 bg-muted">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm text-muted-foreground">Thinking...</span>
+                <Card className="p-4 bg-card border">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <span className="text-sm text-muted-foreground">Analyzing your financial data...</span>
                   </div>
                 </Card>
               </div>
@@ -281,14 +421,14 @@ export default function AIChatAdvisor() {
 
       {/* Quick Questions (when chat has messages) */}
       {messages.length > 0 && (
-        <div className="px-4 pb-2 flex-shrink-0">
+        <div className="px-4 pb-2 flex-shrink-0 border-t bg-background/95 backdrop-blur pt-2">
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {quickQuestions.map((question, index) => (
+            {suggestedQuestions.map((question, index) => (
               <Button
                 key={index}
                 variant="outline"
                 size="sm"
-                className="text-xs whitespace-nowrap flex-shrink-0"
+                className="text-xs whitespace-nowrap flex-shrink-0 h-8"
                 onClick={() => handleQuickQuestion(question)}
                 disabled={isLoading}
               >
@@ -301,12 +441,12 @@ export default function AIChatAdvisor() {
 
       {/* Input Area */}
       <div className="p-4 border-t bg-card flex-shrink-0">
-        <form onSubmit={handleSubmit} className="flex gap-2">
+        <form onSubmit={handleSubmit} className="flex gap-2 max-w-4xl mx-auto">
           <Input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about your finances..."
+            placeholder="Ask about your loans, EMIs, expenses, cash flow..."
             className="flex-1"
             disabled={isLoading}
           />
