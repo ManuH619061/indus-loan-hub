@@ -31,7 +31,6 @@ interface AppSidebarProps {
 
 const navigation = [
   { name: "Home", href: "/dashboard", icon: Home },
-  { name: "FinPath AI", href: "/ai/chat", icon: Sparkles },
   {
     name: "Bank Manager",
     key: "banking",
@@ -72,6 +71,7 @@ const navigation = [
     ],
   },
   { name: "Financial Insights", href: "/financial-insights", icon: BarChart3 },
+  { name: "FinPath AI", href: "/ai/chat", icon: Sparkles },
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
