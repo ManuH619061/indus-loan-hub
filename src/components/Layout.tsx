@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useDisplayMode } from "@/hooks/useDisplayMode";
 import { useIsMobile } from "@/hooks/use-mobile";
+import finpathLogo from "@/assets/finpath-logo.png";
 
 // Hook for swipe-to-open gesture
 function useSwipeToOpen(onOpen: () => void, edgeThreshold = 30, minSwipeDistance = 50) {
@@ -375,12 +376,10 @@ export default function Layout({ children }: LayoutProps) {
               <div className="flex flex-col h-full bg-card overflow-y-auto">
                 {/* Drawer Header - User Profile */}
                 <div className="p-4 border-b bg-primary/5 flex-shrink-0">
-                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className="p-1.5 bg-gradient-primary rounded-lg">
-                        <Wallet className="h-5 w-5 text-primary-foreground" />
-                      </div>
-                      <span className="font-semibold text-base">Loan Tracker</span>
+                      <img src={finpathLogo} alt="FinPath Tracker" className="h-8 w-8 rounded-lg" />
+                      <span className="font-semibold text-base">FinPath Tracker</span>
                     </div>
                     <Button 
                       variant="ghost" 
@@ -444,10 +443,8 @@ export default function Layout({ children }: LayoutProps) {
           <div className="flex items-center gap-2 md:gap-3 md:ml-0 flex-1 min-w-0">
             {!showMobileLayout && (
               <div className="hidden md:flex items-center gap-2">
-                <div className="p-1.5 bg-gradient-primary rounded-lg flex-shrink-0">
-                  <Wallet className="h-4 w-4 text-primary-foreground" />
-                </div>
-                <span className="font-semibold text-base truncate">Loan Tracker</span>
+                <img src={finpathLogo} alt="FinPath Tracker" className="h-7 w-7 rounded-lg flex-shrink-0" />
+                <span className="font-semibold text-base truncate">FinPath Tracker</span>
               </div>
             )}
             <div className={cn(

@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'app.lovable.94e8253aee7c4302a8c569612ba1e3e4',
-  appName: 'indus-loan-hub',
+  appName: 'FinPath Tracker',
   webDir: 'dist',
   server: {
     url: 'https://94e8253a-ee7c-4302-a8c5-69612ba1e3e4.lovableproject.com?forceHideBadge=true',

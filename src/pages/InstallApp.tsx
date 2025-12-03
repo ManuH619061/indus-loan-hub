@@ -114,11 +114,11 @@ const InstallApp = () => {
                 repeatDelay: 1
               }}
             >
-              <div className="relative">
+                <div className="relative">
                 <div className="w-14 h-14 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-lg flex items-center justify-center border-2 border-primary/20 overflow-hidden">
                   <img 
                     src="/pwa-192x192.png" 
-                    alt="Loan Hub" 
+                    alt="FinPath Tracker" 
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -127,7 +127,7 @@ const InstallApp = () => {
                 </div>
               </div>
               <div className="text-[10px] font-medium text-foreground text-center leading-tight">
-                Loan Hub
+                FinPath
               </div>
             </motion.div>
             
@@ -170,7 +170,7 @@ const InstallApp = () => {
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Already Installed!</h1>
           <p className="text-muted-foreground mb-6">
-            Loan Hub is already installed on your device. You can access it from your home screen.
+            FinPath Tracker is already installed on your device. You can access it from your home screen.
           </p>
           <Button onClick={() => navigate("/dashboard")} className="gap-2">
             Go to Dashboard <ArrowRight className="w-4 h-4" />
@@ -214,7 +214,7 @@ const InstallApp = () => {
             <div className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-3xl shadow-2xl mx-auto p-4 border border-white/20">
               <img 
                 src="/pwa-192x192.png" 
-                alt="Loan Hub" 
+                alt="FinPath Tracker" 
                 className="w-full h-full object-contain rounded-2xl"
               />
             </div>
@@ -225,7 +225,7 @@ const InstallApp = () => {
             transition={{ delay: 0.2 }}
             className="text-3xl font-bold mb-3"
           >
-            Install Loan Hub
+            Install FinPath Tracker
           </motion.h1>
           <motion.p
             initial={{ y: -20, opacity: 0 }}
