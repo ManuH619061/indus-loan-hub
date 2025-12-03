@@ -63,6 +63,10 @@ export default function Expenses() {
   const [deleteTransaction, setDeleteTransaction] = useState<Transaction | null>(null);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  
   const [formData, setFormData] = useState({
     narration: "",
     category: "",
@@ -215,6 +219,45 @@ export default function Expenses() {
       fetchTransactions();
     } catch (error: any) {
       toast.error("Failed to delete transaction: " + error.message);
+    }
+  };
+
+  // Bulk selection handlers
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredTransactions.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredTransactions.map(t => t.id)));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0 || !session) return;
+
+    try {
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .in("id", Array.from(selectedIds));
+
+      if (error) throw error;
+
+      toast.success(`${selectedIds.size} transaction(s) deleted`);
+      setSelectedIds(new Set());
+      setShowBulkDeleteConfirm(false);
+      fetchTransactions();
+    } catch (error: any) {
+      toast.error("Failed to delete: " + error.message);
     }
   };
 
@@ -445,16 +488,36 @@ export default function Expenses() {
       {/* Transactions Table */}
       <Card>
         <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-base md:text-lg flex items-center justify-between">
-            <span>Transactions ({filteredTransactions.length})</span>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base md:text-lg">
+              Transactions ({filteredTransactions.length})
+            </CardTitle>
+            {selectedIds.size > 0 && (
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => setShowBulkDeleteConfirm(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete {selectedIds.size} Selected
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px]">Date</TableHead>
+                  <TableHead className="w-[40px]">
+                    <input
+                      type="checkbox"
+                      checked={filteredTransactions.length > 0 && selectedIds.size === filteredTransactions.length}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 rounded border-muted-foreground"
+                    />
+                  </TableHead>
+                  <TableHead className="w-[80px]">Date</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead className="hidden md:table-cell">Category</TableHead>
                   <TableHead className="hidden lg:table-cell">Bank</TableHead>
@@ -466,14 +529,14 @@ export default function Expenses() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={8} className="text-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
                       <span className="text-muted-foreground">Loading transactions...</span>
                     </TableCell>
                   </TableRow>
                 ) : filteredTransactions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       No transactions found for this period
                     </TableCell>
                   </TableRow>
@@ -484,9 +547,18 @@ export default function Expenses() {
                       id={`txn-${transaction.id}`}
                       className={cn(
                         "transition-colors",
-                        highlightId === transaction.id && "bg-primary/10"
+                        highlightId === transaction.id && "bg-primary/10",
+                        selectedIds.has(transaction.id) && "bg-muted/50"
                       )}
                     >
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(transaction.id)}
+                          onChange={() => toggleSelectOne(transaction.id)}
+                          className="h-4 w-4 rounded border-muted-foreground"
+                        />
+                      </TableCell>
                       <TableCell className="text-xs md:text-sm">
                         {format(new Date(transaction.transaction_date), 'dd MMM')}
                       </TableCell>
@@ -650,6 +722,24 @@ export default function Expenses() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteTransaction} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} Transactions?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the selected transactions. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete All Selected
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
