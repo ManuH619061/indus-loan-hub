@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
+import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
@@ -106,12 +107,14 @@ function AnimatedRoutes() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <OfflineIndicator />
-      <PWAInstallPrompt />
       <BrowserRouter>
-        <AnimatedRoutes />
+        <PreferencesProvider>
+          <Toaster />
+          <Sonner />
+          <OfflineIndicator />
+          <PWAInstallPrompt />
+          <AnimatedRoutes />
+        </PreferencesProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

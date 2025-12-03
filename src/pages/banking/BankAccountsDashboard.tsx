@@ -32,6 +32,8 @@ import EditBankAccountDialog from "@/components/banking/EditBankAccountDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { usePreferences } from "@/contexts/PreferencesContext";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -65,11 +67,20 @@ interface Transaction {
 }
 
 export default function BankAccountsDashboard() {
+  const { user } = useAuth();
+  const { preferences } = usePreferences();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAccount, setSelectedAccount] = useState<string>("all");
-  const [dateRange, setDateRange] = useState<string>("30days");
+  // Use preference for default date range
+  const [dateRange, setDateRange] = useState<string>(() => {
+    const prefRange = preferences.default_date_range;
+    if (prefRange === 'current_month') return '30days';
+    if (prefRange === 'last_30_days') return '30days';
+    if (prefRange === 'last_90_days') return '90days';
+    return '30days';
+  });
   const [showBankingSummary, setShowBankingSummary] = useState(true);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
   const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null);
@@ -79,14 +90,14 @@ export default function BankAccountsDashboard() {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchData();
-  }, [selectedAccount, dateRange]);
+    if (user) {
+      fetchData();
+    }
+  }, [user, selectedAccount, dateRange]);
 
   const fetchData = async () => {
+    if (!user) return;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       // Fetch accounts
       const { data: accountsData, error: accountsError } = await supabase
         .from("bank_accounts")

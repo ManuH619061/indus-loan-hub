@@ -2,10 +2,12 @@ import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { usePreferences } from "@/contexts/PreferencesContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatINR } from "@/lib/currency";
-import { ChevronLeft, ChevronRight, Calendar, ArrowLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, ArrowLeft, List } from "lucide-react";
 import {
   format,
   startOfMonth,
@@ -97,12 +99,17 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function EMICalendar() {
   const { user } = useAuth();
+  const { preferences } = usePreferences();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [emiEvents, setEmiEvents] = useState<EMIEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedEMIs, setSelectedEMIs] = useState<EMIEvent[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  // Use preference for default view
+  const [viewMode, setViewMode] = useState<"month" | "list">(
+    (preferences.default_emi_calendar_view as "month" | "list") || "month"
+  );
 
   useEffect(() => {
     if (user) {
@@ -283,6 +290,25 @@ export default function EMICalendar() {
               {format(currentMonth, "MMMM yyyy")}
             </CardTitle>
             <div className="flex items-center gap-2">
+              {/* View Mode Toggle */}
+              <div className="flex border rounded-md">
+                <Button 
+                  variant={viewMode === "month" ? "default" : "ghost"} 
+                  size="sm" 
+                  onClick={() => setViewMode("month")}
+                  className="rounded-r-none"
+                >
+                  <Calendar className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant={viewMode === "list" ? "default" : "ghost"} 
+                  size="sm" 
+                  onClick={() => setViewMode("list")}
+                  className="rounded-l-none"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
               <Button variant="outline" size="sm" onClick={handleToday}>
                 Today
               </Button>
@@ -296,6 +322,48 @@ export default function EMICalendar() {
           </div>
         </CardHeader>
         <CardContent>
+          {viewMode === "list" ? (
+            /* List View */
+            <div className="space-y-2">
+              {emiEvents
+                .filter(emi => isSameMonth(emi.dueDate, currentMonth))
+                .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
+                .map(emi => {
+                  const status = getEMIStatus(emi, today);
+                  return (
+                    <div
+                      key={emi.id}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer"
+                      onClick={() => {
+                        setSelectedDate(emi.dueDate);
+                        setSelectedEMIs([emi]);
+                        setDialogOpen(true);
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${getStatusColor(status)}`} />
+                        <div>
+                          <p className="font-medium">{emi.loanName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {format(emi.dueDate, "dd MMM yyyy")} • EMI #{emi.periodNo}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">{formatINR(emi.amount)}</p>
+                        <Badge variant={getStatusBadgeVariant(status)} className="text-xs">
+                          {getStatusLabel(status)}
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+              {emiEvents.filter(emi => isSameMonth(emi.dueDate, currentMonth)).length === 0 && (
+                <p className="text-center text-muted-foreground py-8">No EMIs scheduled for this month</p>
+              )}
+            </div>
+          ) : (
+            <>
           {/* Legend */}
           <div className="flex flex-wrap gap-4 mb-4 text-sm">
             <div className="flex items-center gap-2">
@@ -374,6 +442,8 @@ export default function EMICalendar() {
               );
             })}
           </div>
+          </>
+          )}
         </CardContent>
       </Card>
 

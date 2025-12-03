@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { usePreferences } from "@/contexts/PreferencesContext";
 import { formatINR } from "@/lib/currency";
 import { Plus, Edit2, Trash2, Search, Settings, Loader2, Calendar, TrendingUp, Receipt, Wallet, CreditCard, Banknote, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -68,6 +69,7 @@ interface BankAccount {
 
 export default function MonthlyExpenses() {
   const { user } = useAuth();
+  const { preferences } = usePreferences();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [openCategoryManager, setOpenCategoryManager] = useState(false);
@@ -89,20 +91,30 @@ export default function MonthlyExpenses() {
   const [editingExpense, setEditingExpense] = useState<MonthlyExpense | null>(null);
   const [deleteExpense, setDeleteExpense] = useState<MonthlyExpense | null>(null);
 
-  const [formData, setFormData] = useState({
+  // Initialize form with default bank account from preferences
+  const getInitialFormData = () => ({
     date: new Date().toISOString().split('T')[0],
     description: "",
     group_id: "",
     subgroup_id: "",
     amount: "",
-    paid_from: "Cash",
-    bank_account_id: "",
+    paid_from: preferences.default_bank_account_expense ? "Bank" : "Cash",
+    bank_account_id: preferences.default_bank_account_expense || "",
     from_location: "",
     to_location: "",
     travel_mode: "",
     tags: "",
     notes: "",
   });
+
+  const [formData, setFormData] = useState(getInitialFormData());
+
+  // Update form defaults when preferences change
+  useEffect(() => {
+    if (!openExpenseDialog && !editingExpense) {
+      setFormData(getInitialFormData());
+    }
+  }, [preferences.default_bank_account_expense]);
 
   const [aiCategorizing, setAiCategorizing] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<any>(null);
