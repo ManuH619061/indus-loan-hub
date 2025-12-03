@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import FadeInStagger from "@/components/FadeInStagger";
 import { useNavigate } from "react-router-dom";
+import RecurringExpenses from "@/components/budget/RecurringExpenses";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))', 'hsl(var(--destructive))'];
 
@@ -511,6 +512,14 @@ export default function MonthlyExpenses() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Recurring Expenses */}
+        <RecurringExpenses
+          groups={groups}
+          subgroups={subgroups}
+          bankAccounts={bankAccounts}
+          onExpenseGenerated={fetchData}
+        />
 
         {/* Chart */}
         <Card>

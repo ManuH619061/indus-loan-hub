@@ -1322,6 +1322,100 @@ export type Database = {
           },
         ]
       }
+      recurring_expenses: {
+        Row: {
+          amount: number
+          bank_account_id: string | null
+          created_at: string
+          day_of_month: number | null
+          day_of_week: number | null
+          description: string
+          end_date: string | null
+          frequency: string
+          group_id: string | null
+          id: string
+          is_active: boolean
+          last_generated_date: string | null
+          month_of_year: number | null
+          name: string
+          notes: string | null
+          paid_from: string
+          start_date: string
+          subgroup_id: string | null
+          tags: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          bank_account_id?: string | null
+          created_at?: string
+          day_of_month?: number | null
+          day_of_week?: number | null
+          description: string
+          end_date?: string | null
+          frequency?: string
+          group_id?: string | null
+          id?: string
+          is_active?: boolean
+          last_generated_date?: string | null
+          month_of_year?: number | null
+          name: string
+          notes?: string | null
+          paid_from?: string
+          start_date: string
+          subgroup_id?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string | null
+          created_at?: string
+          day_of_month?: number | null
+          day_of_week?: number | null
+          description?: string
+          end_date?: string | null
+          frequency?: string
+          group_id?: string | null
+          id?: string
+          is_active?: boolean
+          last_generated_date?: string | null
+          month_of_year?: number | null
+          name?: string
+          notes?: string | null
+          paid_from?: string
+          start_date?: string
+          subgroup_id?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_expenses_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_expenses_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "expense_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_expenses_subgroup_id_fkey"
+            columns: ["subgroup_id"]
+            isOneToOne: false
+            referencedRelation: "expense_subgroups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salary_settings: {
         Row: {
           base_salary: number
