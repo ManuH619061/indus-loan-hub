@@ -1,8 +1,9 @@
-import { Bot, User } from "lucide-react";
+import { Bot, User, FileText, BarChart3, Lightbulb, TrendingUp, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import ReactMarkdown from "react-markdown";
 import { ChatChartRenderer, parseChartBlocks } from "./ChatChartRenderer";
 import { ChatStyledTable } from "./ChatStyledTable";
+import { Badge } from "@/components/ui/badge";
 
 interface ChatMessageBubbleProps {
   role: "user" | "assistant";
@@ -10,6 +11,25 @@ interface ChatMessageBubbleProps {
   timestamp?: string;
   isStreaming?: boolean;
 }
+
+// Helper to detect and style section headers
+const getSectionIcon = (text: string) => {
+  const lower = text.toLowerCase();
+  if (lower.includes("summary") || lower.includes("overview")) return <FileText className="h-4 w-4" />;
+  if (lower.includes("chart") || lower.includes("breakdown") || lower.includes("visual")) return <BarChart3 className="h-4 w-4" />;
+  if (lower.includes("recommendation") || lower.includes("suggestion") || lower.includes("action")) return <Lightbulb className="h-4 w-4" />;
+  if (lower.includes("analysis") || lower.includes("insight")) return <TrendingUp className="h-4 w-4" />;
+  if (lower.includes("warning") || lower.includes("risk") || lower.includes("caution")) return <AlertTriangle className="h-4 w-4" />;
+  return null;
+};
+
+// Format currency values in text
+const formatCurrencyInText = (text: string) => {
+  // Match ₹ followed by numbers with commas
+  return text.replace(/₹\s?([\d,]+(?:\.\d{2})?)/g, (match, num) => {
+    return `₹${num}`;
+  });
+};
 
 export function ChatMessageBubble({ role, content, timestamp, isStreaming }: ChatMessageBubbleProps) {
   const isUser = role === "user";
@@ -75,23 +95,52 @@ export function ChatMessageBubble({ role, content, timestamp, isStreaming }: Cha
                   <tr className="even:bg-muted/30 hover:bg-muted/50 transition-colors">{children}</tr>
                 ),
                 td: ({ children }) => {
-                  const text = String(children);
-                  const isAmount = text.includes("₹") || /^\d[\d,]*(\.\d+)?$/.test(text.trim());
+                  const cellText = String(children);
+                  const isAmount = cellText.includes("₹") || /^\d[\d,]*(\.\d+)?$/.test(cellText.trim());
+                  // Detect status/priority badges
+                  const lowerText = cellText.toLowerCase();
+                  const isHighRisk = lowerText.includes("high") || lowerText.includes("overdue") || lowerText.includes("risk");
+                  const isCaution = lowerText.includes("medium") || lowerText.includes("caution") || lowerText.includes("warning");
+                  const isSafe = lowerText.includes("low") || lowerText.includes("safe") || lowerText.includes("good");
+                  
+                  let colorClass = "";
+                  if (isHighRisk) colorClass = "text-destructive font-medium";
+                  else if (isCaution) colorClass = "text-amber-600 dark:text-amber-400 font-medium";
+                  else if (isSafe) colorClass = "text-emerald-600 dark:text-emerald-400 font-medium";
+                  
                   return (
-                    <td className={`px-4 py-3 text-sm ${isAmount ? "text-right font-medium tabular-nums" : "text-left"}`}>
+                    <td className={`px-4 py-3 text-sm ${isAmount ? "text-right font-medium tabular-nums" : "text-left"} ${colorClass}`}>
                       {children}
                     </td>
                   );
                 },
-                h1: ({ children }) => (
-                  <h1 className="text-xl font-bold mt-6 mb-3 text-foreground border-b border-border pb-2">{children}</h1>
-                ),
-                h2: ({ children }) => (
-                  <h2 className="text-lg font-semibold mt-5 mb-2 text-foreground">{children}</h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 className="text-base font-semibold mt-4 mb-2 text-foreground">{children}</h3>
-                ),
+                h1: ({ children }) => {
+                  const icon = getSectionIcon(String(children));
+                  return (
+                    <h1 className="text-xl font-bold mt-6 mb-3 text-foreground border-b border-border pb-2 flex items-center gap-2">
+                      {icon && <span className="text-primary">{icon}</span>}
+                      {children}
+                    </h1>
+                  );
+                },
+                h2: ({ children }) => {
+                  const icon = getSectionIcon(String(children));
+                  return (
+                    <h2 className="text-lg font-semibold mt-5 mb-2 text-foreground flex items-center gap-2">
+                      {icon && <span className="text-primary">{icon}</span>}
+                      {children}
+                    </h2>
+                  );
+                },
+                h3: ({ children }) => {
+                  const icon = getSectionIcon(String(children));
+                  return (
+                    <h3 className="text-base font-semibold mt-4 mb-2 text-foreground flex items-center gap-2">
+                      {icon && <span className="text-primary">{icon}</span>}
+                      {children}
+                    </h3>
+                  );
+                },
                 p: ({ children }) => (
                   <p className="my-2 text-sm leading-relaxed text-foreground/90">{children}</p>
                 ),
