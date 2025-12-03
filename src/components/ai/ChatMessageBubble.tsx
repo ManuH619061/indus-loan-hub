@@ -81,35 +81,41 @@ export function ChatMessageBubble({ role, content, timestamp, isStreaming }: Cha
             <ReactMarkdown
               key={`text-${i}`}
               components={{
-                table: ({ children }) => <ChatStyledTable>{children}</ChatStyledTable>,
+                table: ({ children }) => (
+                  <ChatStyledTable>{children}</ChatStyledTable>
+                ),
                 thead: ({ children }) => (
-                  <thead className="bg-muted/70 dark:bg-muted/30">{children}</thead>
+                  <thead className="bg-primary/10 dark:bg-primary/20">{children}</thead>
                 ),
                 th: ({ children }) => (
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-foreground uppercase tracking-wider border-b border-border">
+                  <th className="px-4 py-3 text-left text-xs font-bold text-primary uppercase tracking-wider border-b-2 border-primary/30 whitespace-nowrap">
                     {children}
                   </th>
                 ),
-                tbody: ({ children }) => <tbody className="divide-y divide-border">{children}</tbody>,
+                tbody: ({ children }) => (
+                  <tbody className="divide-y divide-border/50">{children}</tbody>
+                ),
                 tr: ({ children }) => (
-                  <tr className="even:bg-muted/30 hover:bg-muted/50 transition-colors">{children}</tr>
+                  <tr className="odd:bg-background even:bg-muted/40 hover:bg-accent/50 transition-colors">
+                    {children}
+                  </tr>
                 ),
                 td: ({ children }) => {
                   const cellText = String(children);
-                  const isAmount = cellText.includes("₹") || /^\d[\d,]*(\.\d+)?$/.test(cellText.trim());
+                  const isAmount = cellText.includes("₹") || /^[\d,]+(\.\d+)?$/.test(cellText.trim());
                   // Detect status/priority badges
                   const lowerText = cellText.toLowerCase();
                   const isHighRisk = lowerText.includes("high") || lowerText.includes("overdue") || lowerText.includes("risk");
                   const isCaution = lowerText.includes("medium") || lowerText.includes("caution") || lowerText.includes("warning");
-                  const isSafe = lowerText.includes("low") || lowerText.includes("safe") || lowerText.includes("good");
+                  const isSafe = lowerText.includes("low") || lowerText.includes("safe") || lowerText.includes("good") || lowerText.includes("paid");
                   
-                  let colorClass = "";
-                  if (isHighRisk) colorClass = "text-destructive font-medium";
-                  else if (isCaution) colorClass = "text-amber-600 dark:text-amber-400 font-medium";
-                  else if (isSafe) colorClass = "text-emerald-600 dark:text-emerald-400 font-medium";
+                  let colorClass = "text-foreground";
+                  if (isHighRisk) colorClass = "text-destructive font-semibold";
+                  else if (isCaution) colorClass = "text-amber-600 dark:text-amber-400 font-semibold";
+                  else if (isSafe) colorClass = "text-emerald-600 dark:text-emerald-400 font-semibold";
                   
                   return (
-                    <td className={`px-4 py-3 text-sm ${isAmount ? "text-right font-medium tabular-nums" : "text-left"} ${colorClass}`}>
+                    <td className={`px-4 py-3 text-sm whitespace-nowrap ${isAmount ? "text-right font-semibold tabular-nums" : "text-left"} ${colorClass}`}>
                       {children}
                     </td>
                   );
