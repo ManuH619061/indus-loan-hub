@@ -24,3 +24,34 @@ export function formatNumber(num: number, decimals: number = 2): string {
 export function formatPercent(value: number, decimals: number = 2): string {
   return `${formatNumber(value, decimals)}%`;
 }
+
+// Format currency with custom symbol and format
+export function formatCurrency(
+  amount: number, 
+  currencySymbol: string = '₹', 
+  numberFormat: string = 'indian'
+): string {
+  const locale = numberFormat === 'indian' ? 'en-IN' : 'en-US';
+  const formatted = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(Math.abs(amount));
+  
+  const sign = amount < 0 ? '-' : '';
+  return `${sign}${currencySymbol}${formatted}`;
+}
+
+export function formatCurrencyDetailed(
+  amount: number, 
+  currencySymbol: string = '₹', 
+  numberFormat: string = 'indian'
+): string {
+  const locale = numberFormat === 'indian' ? 'en-IN' : 'en-US';
+  const formatted = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  }).format(Math.abs(amount));
+  
+  const sign = amount < 0 ? '-' : '';
+  return `${sign}${currencySymbol}${formatted}`;
+}
