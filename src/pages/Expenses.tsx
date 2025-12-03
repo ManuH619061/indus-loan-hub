@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,8 @@ import { Download, Filter, TrendingUp, TrendingDown, Search, Edit2, Trash2, Cale
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { formatINR } from "@/lib/currency";
+import { usePreferences } from "@/contexts/PreferencesContext";
+import { formatCurrency } from "@/lib/currency";
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
@@ -45,9 +46,15 @@ const PERIOD_OPTIONS = [
 
 export default function Expenses() {
   const { session } = useAuth();
+  const { preferences } = usePreferences();
   const [searchParams] = useSearchParams();
   const highlightId = searchParams.get("id");
   const periodParam = searchParams.get("period");
+  
+  // Helper function to format with user's currency preference
+  const fmt = useCallback((amount: number) => {
+    return formatCurrency(amount, preferences.currency_symbol, preferences.number_format);
+  }, [preferences.currency_symbol, preferences.number_format]);
   
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -367,7 +374,7 @@ export default function Expenses() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Total Income</p>
-              <p className="text-xl md:text-2xl font-bold text-green-600">{formatINR(totalIncome)}</p>
+              <p className="text-xl md:text-2xl font-bold text-green-600">{fmt(totalIncome)}</p>
             </div>
             <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-green-600" />
           </div>
@@ -377,7 +384,7 @@ export default function Expenses() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Total Expenses</p>
-              <p className="text-xl md:text-2xl font-bold text-red-600">{formatINR(totalExpenses)}</p>
+              <p className="text-xl md:text-2xl font-bold text-red-600">{fmt(totalExpenses)}</p>
             </div>
             <TrendingDown className="w-6 h-6 md:w-8 md:h-8 text-red-600" />
           </div>
@@ -387,7 +394,7 @@ export default function Expenses() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">EMI Payments</p>
-              <p className="text-xl md:text-2xl font-bold text-orange-600">{formatINR(totalEMI)}</p>
+              <p className="text-xl md:text-2xl font-bold text-orange-600">{fmt(totalEMI)}</p>
             </div>
             <TrendingDown className="w-6 h-6 md:w-8 md:h-8 text-orange-600" />
           </div>
@@ -415,7 +422,7 @@ export default function Expenses() {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => formatINR(Number(value))} />
+                <Tooltip formatter={(value) => fmt(Number(value))} />
               </PieChart>
             </ResponsiveContainer>
           </Card>
@@ -433,7 +440,7 @@ export default function Expenses() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(value) => formatINR(Number(value))} />
+                <Tooltip formatter={(value) => fmt(Number(value))} />
                 <Bar dataKey="amount" fill="hsl(var(--primary))" />
               </BarChart>
             </ResponsiveContainer>
@@ -582,10 +589,10 @@ export default function Expenses() {
                       </TableCell>
                       <TableCell className="text-xs hidden lg:table-cell">{transaction.bank_type}</TableCell>
                       <TableCell className="text-right text-red-600 text-sm">
-                        {transaction.debit ? formatINR(transaction.debit) : '-'}
+                        {transaction.debit ? fmt(transaction.debit) : '-'}
                       </TableCell>
                       <TableCell className="text-right text-green-600 text-sm">
-                        {transaction.credit ? formatINR(transaction.credit) : '-'}
+                        {transaction.credit ? fmt(transaction.credit) : '-'}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-center gap-1">
@@ -713,7 +720,7 @@ export default function Expenses() {
               <div className="mt-2 p-3 bg-muted rounded-lg">
                 <p className="font-medium text-sm">{deleteTransaction?.narration}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {deleteTransaction?.debit ? `Debit: ${formatINR(deleteTransaction.debit)}` : `Credit: ${formatINR(deleteTransaction?.credit || 0)}`}
+                  {deleteTransaction?.debit ? `Debit: ${fmt(deleteTransaction.debit)}` : `Credit: ${fmt(deleteTransaction?.credit || 0)}`}
                 </p>
               </div>
             </AlertDialogDescription>
