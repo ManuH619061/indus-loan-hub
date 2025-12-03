@@ -12,8 +12,12 @@ import {
   ChevronRight,
   Upload,
   Pencil,
-  Trash2
+  Trash2,
+  Plus,
+  ArrowLeftRight
 } from "lucide-react";
+import AddAccountDialog from "@/components/banking/AddAccountDialog";
+import InternalTransferDialog from "@/components/banking/InternalTransferDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,6 +73,8 @@ export default function BankAccountsDashboard() {
   const [showBankingSummary, setShowBankingSummary] = useState(true);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
   const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null);
+  const [showAddAccountDialog, setShowAddAccountDialog] = useState(false);
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -218,18 +224,30 @@ export default function BankAccountsDashboard() {
   return (
     <div className="space-y-6 pb-8">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/dashboard")}
-          className="md:hidden"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Banking Overview</h1>
-          <p className="text-sm text-muted-foreground mt-1">Monitor your accounts and transactions</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/dashboard")}
+            className="md:hidden"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Banking Overview</h1>
+            <p className="text-sm text-muted-foreground mt-1">Monitor your accounts and transactions</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowAddAccountDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Account
+          </Button>
+          <Button variant="outline" onClick={() => setShowTransferDialog(true)}>
+            <ArrowLeftRight className="h-4 w-4 mr-2" />
+            Internal Transfer
+          </Button>
         </div>
       </div>
 
@@ -519,6 +537,20 @@ export default function BankAccountsDashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Account Dialog */}
+      <AddAccountDialog
+        open={showAddAccountDialog}
+        onOpenChange={setShowAddAccountDialog}
+        onAccountAdded={fetchData}
+      />
+
+      {/* Internal Transfer Dialog */}
+      <InternalTransferDialog
+        open={showTransferDialog}
+        onOpenChange={setShowTransferDialog}
+        onTransferComplete={fetchData}
+      />
     </div>
   );
 }
