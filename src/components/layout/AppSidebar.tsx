@@ -31,6 +31,7 @@ interface AppSidebarProps {
 
 const navigation = [
   { name: "Home", href: "/dashboard", icon: Home },
+  { name: "FinPath AI", href: "/ai/chat", icon: Sparkles },
   {
     name: "Bank Manager",
     key: "banking",
@@ -70,18 +71,6 @@ const navigation = [
       { name: "Budget Reports", href: "/budget/reports", icon: FileText },
     ],
   },
-  {
-    name: "AI Advice",
-    key: "ai",
-    icon: Sparkles,
-    children: [
-      { name: "AI Chat Advisor", href: "/ai/chat", icon: Sparkles },
-      { name: "AI Insights", href: "/insights", icon: Sparkles },
-      { name: "Budget Advice", href: "/ai/budget-advice", icon: TrendingUp },
-      { name: "Expense Advice", href: "/ai/expense-advice", icon: Receipt },
-      { name: "Loan Advice", href: "/ai/loan-advice", icon: Wallet },
-    ],
-  },
   { name: "Financial Insights", href: "/financial-insights", icon: BarChart3 },
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Settings", href: "/settings", icon: Settings },
@@ -93,7 +82,6 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onCollapseToggle }: A
     banking: false,
     loans: false,
     budget: false,
-    ai: false,
   });
 
   // Auto-expand section if current route is within it
