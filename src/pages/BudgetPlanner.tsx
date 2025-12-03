@@ -24,7 +24,7 @@ import SavingsGoalsStep from "@/components/budget/wizard/SavingsGoalsStep";
 import SummaryStep from "@/components/budget/wizard/SummaryStep";
 import BudgetClickableSummaryCards from "@/components/budget/BudgetClickableSummaryCards";
 import BudgetHealthWidgets from "@/components/budget/BudgetHealthWidgets";
-import EnhancedForecastTable from "@/components/budget/EnhancedForecastTable";
+import ForecastDashboard from "@/components/budget/ForecastDashboard";
 import BudgetInsightsPanel from "@/components/budget/BudgetInsightsPanel";
 import DebtPayoffSummary from "@/components/budget/DebtPayoffSummary";
 import WizardStepIndicator from "@/components/budget/WizardStepIndicator";
@@ -318,44 +318,6 @@ export default function BudgetPlanner() {
     totalIncome - totalFixedExpenses - totalVariableExpenses - totalEMI - totalSavings;
   const debtBurden = totalIncome > 0 ? (totalEMI / totalIncome) * 100 : 0;
 
-  // Generate 12-month forecast with enhanced data
-  const generateForecasts = () => {
-    const forecasts = [];
-    for (let i = 0; i < 12; i++) {
-      const date = new Date();
-      date.setMonth(date.getMonth() + i);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      
-      // Calculate salary with increment
-      let forecastSalary = budget.salary;
-      if (salarySettings && date.getMonth() + 1 === salarySettings.increment_month) {
-        if (salarySettings.increment_type === "percentage") {
-          forecastSalary = budget.salary * (1 + salarySettings.increment_value / 100);
-        } else {
-          forecastSalary = budget.salary + salarySettings.increment_value;
-        }
-      }
-
-      const forecastIncome = forecastSalary + otherIncome.reduce((sum, inc) => sum + (inc.amount || 0), 0);
-      const forecastEMI = totalEMI;
-
-      forecasts.push({
-        month: format(date, "MMM yyyy"),
-        monthKey,
-        income: forecastIncome,
-        emis: forecastEMI,
-        fixedExpenses: totalFixedExpenses,
-        lifestyleBudget: totalVariableExpenses,
-        plannedSavings: totalSavings,
-        freeCash: forecastIncome - totalFixedExpenses - totalVariableExpenses - forecastEMI - totalSavings,
-        debtBurden: forecastIncome > 0 ? (forecastEMI / forecastIncome) * 100 : 0,
-      });
-    }
-    return forecasts;
-  };
-
-  const forecasts = generateForecasts();
-
   const steps = [
     { title: "Income", description: "Salary & other sources" },
     { title: "Fixed Expenses", description: "Monthly bills" },
@@ -363,11 +325,6 @@ export default function BudgetPlanner() {
     { title: "Savings & Goals", description: "Future planning" },
     { title: "Review", description: "Summary & confirm" },
   ];
-
-  const handleMonthClick = (monthKey: string) => {
-    setSelectedMonth(monthKey);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
 
   // Get month label for display
   const getMonthLabel = () => {
@@ -576,25 +533,9 @@ export default function BudgetPlanner() {
           </Collapsible>
         </div>
 
-        {/* 12-Month Forecast */}
+        {/* 12-Month Forecast Dashboard */}
         <div ref={forecastRef}>
-          <EnhancedForecastTable
-            forecasts={forecasts}
-            onLifestyleChange={(monthKey, value) => {
-              // For now, just update current month if it matches
-              if (monthKey === selectedMonth) {
-                const newTotal = value;
-                // Distribute proportionally (simplified)
-                setBudget({ ...budget, eating_out: newTotal * 0.3, shopping: newTotal * 0.3, travel: newTotal * 0.3, other_variable: newTotal * 0.1 });
-              }
-            }}
-            onSavingsChange={(monthKey, value) => {
-              if (monthKey === selectedMonth) {
-                setBudget({ ...budget, savings_investments: value });
-              }
-            }}
-            onMonthClick={handleMonthClick}
-          />
+          <ForecastDashboard />
         </div>
 
         {/* Budget Insights */}
@@ -607,7 +548,6 @@ export default function BudgetPlanner() {
             totalSavings={totalSavings}
             freeCash={freeCash}
             debtBurden={debtBurden}
-            forecasts={forecasts}
             savingsGoals={savingsGoals}
           />
         </div>

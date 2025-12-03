@@ -29,7 +29,7 @@ interface BudgetInsightsPanelProps {
   totalSavings: number;
   freeCash: number;
   debtBurden: number;
-  forecasts: Array<{ month: string; debtBurden: number; freeCash: number }>;
+  forecasts?: Array<{ month: string; debtBurden: number; freeCash: number }>;
   savingsGoals: SavingsGoal[];
 }
 
@@ -41,7 +41,7 @@ export default function BudgetInsightsPanel({
   totalSavings,
   freeCash,
   debtBurden,
-  forecasts,
+  forecasts = [],
   savingsGoals,
 }: BudgetInsightsPanelProps) {
   const insights: Array<{
