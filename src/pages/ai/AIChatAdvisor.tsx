@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { ArrowLeft, Send, Bot, Sparkles, Loader2, Menu, Download, FileText } from "lucide-react";
+import { ArrowLeft, Send, Bot, Sparkles, Loader2, Menu, Download, PanelLeftClose, PanelLeft, History } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useChatHistory } from "@/hooks/useChatHistory";
 import { ChatHistorySidebar } from "@/components/ai/ChatHistorySidebar";
 import { ChatMessageBubble } from "@/components/ai/ChatMessageBubble";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const initialQuickQuestions = [
   "How much EMI do I need to pay next month?",
@@ -52,6 +53,10 @@ export default function AIChatAdvisor() {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>(initialQuickQuestions.slice(0, 6));
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(() => {
+    // Remember user's preference
+    return localStorage.getItem("ai-sidebar-collapsed") === "true";
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -73,6 +78,11 @@ export default function AIChatAdvisor() {
     renameConversation,
     deleteAllConversations,
   } = useChatHistory();
+
+  // Save sidebar preference
+  useEffect(() => {
+    localStorage.setItem("ai-sidebar-collapsed", String(desktopSidebarCollapsed));
+  }, [desktopSidebarCollapsed]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -292,7 +302,6 @@ export default function AIChatAdvisor() {
     messages.forEach(msg => {
       const label = msg.role === "user" ? "You" : "AI Advisor";
       report += `[${label}]\n`;
-      // Strip markdown for cleaner text
       const cleanContent = msg.content
         .replace(/```chart[\s\S]*?```/g, '[Chart]')
         .replace(/\*\*/g, '')
@@ -329,9 +338,13 @@ export default function AIChatAdvisor() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)]">
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar - Collapsible */}
       {!isMobile && (
-        <div className="w-72 border-r border-border flex-shrink-0 hidden md:block">
+        <div 
+          className={`border-r border-border flex-shrink-0 hidden md:block transition-all duration-300 ease-in-out ${
+            desktopSidebarCollapsed ? "w-0 overflow-hidden" : "w-72"
+          }`}
+        >
           <SidebarContent />
         </div>
       )}
@@ -339,12 +352,12 @@ export default function AIChatAdvisor() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <div className="flex items-center gap-3 p-4 border-b bg-card flex-shrink-0">
+        <div className="flex items-center gap-2 p-3 border-b bg-card flex-shrink-0">
           {/* Mobile: Menu button */}
-          {isMobile && (
+          {isMobile ? (
             <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="h-9 w-9">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
@@ -352,20 +365,35 @@ export default function AIChatAdvisor() {
                 <SidebarContent />
               </SheetContent>
             </Sheet>
+          ) : (
+            /* Desktop: Toggle sidebar button */
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9"
+                  onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
+                >
+                  {desktopSidebarCollapsed ? (
+                    <PanelLeft className="h-5 w-5" />
+                  ) : (
+                    <PanelLeftClose className="h-5 w-5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {desktopSidebarCollapsed ? "Show history" : "Hide history"}
+              </TooltipContent>
+            </Tooltip>
           )}
 
-          {!isMobile && (
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          )}
-
-          <div className="flex items-center gap-3 flex-1">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
-              <Sparkles className="h-5 w-5 text-primary-foreground" />
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-md flex-shrink-0">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="font-semibold text-lg truncate">AI Financial Advisor</h1>
+              <h1 className="font-semibold text-base truncate">AI Financial Advisor</h1>
               <p className="text-xs text-muted-foreground truncate">
                 {activeConversationId 
                   ? conversations.find(c => c.id === activeConversationId)?.title || "Chat"
@@ -375,13 +403,34 @@ export default function AIChatAdvisor() {
             </div>
           </div>
 
-          {/* Download button */}
-          {messages.length > 0 && (
-            <Button variant="outline" size="sm" className="gap-2" onClick={downloadReport}>
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">Download</span>
-            </Button>
-          )}
+          {/* Actions */}
+          <div className="flex items-center gap-1">
+            {conversations.length > 0 && desktopSidebarCollapsed && !isMobile && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-9 w-9"
+                    onClick={() => setDesktopSidebarCollapsed(false)}
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>View history ({conversations.length})</TooltipContent>
+              </Tooltip>
+            )}
+            {messages.length > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={downloadReport}>
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Download report</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
         </div>
 
         {/* Messages Area */}
@@ -472,7 +521,7 @@ export default function AIChatAdvisor() {
         )}
 
         {/* Input Area */}
-        <div className="p-4 border-t bg-card flex-shrink-0">
+        <div className="p-3 border-t bg-card flex-shrink-0">
           <form onSubmit={handleSubmit} className="flex gap-2 max-w-4xl mx-auto">
             <Input
               ref={inputRef}
