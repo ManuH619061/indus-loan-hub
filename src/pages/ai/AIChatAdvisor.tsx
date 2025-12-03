@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ChatChartRenderer, parseChartBlocks } from "@/components/ai/ChatChartRenderer";
 
 interface Message {
   role: "user" | "assistant";
@@ -245,6 +246,101 @@ export default function AIChatAdvisor() {
     </div>
   );
 
+  const AssistantMessage = ({ content, showQuickLinks }: { content: string; showQuickLinks?: boolean }) => {
+    const { text, charts } = parseChartBlocks(content);
+    
+    // Replace chart placeholders with actual charts
+    const renderContent = () => {
+      const parts = text.split(/\[CHART_(\d+)\]/g);
+      const elements: React.ReactNode[] = [];
+      
+      for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 0) {
+          // Text part
+          if (parts[i]) {
+            elements.push(
+              <ReactMarkdown
+                key={`text-${i}`}
+                components={{
+                  table: ({ children }) => (
+                    <div className="overflow-x-auto my-3">
+                      <table className="min-w-full text-sm border-collapse border border-border rounded-lg">
+                        {children}
+                      </table>
+                    </div>
+                  ),
+                  thead: ({ children }) => (
+                    <thead className="bg-muted/50">{children}</thead>
+                  ),
+                  th: ({ children }) => (
+                    <th className="px-3 py-2 text-left font-medium border-b border-border">{children}</th>
+                  ),
+                  td: ({ children }) => (
+                    <td className="px-3 py-2 border-b border-border/50">{children}</td>
+                  ),
+                  h1: ({ children }) => (
+                    <h1 className="text-lg font-bold mt-4 mb-2 text-foreground">{children}</h1>
+                  ),
+                  h2: ({ children }) => (
+                    <h2 className="text-base font-semibold mt-3 mb-2 text-foreground">{children}</h2>
+                  ),
+                  h3: ({ children }) => (
+                    <h3 className="text-sm font-semibold mt-2 mb-1 text-foreground">{children}</h3>
+                  ),
+                  p: ({ children }) => (
+                    <p className="my-2 text-sm leading-relaxed">{children}</p>
+                  ),
+                  ul: ({ children }) => (
+                    <ul className="my-2 ml-4 list-disc space-y-1">{children}</ul>
+                  ),
+                  ol: ({ children }) => (
+                    <ol className="my-2 ml-4 list-decimal space-y-1">{children}</ol>
+                  ),
+                  li: ({ children }) => (
+                    <li className="text-sm">{children}</li>
+                  ),
+                  strong: ({ children }) => (
+                    <strong className="font-semibold text-foreground">{children}</strong>
+                  ),
+                  code: ({ children, className }) => {
+                    // Don't render chart code blocks
+                    if (className?.includes('language-chart')) return null;
+                    return (
+                      <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>
+                    );
+                  },
+                  pre: ({ children }) => {
+                    // Skip pre blocks that contain chart data
+                    return <>{children}</>;
+                  },
+                }}
+              >
+                {parts[i]}
+              </ReactMarkdown>
+            );
+          }
+        } else {
+          // Chart index
+          const chartIndex = parseInt(parts[i], 10);
+          if (charts[chartIndex]) {
+            elements.push(
+              <ChatChartRenderer key={`chart-${chartIndex}`} chartData={charts[chartIndex]} />
+            );
+          }
+        }
+      }
+      
+      return elements;
+    };
+
+    return (
+      <div className="prose prose-sm dark:prose-invert max-w-none">
+        {renderContent()}
+        {showQuickLinks && <QuickLinks />}
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)]">
       {/* Header */}
@@ -336,61 +432,11 @@ export default function AIChatAdvisor() {
                       : "bg-card border max-w-[95%] md:max-w-[85%]"
                   }`}
                 >
-                  {msg.role === "assistant" ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <ReactMarkdown
-                        components={{
-                          table: ({ children }) => (
-                            <div className="overflow-x-auto my-3">
-                              <table className="min-w-full text-sm border-collapse border border-border rounded-lg">
-                                {children}
-                              </table>
-                            </div>
-                          ),
-                          thead: ({ children }) => (
-                            <thead className="bg-muted/50">{children}</thead>
-                          ),
-                          th: ({ children }) => (
-                            <th className="px-3 py-2 text-left font-medium border-b border-border">{children}</th>
-                          ),
-                          td: ({ children }) => (
-                            <td className="px-3 py-2 border-b border-border/50">{children}</td>
-                          ),
-                          h1: ({ children }) => (
-                            <h1 className="text-lg font-bold mt-4 mb-2 text-foreground">{children}</h1>
-                          ),
-                          h2: ({ children }) => (
-                            <h2 className="text-base font-semibold mt-3 mb-2 text-foreground">{children}</h2>
-                          ),
-                          h3: ({ children }) => (
-                            <h3 className="text-sm font-semibold mt-2 mb-1 text-foreground">{children}</h3>
-                          ),
-                          p: ({ children }) => (
-                            <p className="my-2 text-sm leading-relaxed">{children}</p>
-                          ),
-                          ul: ({ children }) => (
-                            <ul className="my-2 ml-4 list-disc space-y-1">{children}</ul>
-                          ),
-                          ol: ({ children }) => (
-                            <ol className="my-2 ml-4 list-decimal space-y-1">{children}</ol>
-                          ),
-                          li: ({ children }) => (
-                            <li className="text-sm">{children}</li>
-                          ),
-                          strong: ({ children }) => (
-                            <strong className="font-semibold text-foreground">{children}</strong>
-                          ),
-                          code: ({ children }) => (
-                            <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>
-                          ),
-                        }}
-                      >
-                        {msg.content || (isLoading && index === messages.length - 1 ? "Analyzing your data..." : "")}
-                      </ReactMarkdown>
-                      {msg.content && index === messages.length - 1 && !isLoading && (
-                        <QuickLinks />
-                      )}
-                    </div>
+                {msg.role === "assistant" ? (
+                    <AssistantMessage 
+                      content={msg.content || (isLoading && index === messages.length - 1 ? "Analyzing your data..." : "")} 
+                      showQuickLinks={msg.content && index === messages.length - 1 && !isLoading}
+                    />
                   ) : (
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                   )}
