@@ -428,3 +428,52 @@ All colors MUST be HSL.
     @apply h-12 md:h-10 text-base md:text-sm px-4;
   }
 }
+
+/* Density Classes */
+.density-comfortable {
+  --card-padding: 1.5rem;
+  --table-cell-padding: 0.75rem 1rem;
+  --button-padding: 0.5rem 1rem;
+  --gap-default: 1rem;
+}
+
+.density-comfortable .card {
+  padding: var(--card-padding);
+}
+
+.density-comfortable td,
+.density-comfortable th {
+  padding: var(--table-cell-padding);
+}
+
+.density-compact {
+  --card-padding: 0.75rem;
+  --table-cell-padding: 0.375rem 0.5rem;
+  --button-padding: 0.25rem 0.75rem;
+  --gap-default: 0.5rem;
+}
+
+.density-compact .card {
+  padding: var(--card-padding);
+}
+
+.density-compact td,
+.density-compact th {
+  padding: var(--table-cell-padding);
+}
+
+.density-compact .space-y-6 > * + * {
+  margin-top: 0.75rem;
+}
+
+.density-compact .space-y-4 > * + * {
+  margin-top: 0.5rem;
+}
+
+.density-compact .gap-6 {
+  gap: 0.75rem;
+}
+
+.density-compact .gap-4 {
+  gap: 0.5rem;
+}
