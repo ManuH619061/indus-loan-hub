@@ -3,18 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Send, Bot, User, Sparkles, Loader2, ExternalLink } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ArrowLeft, Send, Bot, Sparkles, Loader2, Menu, Download, FileText } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import ReactMarkdown from "react-markdown";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ChatChartRenderer, parseChartBlocks } from "@/components/ai/ChatChartRenderer";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
+import { useChatHistory } from "@/hooks/useChatHistory";
+import { ChatHistorySidebar } from "@/components/ai/ChatHistorySidebar";
+import { ChatMessageBubble } from "@/components/ai/ChatMessageBubble";
 
 const initialQuickQuestions = [
   "How much EMI do I need to pay next month?",
@@ -51,16 +48,33 @@ const followUpQuestions: Record<string, string[]> = {
 };
 
 export default function AIChatAdvisor() {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>(initialQuickQuestions.slice(0, 6));
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
+  const {
+    conversations,
+    activeConversationId,
+    messages,
+    setMessages,
+    isLoadingHistory,
+    createConversation,
+    addMessage,
+    finalizeMessage,
+    selectConversation,
+    startNewChat,
+    deleteConversation,
+    renameConversation,
+    deleteAllConversations,
+  } = useChatHistory();
+
+  // Auto-scroll on new messages
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -92,12 +106,13 @@ export default function AIChatAdvisor() {
   const sendMessage = async (messageText: string) => {
     if (!messageText.trim() || isLoading) return;
 
-    const userMessage: Message = { role: "user", content: messageText.trim() };
-    setMessages(prev => [...prev, userMessage]);
+    const trimmedMessage = messageText.trim();
     setInput("");
     setIsLoading(true);
 
     let assistantContent = "";
+    let currentConversationId = activeConversationId;
+    let assistantMessageId: string | null = null;
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -105,6 +120,29 @@ export default function AIChatAdvisor() {
         toast({ title: "Please sign in to use the AI advisor", variant: "destructive" });
         setIsLoading(false);
         return;
+      }
+
+      // Create conversation if needed
+      if (!currentConversationId) {
+        currentConversationId = await createConversation(trimmedMessage);
+        if (!currentConversationId) {
+          toast({ title: "Error", description: "Failed to create conversation", variant: "destructive" });
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Add user message to DB and state
+      const userMsg = await addMessage(currentConversationId, "user", trimmedMessage);
+      if (userMsg) {
+        setMessages(prev => [...prev, userMsg]);
+      }
+
+      // Create placeholder for assistant response
+      const assistantMsgPlaceholder = await addMessage(currentConversationId, "assistant", "");
+      if (assistantMsgPlaceholder) {
+        assistantMessageId = assistantMsgPlaceholder.id || null;
+        setMessages(prev => [...prev, { ...assistantMsgPlaceholder, content: "" }]);
       }
 
       const response = await fetch(
@@ -116,7 +154,7 @@ export default function AIChatAdvisor() {
             Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            message: messageText.trim(),
+            message: trimmedMessage,
             conversationHistory: messages.slice(-10),
           }),
         }
@@ -138,8 +176,6 @@ export default function AIChatAdvisor() {
       if (!response.body) {
         throw new Error("No response body");
       }
-
-      setMessages(prev => [...prev, { role: "assistant", content: "" }]);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -171,7 +207,7 @@ export default function AIChatAdvisor() {
               setMessages(prev => {
                 const updated = [...prev];
                 if (updated.length > 0 && updated[updated.length - 1].role === "assistant") {
-                  updated[updated.length - 1] = { role: "assistant", content: assistantContent };
+                  updated[updated.length - 1] = { ...updated[updated.length - 1], content: assistantContent };
                 }
                 return updated;
               });
@@ -183,6 +219,7 @@ export default function AIChatAdvisor() {
         }
       }
 
+      // Process remaining buffer
       if (buffer.trim()) {
         for (let raw of buffer.split("\n")) {
           if (!raw) continue;
@@ -199,7 +236,7 @@ export default function AIChatAdvisor() {
               setMessages(prev => {
                 const updated = [...prev];
                 if (updated.length > 0 && updated[updated.length - 1].role === "assistant") {
-                  updated[updated.length - 1] = { role: "assistant", content: assistantContent };
+                  updated[updated.length - 1] = { ...updated[updated.length - 1], content: assistantContent };
                 }
                 return updated;
               });
@@ -207,6 +244,12 @@ export default function AIChatAdvisor() {
           } catch { /* ignore */ }
         }
       }
+
+      // Finalize assistant message in DB
+      if (assistantMessageId && assistantContent) {
+        await finalizeMessage(assistantMessageId, assistantContent);
+      }
+
     } catch (error) {
       console.error("Chat error:", error);
       toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
@@ -225,285 +268,229 @@ export default function AIChatAdvisor() {
     sendMessage(question);
   };
 
-  const QuickLinks = () => (
-    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/50">
-      <span className="text-xs text-muted-foreground mr-1">Quick links:</span>
-      <Link to="/loans" className="text-xs text-primary hover:underline flex items-center gap-1">
-        Loans <ExternalLink className="h-3 w-3" />
-      </Link>
-      <Link to="/emi-calendar" className="text-xs text-primary hover:underline flex items-center gap-1">
-        EMI Calendar <ExternalLink className="h-3 w-3" />
-      </Link>
-      <Link to="/expenses" className="text-xs text-primary hover:underline flex items-center gap-1">
-        Expenses <ExternalLink className="h-3 w-3" />
-      </Link>
-      <Link to="/budget" className="text-xs text-primary hover:underline flex items-center gap-1">
-        Budget <ExternalLink className="h-3 w-3" />
-      </Link>
-      <Link to="/banking" className="text-xs text-primary hover:underline flex items-center gap-1">
-        Banking <ExternalLink className="h-3 w-3" />
-      </Link>
-    </div>
-  );
-
-  const AssistantMessage = ({ content, showQuickLinks }: { content: string; showQuickLinks?: boolean }) => {
-    const { text, charts } = parseChartBlocks(content);
-    
-    // Replace chart placeholders with actual charts
-    const renderContent = () => {
-      const parts = text.split(/\[CHART_(\d+)\]/g);
-      const elements: React.ReactNode[] = [];
-      
-      for (let i = 0; i < parts.length; i++) {
-        if (i % 2 === 0) {
-          // Text part
-          if (parts[i]) {
-            elements.push(
-              <ReactMarkdown
-                key={`text-${i}`}
-                components={{
-                  table: ({ children }) => (
-                    <div className="overflow-x-auto my-3">
-                      <table className="min-w-full text-sm border-collapse border border-border rounded-lg">
-                        {children}
-                      </table>
-                    </div>
-                  ),
-                  thead: ({ children }) => (
-                    <thead className="bg-muted/50">{children}</thead>
-                  ),
-                  th: ({ children }) => (
-                    <th className="px-3 py-2 text-left font-medium border-b border-border">{children}</th>
-                  ),
-                  td: ({ children }) => (
-                    <td className="px-3 py-2 border-b border-border/50">{children}</td>
-                  ),
-                  h1: ({ children }) => (
-                    <h1 className="text-lg font-bold mt-4 mb-2 text-foreground">{children}</h1>
-                  ),
-                  h2: ({ children }) => (
-                    <h2 className="text-base font-semibold mt-3 mb-2 text-foreground">{children}</h2>
-                  ),
-                  h3: ({ children }) => (
-                    <h3 className="text-sm font-semibold mt-2 mb-1 text-foreground">{children}</h3>
-                  ),
-                  p: ({ children }) => (
-                    <p className="my-2 text-sm leading-relaxed">{children}</p>
-                  ),
-                  ul: ({ children }) => (
-                    <ul className="my-2 ml-4 list-disc space-y-1">{children}</ul>
-                  ),
-                  ol: ({ children }) => (
-                    <ol className="my-2 ml-4 list-decimal space-y-1">{children}</ol>
-                  ),
-                  li: ({ children }) => (
-                    <li className="text-sm">{children}</li>
-                  ),
-                  strong: ({ children }) => (
-                    <strong className="font-semibold text-foreground">{children}</strong>
-                  ),
-                  code: ({ children, className }) => {
-                    // Don't render chart code blocks
-                    if (className?.includes('language-chart')) return null;
-                    return (
-                      <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>
-                    );
-                  },
-                  pre: ({ children }) => {
-                    // Skip pre blocks that contain chart data
-                    return <>{children}</>;
-                  },
-                }}
-              >
-                {parts[i]}
-              </ReactMarkdown>
-            );
-          }
-        } else {
-          // Chart index
-          const chartIndex = parseInt(parts[i], 10);
-          if (charts[chartIndex]) {
-            elements.push(
-              <ChatChartRenderer key={`chart-${chartIndex}`} chartData={charts[chartIndex]} />
-            );
-          }
-        }
-      }
-      
-      return elements;
-    };
-
-    return (
-      <div className="prose prose-sm dark:prose-invert max-w-none">
-        {renderContent()}
-        {showQuickLinks && <QuickLinks />}
-      </div>
-    );
+  const handleNewChat = () => {
+    startNewChat();
+    setSidebarOpen(false);
   };
 
+  const handleSelectConversation = async (id: string) => {
+    await selectConversation(id);
+    setSidebarOpen(false);
+  };
+
+  // Download chat as text report
+  const downloadReport = () => {
+    if (messages.length === 0) return;
+    
+    const date = new Date().toLocaleDateString('en-IN', { 
+      day: '2-digit', month: 'short', year: 'numeric' 
+    });
+    
+    let report = `AI Financial Report - ${date}\n`;
+    report += "=".repeat(50) + "\n\n";
+    
+    messages.forEach(msg => {
+      const label = msg.role === "user" ? "You" : "AI Advisor";
+      report += `[${label}]\n`;
+      // Strip markdown for cleaner text
+      const cleanContent = msg.content
+        .replace(/```chart[\s\S]*?```/g, '[Chart]')
+        .replace(/\*\*/g, '')
+        .replace(/\*/g, '')
+        .replace(/#{1,3}\s/g, '');
+      report += cleanContent + "\n\n";
+    });
+    
+    const blob = new Blob([report], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `AI-Report-${date.replace(/\s/g, '-')}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast({ title: "Report downloaded" });
+  };
+
+  // Sidebar content
+  const SidebarContent = () => (
+    <ChatHistorySidebar
+      conversations={conversations}
+      activeConversationId={activeConversationId}
+      onSelectConversation={handleSelectConversation}
+      onNewChat={handleNewChat}
+      onDeleteConversation={deleteConversation}
+      onRenameConversation={renameConversation}
+      onDeleteAllChats={deleteAllConversations}
+      onClose={() => setSidebarOpen(false)}
+      isMobile={isMobile}
+    />
+  );
+
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)]">
-      {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b bg-card flex-shrink-0">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate(-1)}
-          className="md:hidden"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex items-center gap-3 flex-1">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
-            <Sparkles className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="font-semibold text-lg">AI Financial Advisor</h1>
-            <p className="text-xs text-muted-foreground">Smart insights from your financial data</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Messages Area */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-6 py-8">
-            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-              <Bot className="h-10 w-10 text-primary" />
-            </div>
-            <div className="space-y-2 max-w-lg">
-              <h2 className="text-xl font-semibold">Hi! I'm your Smart Financial Advisor</h2>
-              <p className="text-muted-foreground text-sm">
-                I analyze your loans, EMIs, expenses, budgets, bank accounts, and income to give you 
-                personalized insights with detailed breakdowns and actionable recommendations.
-              </p>
-            </div>
-            
-            {/* Feature Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full max-w-2xl">
-              {[
-                { icon: "📊", title: "EMI Analysis", desc: "Monthly projections" },
-                { icon: "💰", title: "Cash Flow", desc: "Income vs expenses" },
-                { icon: "🎯", title: "Prepayment", desc: "Optimal strategies" },
-                { icon: "📈", title: "Trends", desc: "Spending patterns" },
-              ].map((f, i) => (
-                <Card key={i} className="p-3 text-center bg-muted/50">
-                  <div className="text-2xl mb-1">{f.icon}</div>
-                  <div className="text-sm font-medium">{f.title}</div>
-                  <div className="text-xs text-muted-foreground">{f.desc}</div>
-                </Card>
-              ))}
-            </div>
-            
-            {/* Quick Questions */}
-            <div className="w-full max-w-2xl space-y-3">
-              <p className="text-xs text-muted-foreground font-medium">Try asking:</p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {suggestedQuestions.slice(0, isMobile ? 4 : 6).map((question, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs h-auto py-2 px-3 whitespace-normal text-left max-w-[200px]"
-                    onClick={() => handleQuickQuestion(question)}
-                  >
-                    {question}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4 pb-4 max-w-4xl mx-auto">
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                {msg.role === "assistant" && (
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0 mt-1">
-                    <Bot className="h-4 w-4 text-primary" />
-                  </div>
-                )}
-                <Card
-                  className={`p-4 ${
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground max-w-[85%] md:max-w-[60%]"
-                      : "bg-card border max-w-[95%] md:max-w-[85%]"
-                  }`}
-                >
-                {msg.role === "assistant" ? (
-                    <AssistantMessage 
-                      content={msg.content || (isLoading && index === messages.length - 1 ? "Analyzing your data..." : "")} 
-                      showQuickLinks={msg.content && index === messages.length - 1 && !isLoading}
-                    />
-                  ) : (
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                  )}
-                </Card>
-                {msg.role === "user" && (
-                  <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 mt-1">
-                    <User className="h-4 w-4" />
-                  </div>
-                )}
-              </div>
-            ))}
-            {isLoading && messages[messages.length - 1]?.role === "user" && (
-              <div className="flex gap-3 justify-start">
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0">
-                  <Bot className="h-4 w-4 text-primary" />
-                </div>
-                <Card className="p-4 bg-card border">
-                  <div className="flex items-center gap-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    <span className="text-sm text-muted-foreground">Analyzing your financial data...</span>
-                  </div>
-                </Card>
-              </div>
-            )}
-          </div>
-        )}
-      </ScrollArea>
-
-      {/* Quick Questions (when chat has messages) */}
-      {messages.length > 0 && (
-        <div className="px-4 pb-2 flex-shrink-0 border-t bg-background/95 backdrop-blur pt-2">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {suggestedQuestions.map((question, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                size="sm"
-                className="text-xs whitespace-nowrap flex-shrink-0 h-8"
-                onClick={() => handleQuickQuestion(question)}
-                disabled={isLoading}
-              >
-                {question}
-              </Button>
-            ))}
-          </div>
+    <div className="flex h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)]">
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <div className="w-72 border-r border-border flex-shrink-0 hidden md:block">
+          <SidebarContent />
         </div>
       )}
 
-      {/* Input Area */}
-      <div className="p-4 border-t bg-card flex-shrink-0">
-        <form onSubmit={handleSubmit} className="flex gap-2 max-w-4xl mx-auto">
-          <Input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about your loans, EMIs, expenses, cash flow..."
-            className="flex-1"
-            disabled={isLoading}
-          />
-          <Button type="submit" disabled={!input.trim() || isLoading} size="icon">
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </form>
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <div className="flex items-center gap-3 p-4 border-b bg-card flex-shrink-0">
+          {/* Mobile: Menu button */}
+          {isMobile && (
+            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0 w-80">
+                <SidebarContent />
+              </SheetContent>
+            </Sheet>
+          )}
+
+          {!isMobile && (
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
+
+          <div className="flex items-center gap-3 flex-1">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
+              <Sparkles className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="font-semibold text-lg truncate">AI Financial Advisor</h1>
+              <p className="text-xs text-muted-foreground truncate">
+                {activeConversationId 
+                  ? conversations.find(c => c.id === activeConversationId)?.title || "Chat"
+                  : "New Chat"
+                }
+              </p>
+            </div>
+          </div>
+
+          {/* Download button */}
+          {messages.length > 0 && (
+            <Button variant="outline" size="sm" className="gap-2" onClick={downloadReport}>
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Download</span>
+            </Button>
+          )}
+        </div>
+
+        {/* Messages Area */}
+        <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center space-y-6 py-8">
+              <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                <Bot className="h-10 w-10 text-primary" />
+              </div>
+              <div className="space-y-2 max-w-lg">
+                <h2 className="text-xl font-semibold">Hi! I'm your Smart Financial Advisor</h2>
+                <p className="text-muted-foreground text-sm">
+                  I analyze your loans, EMIs, expenses, budgets, bank accounts, and income to give you 
+                  personalized insights with detailed breakdowns and actionable recommendations.
+                </p>
+              </div>
+              
+              {/* Feature Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full max-w-2xl">
+                {[
+                  { icon: "📊", title: "EMI Analysis", desc: "Monthly projections" },
+                  { icon: "💰", title: "Cash Flow", desc: "Income vs expenses" },
+                  { icon: "🎯", title: "Prepayment", desc: "Optimal strategies" },
+                  { icon: "📈", title: "Trends", desc: "Spending patterns" },
+                ].map((f, i) => (
+                  <Card key={i} className="p-3 text-center bg-muted/50">
+                    <div className="text-2xl mb-1">{f.icon}</div>
+                    <div className="text-sm font-medium">{f.title}</div>
+                    <div className="text-xs text-muted-foreground">{f.desc}</div>
+                  </Card>
+                ))}
+              </div>
+              
+              {/* Quick Questions */}
+              <div className="w-full max-w-2xl space-y-3">
+                <p className="text-xs text-muted-foreground font-medium">Try asking:</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {suggestedQuestions.slice(0, isMobile ? 4 : 6).map((question, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-auto py-2 px-3 whitespace-normal text-left max-w-[200px]"
+                      onClick={() => handleQuickQuestion(question)}
+                    >
+                      {question}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 pb-4 max-w-4xl mx-auto">
+              {messages.map((msg, index) => (
+                <ChatMessageBubble
+                  key={msg.id || index}
+                  role={msg.role}
+                  content={msg.content || (isLoading && index === messages.length - 1 ? "" : "")}
+                  timestamp={msg.created_at}
+                  isStreaming={isLoading && index === messages.length - 1 && msg.role === "assistant"}
+                />
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+
+        {/* Follow-up suggestions */}
+        {messages.length > 0 && !isLoading && (
+          <div className="px-4 py-2 border-t border-border/50 bg-background/80">
+            <div className="flex flex-wrap gap-2 max-w-4xl mx-auto">
+              {suggestedQuestions.slice(0, 3).map((q, i) => (
+                <Button
+                  key={i}
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-auto py-1.5 px-3 text-muted-foreground hover:text-foreground"
+                  onClick={() => handleQuickQuestion(q)}
+                >
+                  {q}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Input Area */}
+        <div className="p-4 border-t bg-card flex-shrink-0">
+          <form onSubmit={handleSubmit} className="flex gap-2 max-w-4xl mx-auto">
+            <Input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask about your loans, EMIs, expenses, budget..."
+              disabled={isLoading}
+              className="flex-1"
+            />
+            <Button type="submit" disabled={isLoading || !input.trim()} size="icon">
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );
