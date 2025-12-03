@@ -6,7 +6,7 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
   <div 
     ref={ref} 
     className={cn(
-      "rounded-xl md:rounded-lg border bg-card text-card-foreground shadow-md md:shadow-sm",
+      "rounded-lg border bg-card text-card-foreground shadow-sm transition-shadow hover:shadow-md",
       className
     )} 
     {...props} 
@@ -18,7 +18,7 @@ const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
   ({ className, ...props }, ref) => (
     <div 
       ref={ref} 
-      className={cn("flex flex-col space-y-2 md:space-y-1.5 p-5 md:p-6", className)} 
+      className={cn("flex flex-col space-y-1.5 p-4 md:p-5", className)} 
       {...props} 
     />
   ),
@@ -30,7 +30,7 @@ const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HT
     <h3 
       ref={ref} 
       className={cn(
-        "text-xl md:text-2xl font-semibold leading-tight tracking-tight",
+        "text-base md:text-lg font-semibold leading-tight tracking-tight",
         className
       )} 
       {...props} 
@@ -43,7 +43,7 @@ const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttribu
   ({ className, ...props }, ref) => (
     <p 
       ref={ref} 
-      className={cn("text-base md:text-sm text-muted-foreground", className)} 
+      className={cn("text-sm text-muted-foreground", className)} 
       {...props} 
     />
   ),
@@ -54,7 +54,7 @@ const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
   ({ className, ...props }, ref) => (
     <div 
       ref={ref} 
-      className={cn("p-5 md:p-6 pt-0", className)} 
+      className={cn("p-4 md:p-5 pt-0", className)} 
       {...props} 
     />
   ),
@@ -65,7 +65,7 @@ const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
   ({ className, ...props }, ref) => (
     <div 
       ref={ref} 
-      className={cn("flex items-center p-5 md:p-6 pt-0 gap-3 md:gap-2", className)} 
+      className={cn("flex items-center p-4 md:p-5 pt-0 gap-2", className)} 
       {...props} 
     />
   ),
