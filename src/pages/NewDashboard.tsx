@@ -27,8 +27,11 @@ import {
   ChevronRight,
   Percent,
   BarChart3,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR, formatPercent } from "@/lib/currency";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -175,6 +178,7 @@ export default function NewDashboard() {
     interestPaid: 0,
   });
   const [recentTransactions, setRecentTransactions] = useState<BankTransaction[]>([]);
+  const [deleteTxnId, setDeleteTxnId] = useState<string | null>(null);
   const [topExpenses, setTopExpenses] = useState<ExpenseCategory[]>([]);
 
   // Show onboarding for new users
@@ -395,6 +399,25 @@ export default function NewDashboard() {
     const monthParam = format(targetDate, 'yyyy-MM');
     navigate(`/emi-calendar?month=${monthParam}`);
   };
+
+  // Delete transaction handler
+  const handleDeleteTransaction = async () => {
+    if (!deleteTxnId || !user) return;
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', deleteTxnId);
+      if (error) throw error;
+      toast.success('Transaction deleted');
+      setDeleteTxnId(null);
+      fetchDashboardData();
+    } catch (error: any) {
+      toast.error('Failed to delete: ' + error.message);
+    }
+  };
+
+  const txnToDelete = recentTransactions.find(t => t.id === deleteTxnId);
 
   return (
     <>
@@ -828,10 +851,12 @@ export default function NewDashboard() {
                       {recentTransactions.slice(0, 6).map((txn) => (
                         <div 
                           key={txn.id} 
-                          className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-all group"
-                          onClick={() => navigate(`/expenses?id=${txn.id}`)}
+                          className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/50 transition-all group"
                         >
-                          <div className="flex-1 min-w-0">
+                          <div 
+                            className="flex-1 min-w-0 cursor-pointer"
+                            onClick={() => navigate(`/expenses?id=${txn.id}`)}
+                          >
                             <p className="text-sm font-medium truncate">{txn.narration}</p>
                             <div className="flex items-center gap-2 mt-0.5">
                               <p className="text-xs text-muted-foreground">{format(new Date(txn.transaction_date), 'MMM dd')}</p>
@@ -840,7 +865,7 @@ export default function NewDashboard() {
                               )}
                             </div>
                           </div>
-                          <div className="text-right ml-2 flex items-center gap-1">
+                          <div className="flex items-center gap-2 ml-2">
                             {txn.credit ? (
                               <p className="text-sm font-semibold text-green-600 flex items-center">
                                 <ArrowDownRight className="h-3 w-3 mr-0.5" />
@@ -852,6 +877,17 @@ export default function NewDashboard() {
                                 {formatINR(txn.debit || 0)}
                               </p>
                             )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTxnId(txn.id);
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -1151,6 +1187,32 @@ export default function NewDashboard() {
           </>
         )}
       </div>
+
+      {/* Delete Transaction Confirmation */}
+      <AlertDialog open={!!deleteTxnId} onOpenChange={() => setDeleteTxnId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Transaction?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this transaction.
+              {txnToDelete && (
+                <div className="mt-2 p-3 bg-muted rounded-lg">
+                  <p className="font-medium text-sm">{txnToDelete.narration}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {txnToDelete.debit ? `Debit: ${formatINR(txnToDelete.debit)}` : `Credit: ${formatINR(txnToDelete.credit || 0)}`}
+                  </p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTransaction} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
