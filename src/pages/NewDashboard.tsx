@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -88,6 +90,9 @@ interface ExpenseCategory {
 export default function NewDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isNewUser, isLoading: onboardingLoading, refreshStatus } = useOnboardingStatus();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalOutstanding: 0,
     activeLoans: 0,
@@ -119,6 +124,32 @@ export default function NewDashboard() {
   });
   const [recentTransactions, setRecentTransactions] = useState<BankTransaction[]>([]);
   const [topExpenses, setTopExpenses] = useState<ExpenseCategory[]>([]);
+
+  // Show onboarding for new users
+  useEffect(() => {
+    if (!onboardingLoading && isNewUser && !onboardingDismissed) {
+      // Check if user has dismissed onboarding before
+      const dismissed = localStorage.getItem(`onboarding_dismissed_${user?.id}`);
+      if (!dismissed) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [isNewUser, onboardingLoading, onboardingDismissed, user]);
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    setOnboardingDismissed(true);
+    refreshStatus();
+    fetchDashboardData();
+  };
+
+  const handleOnboardingSkip = () => {
+    setShowOnboarding(false);
+    setOnboardingDismissed(true);
+    if (user) {
+      localStorage.setItem(`onboarding_dismissed_${user.id}`, "true");
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -331,18 +362,26 @@ export default function NewDashboard() {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6 max-w-full overflow-x-hidden">
-      {/* Header */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-xl md:text-2xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Complete overview of your financial health</p>
+    <>
+      {/* Onboarding Wizard for new users */}
+      <OnboardingWizard
+        open={showOnboarding}
+        onComplete={handleOnboardingComplete}
+        onSkip={handleOnboardingSkip}
+      />
+      
+      <div className="space-y-4 md:space-y-6 max-w-full overflow-x-hidden">
+        {/* Header */}
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-xl md:text-2xl font-semibold">Dashboard</h1>
+            <p className="text-sm text-muted-foreground mt-1">Complete overview of your financial health</p>
+          </div>
+          <Button onClick={() => navigate("/loans/new")} size="default" className="w-full md:w-auto touch-target">
+            <Plus className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+            Add Loan
+          </Button>
         </div>
-        <Button onClick={() => navigate("/loans/new")} size="default" className="w-full md:w-auto touch-target">
-          <Plus className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-          Add Loan
-        </Button>
-      </div>
 
       {loading ? (
         <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -856,6 +895,7 @@ export default function NewDashboard() {
           </Card>
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }
