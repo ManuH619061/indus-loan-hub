@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, AlertTriangle, Clock, TrendingUp, Wallet, Landmark, RefreshCw } from "lucide-react";
+import { Bell, AlertTriangle, Clock, TrendingUp, Wallet, Landmark, RefreshCw, Check, CheckCheck, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,15 +28,27 @@ const SEVERITY_STYLES = {
 
 export function NotificationsDropdown() {
   const navigate = useNavigate();
-  const { notifications, unreadCount, isLoading, refetch } = useNotifications();
+  const { 
+    notifications, 
+    unreadCount, 
+    isLoading, 
+    refetch, 
+    markAsRead, 
+    markAllAsRead,
+    clearAllRead 
+  } = useNotifications();
 
   const handleNotificationClick = (notification: Notification) => {
+    if (!notification.isRead) {
+      markAsRead(notification.id);
+    }
     if (notification.route) {
       navigate(notification.route);
     }
   };
 
   const groupedNotifications = groupByTime(notifications);
+  const hasReadNotifications = notifications.some(n => n.isRead);
 
   return (
     <Popover>
@@ -58,16 +70,28 @@ export function NotificationsDropdown() {
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b">
           <h4 className="font-semibold">Notifications</h4>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-8 px-2 text-xs"
-            onClick={() => refetch()}
-            disabled={isLoading}
-          >
-            <RefreshCw className={cn("h-3 w-3 mr-1", isLoading && "animate-spin")} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-1">
+            {unreadCount > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 px-2 text-xs"
+                onClick={() => markAllAsRead()}
+              >
+                <CheckCheck className="h-3 w-3 mr-1" />
+                Mark all read
+              </Button>
+            )}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 px-2 text-xs"
+              onClick={() => refetch()}
+              disabled={isLoading}
+            >
+              <RefreshCw className={cn("h-3 w-3", isLoading && "animate-spin")} />
+            </Button>
+          </div>
         </div>
 
         {/* Notifications List */}
@@ -97,7 +121,10 @@ export function NotificationsDropdown() {
                       <button
                         key={notification.id}
                         onClick={() => handleNotificationClick(notification)}
-                        className="w-full text-left p-3 hover:bg-muted/50 transition-colors flex gap-3"
+                        className={cn(
+                          "w-full text-left p-3 hover:bg-muted/50 transition-colors flex gap-3",
+                          !notification.isRead && "bg-primary/5"
+                        )}
                       >
                         <div className={cn(
                           "h-8 w-8 rounded-full flex items-center justify-center shrink-0 border",
@@ -106,7 +133,17 @@ export function NotificationsDropdown() {
                           <Icon className="h-4 w-4" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm">{notification.title}</p>
+                          <div className="flex items-center gap-2">
+                            <p className={cn(
+                              "text-sm",
+                              !notification.isRead && "font-semibold"
+                            )}>
+                              {notification.title}
+                            </p>
+                            {!notification.isRead && (
+                              <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground line-clamp-2">
                             {notification.message}
                           </p>
@@ -125,14 +162,24 @@ export function NotificationsDropdown() {
 
         {/* Footer */}
         {notifications.length > 0 && (
-          <div className="p-2 border-t">
+          <div className="p-2 border-t flex items-center gap-2">
             <Button 
               variant="ghost" 
-              className="w-full text-sm h-8"
+              className="flex-1 text-sm h-8"
               onClick={() => navigate("/settings?tab=notifications")}
             >
-              Notification Settings
+              Settings
             </Button>
+            {hasReadNotifications && (
+              <Button 
+                variant="ghost" 
+                className="text-sm h-8 text-destructive hover:text-destructive"
+                onClick={() => clearAllRead()}
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                Clear read
+              </Button>
+            )}
           </div>
         )}
       </PopoverContent>

@@ -86,6 +86,10 @@ export function GlobalSearchDialog({ open, onOpenChange }: GlobalSearchDialogPro
         e.preventDefault();
         if (flatResults[selectedIndex]) {
           handleSelect(flatResults[selectedIndex]);
+        } else if (query.trim().length >= 2) {
+          // Navigate to full search page if no result selected
+          onOpenChange(false);
+          navigate(`/search?q=${encodeURIComponent(query.trim())}`);
         }
         break;
       case "Escape":
