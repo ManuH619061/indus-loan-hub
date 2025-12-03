@@ -1,12 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { Calendar, Save, TrendingUp, TrendingDown, DollarSign, Target, ArrowLeft, ArrowRight } from "lucide-react";
+import { 
+  Calendar, 
+  Save, 
+  ArrowLeft, 
+  ArrowRight, 
+  ChevronDown,
+  Copy,
+  Loader2
+} from "lucide-react";
 import { toast } from "sonner";
 import FadeInStagger from "@/components/FadeInStagger";
 import IncomeStep from "@/components/budget/wizard/IncomeStep";
@@ -14,8 +22,13 @@ import FixedExpensesStep from "@/components/budget/wizard/FixedExpensesStep";
 import VariableExpensesStep from "@/components/budget/wizard/VariableExpensesStep";
 import SavingsGoalsStep from "@/components/budget/wizard/SavingsGoalsStep";
 import SummaryStep from "@/components/budget/wizard/SummaryStep";
-import FutureMonthsPlanner from "@/components/budget/FutureMonthsPlanner";
-import { calculateSnowball, calculateAvalanche } from "@/lib/debt-optimizer";
+import BudgetClickableSummaryCards from "@/components/budget/BudgetClickableSummaryCards";
+import BudgetHealthWidgets from "@/components/budget/BudgetHealthWidgets";
+import EnhancedForecastTable from "@/components/budget/EnhancedForecastTable";
+import BudgetInsightsPanel from "@/components/budget/BudgetInsightsPanel";
+import DebtPayoffSummary from "@/components/budget/DebtPayoffSummary";
+import WizardStepIndicator from "@/components/budget/WizardStepIndicator";
+import { format, addMonths } from "date-fns";
 
 interface IncomeSource {
   id: string;
@@ -78,6 +91,13 @@ export default function BudgetPlanner() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
 
+  // Refs for scrolling
+  const incomeRef = useRef<HTMLDivElement>(null);
+  const expensesRef = useRef<HTMLDivElement>(null);
+  const forecastRef = useRef<HTMLDivElement>(null);
+  const insightsRef = useRef<HTMLDivElement>(null);
+  const wizardRef = useRef<HTMLDivElement>(null);
+
   const [budget, setBudget] = useState<BudgetData>({
     salary: 0,
     rent: 0,
@@ -101,6 +121,33 @@ export default function BudgetPlanner() {
   const [otherIncome, setOtherIncome] = useState<IncomeSource[]>([]);
   const [customExpenses, setCustomExpenses] = useState<FixedExpense[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [wizardOpen, setWizardOpen] = useState(true);
+
+  // Scroll to section handler
+  const scrollToSection = (section: string) => {
+    const refs: Record<string, React.RefObject<HTMLDivElement>> = {
+      income: incomeRef,
+      expenses: expensesRef,
+      forecast: forecastRef,
+      insights: insightsRef,
+    };
+
+    if (section === "income") {
+      setWizardOpen(true);
+      setCurrentStep(0);
+      setTimeout(() => {
+        wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    } else if (section === "expenses") {
+      setWizardOpen(true);
+      setCurrentStep(1);
+      setTimeout(() => {
+        wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    } else {
+      refs[section]?.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -228,6 +275,28 @@ export default function BudgetPlanner() {
     }
   };
 
+  const duplicateToNextMonth = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const [year, month] = selectedMonth.split("-").map(Number);
+      const nextDate = new Date(year, month);
+      const nextMonth = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}`;
+
+      await supabase.from("monthly_budgets").upsert({
+        user_id: user.id,
+        month_year: nextMonth,
+        ...budget,
+      });
+
+      toast.success(`Budget duplicated to ${format(nextDate, "MMMM yyyy")}`);
+    } catch (error) {
+      toast.error("Failed to duplicate budget");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Calculate totals
   const totalIncome = budget.salary + otherIncome.reduce((sum, i) => sum + (i.amount || 0), 0);
   const totalFixedExpenses =
@@ -249,13 +318,13 @@ export default function BudgetPlanner() {
     totalIncome - totalFixedExpenses - totalVariableExpenses - totalEMI - totalSavings;
   const debtBurden = totalIncome > 0 ? (totalEMI / totalIncome) * 100 : 0;
 
-  // Generate 12-month forecast
+  // Generate 12-month forecast with enhanced data
   const generateForecasts = () => {
     const forecasts = [];
     for (let i = 0; i < 12; i++) {
       const date = new Date();
       date.setMonth(date.getMonth() + i);
-      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       
       // Calculate salary with increment
       let forecastSalary = budget.salary;
@@ -267,48 +336,64 @@ export default function BudgetPlanner() {
         }
       }
 
-      const forecastIncome = forecastSalary + otherIncome.reduce((sum, i) => sum + (i.amount || 0), 0);
-      const forecastEMI = totalEMI; // Simplified - would need amortization table for accuracy
-      const forecastExpenses = totalFixedExpenses + totalVariableExpenses;
+      const forecastIncome = forecastSalary + otherIncome.reduce((sum, inc) => sum + (inc.amount || 0), 0);
+      const forecastEMI = totalEMI;
 
       forecasts.push({
-        month: date.toLocaleDateString("en-IN", { year: "numeric", month: "short" }),
+        month: format(date, "MMM yyyy"),
+        monthKey,
         income: forecastIncome,
         emis: forecastEMI,
-        otherExpenses: forecastExpenses,
+        fixedExpenses: totalFixedExpenses,
+        lifestyleBudget: totalVariableExpenses,
         plannedSavings: totalSavings,
-        freeCash: forecastIncome - forecastExpenses - forecastEMI - totalSavings,
+        freeCash: forecastIncome - totalFixedExpenses - totalVariableExpenses - forecastEMI - totalSavings,
         debtBurden: forecastIncome > 0 ? (forecastEMI / forecastIncome) * 100 : 0,
-        onIncomeChange: (v: number) => {},
-        onExpensesChange: (v: number) => {},
-        onSavingsChange: (v: number) => {},
       });
     }
     return forecasts;
   };
 
+  const forecasts = generateForecasts();
+
   const steps = [
-    { title: "Income", component: IncomeStep },
-    { title: "Fixed Expenses", component: FixedExpensesStep },
-    { title: "Variable Expenses", component: VariableExpensesStep },
-    { title: "Savings & Goals", component: SavingsGoalsStep },
-    { title: "Summary", component: SummaryStep },
+    { title: "Income", description: "Salary & other sources" },
+    { title: "Fixed Expenses", description: "Monthly bills" },
+    { title: "Lifestyle", description: "Variable spending" },
+    { title: "Savings & Goals", description: "Future planning" },
+    { title: "Review", description: "Summary & confirm" },
   ];
 
-  const CurrentStepComponent = steps[currentStep].component;
+  const handleMonthClick = (monthKey: string) => {
+    setSelectedMonth(monthKey);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Get month label for display
+  const getMonthLabel = () => {
+    const [year, month] = selectedMonth.split("-").map(Number);
+    return format(new Date(year, month - 1), "MMMM yyyy");
+  };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-96">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-4 md:p-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold">Budget Planner</h1>
-          <p className="text-muted-foreground mt-2">Monthly wizard-based budget planning</p>
+          <h1 className="text-3xl md:text-4xl font-bold">Budget Planner</h1>
+          <p className="text-muted-foreground mt-1">
+            This month: <span className="font-medium text-foreground">{getMonthLabel()}</span>
+          </p>
         </div>
-        <div className="flex gap-3 items-center">
+        <div className="flex flex-wrap gap-3 items-center">
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
             <SelectTrigger className="w-[180px]">
               <Calendar className="h-4 w-4 mr-2" />
@@ -321,204 +406,219 @@ export default function BudgetPlanner() {
                 const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
                 return (
                   <SelectItem key={value} value={value}>
-                    {date.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
+                    {format(date, "MMMM yyyy")}
                   </SelectItem>
                 );
               })}
             </SelectContent>
           </Select>
-          <Button onClick={saveBudget} disabled={saving} size="lg">
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? "Saving..." : "Save Budget"}
+          <Button onClick={saveBudget} disabled={saving} size="default">
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            Save Budget
           </Button>
         </div>
       </div>
 
       <FadeInStagger>
-        {/* Top Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Income</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-success">{formatINR(totalIncome)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Expenses</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatINR(totalFixedExpenses + totalVariableExpenses)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total EMI</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">{formatINR(totalEMI)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Free Cash Flow</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${freeCash >= 0 ? "text-success" : "text-destructive"}`}>
-                {formatINR(freeCash)}
-                {freeCash >= 0 ? (
-                  <TrendingUp className="inline h-5 w-5 ml-1" />
-                ) : (
-                  <TrendingDown className="inline h-5 w-5 ml-1" />
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Debt Burden</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${debtBurden < 40 ? "text-success" : "text-destructive"}`}>
-                {formatPercent(debtBurden)}
-              </div>
-            </CardContent>
-          </Card>
+        {/* Clickable Summary Cards */}
+        <BudgetClickableSummaryCards
+          totalIncome={totalIncome}
+          totalExpenses={totalFixedExpenses + totalVariableExpenses}
+          totalEMI={totalEMI}
+          freeCash={freeCash}
+          debtBurden={debtBurden}
+          monthLabel={getMonthLabel()}
+          onScrollToSection={scrollToSection}
+        />
+
+        {/* Budget Health Widgets */}
+        <BudgetHealthWidgets
+          totalIncome={totalIncome}
+          totalEMI={totalEMI}
+          totalFixedExpenses={totalFixedExpenses}
+          totalVariableExpenses={totalVariableExpenses}
+          totalSavings={totalSavings}
+          freeCash={freeCash}
+        />
+
+        {/* Budget Setup Wizard - Collapsible */}
+        <div ref={wizardRef}>
+          <Collapsible open={wizardOpen} onOpenChange={setWizardOpen}>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      Budget Setup Wizard
+                      <ChevronDown className={`h-5 w-5 transition-transform ${wizardOpen ? "rotate-180" : ""}`} />
+                    </CardTitle>
+                    <div className="text-sm text-muted-foreground">
+                      Step {currentStep + 1} of {steps.length}
+                    </div>
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-0">
+                  {/* Step Indicator */}
+                  <div className="mb-6">
+                    <WizardStepIndicator
+                      steps={steps}
+                      currentStep={currentStep}
+                      onStepClick={setCurrentStep}
+                    />
+                  </div>
+
+                  {/* Step Content */}
+                  <div ref={incomeRef}>
+                    {currentStep === 0 && (
+                      <IncomeStep
+                        salary={budget.salary}
+                        salarySettings={salarySettings}
+                        otherIncome={otherIncome}
+                        onSalaryChange={(v) => setBudget({ ...budget, salary: v })}
+                        onSalarySettingsChange={setSalarySettings}
+                        onOtherIncomeChange={setOtherIncome}
+                      />
+                    )}
+                  </div>
+                  <div ref={expensesRef}>
+                    {currentStep === 1 && (
+                      <FixedExpensesStep
+                        rent={budget.rent}
+                        food={budget.food}
+                        transport={budget.transport}
+                        utilities={budget.utilities}
+                        insurance={budget.insurance}
+                        subscriptions={budget.subscriptions}
+                        school={budget.school}
+                        customExpenses={customExpenses}
+                        onFieldChange={(field, value) => setBudget({ ...budget, [field]: value })}
+                        onCustomExpensesChange={setCustomExpenses}
+                      />
+                    )}
+                  </div>
+                  {currentStep === 2 && (
+                    <VariableExpensesStep
+                      eating_out={budget.eating_out}
+                      eating_out_limit={budget.eating_out_limit}
+                      shopping={budget.shopping}
+                      shopping_limit={budget.shopping_limit}
+                      travel={budget.travel}
+                      travel_limit={budget.travel_limit}
+                      other_variable={budget.other_variable}
+                      onFieldChange={(field, value) => setBudget({ ...budget, [field]: value })}
+                    />
+                  )}
+                  {currentStep === 3 && (
+                    <SavingsGoalsStep
+                      savings_investments={budget.savings_investments}
+                      goals={savingsGoals}
+                      onSavingsChange={(v) => setBudget({ ...budget, savings_investments: v })}
+                      onGoalsChange={setSavingsGoals}
+                    />
+                  )}
+                  {currentStep === 4 && (
+                    <SummaryStep
+                      totalIncome={totalIncome}
+                      totalFixedExpenses={totalFixedExpenses}
+                      totalVariableExpenses={totalVariableExpenses}
+                      totalEMI={totalEMI}
+                      totalSavings={totalSavings}
+                      freeCash={freeCash}
+                      debtBurden={debtBurden}
+                    />
+                  )}
+
+                  {/* Navigation */}
+                  <div className="flex flex-col sm:flex-row justify-between gap-3 mt-6 pt-6 border-t">
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
+                      disabled={currentStep === 0}
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Previous
+                    </Button>
+                    <div className="flex gap-2">
+                      {currentStep === steps.length - 1 && (
+                        <Button variant="outline" onClick={duplicateToNextMonth} disabled={saving}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate to Next Month
+                        </Button>
+                      )}
+                      <Button
+                        onClick={() => {
+                          if (currentStep < steps.length - 1) {
+                            setCurrentStep(currentStep + 1);
+                          } else {
+                            saveBudget();
+                          }
+                        }}
+                      >
+                        {currentStep < steps.length - 1 ? (
+                          <>
+                            Next
+                            <ArrowRight className="h-4 w-4 ml-2" />
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Budget
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
         </div>
 
-        {/* Wizard Steps */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Budget Setup Wizard</CardTitle>
-              <div className="flex gap-2">
-                {steps.map((step, index) => (
-                  <div
-                    key={index}
-                    className={`h-2 w-16 rounded-full transition-all ${
-                      index === currentStep
-                        ? "bg-primary"
-                        : index < currentStep
-                        ? "bg-success"
-                        : "bg-muted"
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">
-              Step {currentStep + 1} of {steps.length}: {steps[currentStep].title}
-            </p>
-          </CardHeader>
-          <CardContent>
-            {currentStep === 0 && (
-              <IncomeStep
-                salary={budget.salary}
-                salarySettings={salarySettings}
-                otherIncome={otherIncome}
-                onSalaryChange={(v) => setBudget({ ...budget, salary: v })}
-                onSalarySettingsChange={setSalarySettings}
-                onOtherIncomeChange={setOtherIncome}
-              />
-            )}
-            {currentStep === 1 && (
-              <FixedExpensesStep
-                rent={budget.rent}
-                food={budget.food}
-                transport={budget.transport}
-                utilities={budget.utilities}
-                insurance={budget.insurance}
-                subscriptions={budget.subscriptions}
-                school={budget.school}
-                customExpenses={customExpenses}
-                onFieldChange={(field, value) => setBudget({ ...budget, [field]: value })}
-                onCustomExpensesChange={setCustomExpenses}
-              />
-            )}
-            {currentStep === 2 && (
-              <VariableExpensesStep
-                eating_out={budget.eating_out}
-                eating_out_limit={budget.eating_out_limit}
-                shopping={budget.shopping}
-                shopping_limit={budget.shopping_limit}
-                travel={budget.travel}
-                travel_limit={budget.travel_limit}
-                other_variable={budget.other_variable}
-                onFieldChange={(field, value) => setBudget({ ...budget, [field]: value })}
-              />
-            )}
-            {currentStep === 3 && (
-              <SavingsGoalsStep
-                savings_investments={budget.savings_investments}
-                goals={savingsGoals}
-                onSavingsChange={(v) => setBudget({ ...budget, savings_investments: v })}
-                onGoalsChange={setSavingsGoals}
-              />
-            )}
-            {currentStep === 4 && (
-              <SummaryStep
-                totalIncome={totalIncome}
-                totalFixedExpenses={totalFixedExpenses}
-                totalVariableExpenses={totalVariableExpenses}
-                totalEMI={totalEMI}
-                totalSavings={totalSavings}
-                freeCash={freeCash}
-                debtBurden={debtBurden}
-              />
-            )}
-
-            <div className="flex justify-between mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
-                disabled={currentStep === 0}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Previous
-              </Button>
-              <Button
-                onClick={() => {
-                  if (currentStep < steps.length - 1) {
-                    setCurrentStep(currentStep + 1);
-                  } else {
-                    saveBudget();
-                  }
-                }}
-              >
-                {currentStep < steps.length - 1 ? (
-                  <>
-                    Next
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Budget
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* 12-Month Forecast */}
-        <FutureMonthsPlanner forecasts={generateForecasts()} />
+        <div ref={forecastRef}>
+          <EnhancedForecastTable
+            forecasts={forecasts}
+            onLifestyleChange={(monthKey, value) => {
+              // For now, just update current month if it matches
+              if (monthKey === selectedMonth) {
+                const newTotal = value;
+                // Distribute proportionally (simplified)
+                setBudget({ ...budget, eating_out: newTotal * 0.3, shopping: newTotal * 0.3, travel: newTotal * 0.3, other_variable: newTotal * 0.1 });
+              }
+            }}
+            onSavingsChange={(monthKey, value) => {
+              if (monthKey === selectedMonth) {
+                setBudget({ ...budget, savings_investments: value });
+              }
+            }}
+            onMonthClick={handleMonthClick}
+          />
+        </div>
 
-        {/* Debt Payoff Calculator Embedded */}
+        {/* Budget Insights */}
+        <div ref={insightsRef}>
+          <BudgetInsightsPanel
+            totalIncome={totalIncome}
+            totalEMI={totalEMI}
+            totalFixedExpenses={totalFixedExpenses}
+            totalVariableExpenses={totalVariableExpenses}
+            totalSavings={totalSavings}
+            freeCash={freeCash}
+            debtBurden={debtBurden}
+            forecasts={forecasts}
+            savingsGoals={savingsGoals}
+          />
+        </div>
+
+        {/* Debt Payoff Calculator Summary */}
         {loans.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Debt Payoff Calculator</CardTitle>
-              <p className="text-sm text-muted-foreground">Compare strategies to pay off your loans faster</p>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Use the dedicated Debt Payoff Calculator page for detailed analysis and comparison.
-              </p>
-            </CardContent>
-          </Card>
+          <DebtPayoffSummary
+            freeCash={freeCash}
+            totalEMI={totalEMI}
+            loansCount={loans.length}
+          />
         )}
       </FadeInStagger>
     </div>
