@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.sync-changes]
 verify_jwt = false
+
+[functions.google-drive-backup]
+verify_jwt = false
+
+[functions.ai-chat-advisor]
+verify_jwt = false

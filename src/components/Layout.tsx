@@ -21,6 +21,8 @@ import {
   Settings as SettingsIcon,
   Sparkles,
 } from "lucide-react";
+import { UserProfileDropdown } from "@/components/UserProfileDropdown";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useDisplayMode } from "@/hooks/useDisplayMode";
@@ -393,12 +395,23 @@ export default function Layout({ children }: LayoutProps) {
                   
                   {/* User Info */}
                   <div className="flex items-center gap-2.5 px-1">
-                    <div className="h-10 w-10 rounded-full bg-gradient-primary flex items-center justify-center text-primary-foreground font-semibold text-base flex-shrink-0">
-                      {user?.email?.charAt(0).toUpperCase() || "U"}
-                    </div>
+                    <Avatar className="h-10 w-10 border-2 border-primary/20 flex-shrink-0">
+                      <AvatarImage 
+                        src={user?.user_metadata?.avatar_url || user?.user_metadata?.picture} 
+                        alt={user?.user_metadata?.full_name || user?.user_metadata?.name || "User"} 
+                      />
+                      <AvatarFallback className="bg-gradient-primary text-primary-foreground font-semibold">
+                        {(user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || "U")
+                          .split(" ")
+                          .map((n: string) => n[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">
-                        {user?.user_metadata?.name || "User"}
+                        {user?.user_metadata?.full_name || user?.user_metadata?.name || "User"}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
                         {user?.email}
@@ -448,17 +461,17 @@ export default function Layout({ children }: LayoutProps) {
             </div>
           </div>
 
-          {/* Desktop User Info - Hide in mobile layout */}
+          {/* Desktop User Profile - Hide in mobile layout */}
           {!showMobileLayout && (
             <div className="hidden md:flex items-center gap-3 flex-shrink-0">
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground text-xs">Signed in as</span>
-                <span className="font-medium text-xs truncate max-w-[150px]">{user?.email}</span>
-              </div>
-              <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-xs">
-                <LogOut className="h-4 w-4 mr-1" />
-                Sign Out
-              </Button>
+              <UserProfileDropdown user={user} onSignOut={handleSignOut} />
+            </div>
+          )}
+          
+          {/* Mobile header user avatar */}
+          {showMobileLayout && (
+            <div className="flex-shrink-0">
+              <UserProfileDropdown user={user} onSignOut={handleSignOut} />
             </div>
           )}
         </div>
