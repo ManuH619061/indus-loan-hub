@@ -393,7 +393,7 @@ export default function AIChatAdvisor() {
               <Sparkles className="h-4 w-4 text-primary-foreground" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="font-semibold text-base truncate">AI Financial Advisor</h1>
+              <h1 className="font-semibold text-base truncate">FinPath AI</h1>
               <p className="text-xs text-muted-foreground truncate">
                 {activeConversationId 
                   ? conversations.find(c => c.id === activeConversationId)?.title || "Chat"
@@ -445,7 +445,7 @@ export default function AIChatAdvisor() {
                 <Bot className="h-10 w-10 text-primary" />
               </div>
               <div className="space-y-2 max-w-lg">
-                <h2 className="text-xl font-semibold">Hi! I'm your Smart Financial Advisor</h2>
+                <h2 className="text-xl font-semibold">Hi! I'm FinPath AI</h2>
                 <p className="text-muted-foreground text-sm">
                   I analyze your loans, EMIs, expenses, budgets, bank accounts, and income to give you 
                   personalized insights with detailed breakdowns and actionable recommendations.
