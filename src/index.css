@@ -63,54 +63,68 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222 47% 7%;
-    --foreground: 220 15% 95%;
+    /* Deep navy background with subtle blue undertone for better eye comfort */
+    --background: 224 71% 4%;
+    --foreground: 210 40% 98%;
 
-    --card: 222 47% 10%;
-    --card-foreground: 220 15% 95%;
+    /* Elevated card surface with clear separation from background */
+    --card: 224 71% 7%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 10%;
-    --popover-foreground: 220 15% 95%;
+    /* Popover with slightly elevated surface */
+    --popover: 224 71% 8%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 233 55% 60%;
-    --primary-foreground: 0 0% 100%;
+    /* Vibrant primary blue for better visibility */
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 5%;
 
-    --secondary: 177 55% 50%;
-    --secondary-foreground: 0 0% 100%;
+    /* Teal secondary for accent elements */
+    --secondary: 173 58% 39%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 222 35% 15%;
-    --muted-foreground: 220 15% 65%;
+    /* Muted surfaces with better contrast */
+    --muted: 223 47% 11%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 45 93% 58%;
-    --accent-foreground: 222 47% 7%;
+    /* Warm accent for highlights */
+    --accent: 35 92% 50%;
+    --accent-foreground: 222 47% 5%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    /* Softer destructive red for dark mode */
+    --destructive: 0 62% 55%;
+    --destructive-foreground: 210 40% 98%;
 
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
+    /* Brighter success green */
+    --success: 142 76% 45%;
+    --success-foreground: 210 40% 98%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 222 47% 7%;
+    /* Adjusted warning for better contrast */
+    --warning: 38 92% 55%;
+    --warning-foreground: 222 47% 5%;
 
-    --border: 222 35% 20%;
-    --input: 222 35% 20%;
-    --ring: 233 55% 60%;
+    /* Subtle borders with more visibility */
+    --border: 223 40% 18%;
+    --input: 223 40% 15%;
+    --ring: 217 91% 60%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(233 55% 60%), hsl(233 55% 75%));
-    --gradient-secondary: linear-gradient(135deg, hsl(177 55% 50%), hsl(177 55% 65%));
-    --gradient-accent: linear-gradient(135deg, hsl(45 93% 58%), hsl(45 93% 70%));
+    /* Enhanced gradients for dark mode */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 70%));
+    --gradient-secondary: linear-gradient(135deg, hsl(173 58% 39%), hsl(173 58% 55%));
+    --gradient-accent: linear-gradient(135deg, hsl(35 92% 50%), hsl(35 92% 65%));
 
-    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.2);
-    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.3);
-    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.4);
-    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.5);
+    /* Softer shadows for dark mode with subtle glow */
+    --shadow-sm: 0 1px 3px 0 hsl(0 0% 0% / 0.3), 0 1px 2px -1px hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.4), 0 2px 4px -2px hsl(0 0% 0% / 0.4);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.5), 0 4px 6px -4px hsl(0 0% 0% / 0.5);
+    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.6), 0 8px 10px -6px hsl(0 0% 0% / 0.6);
     
-    --chart-1: 233 55% 60%;
-    --chart-2: 177 55% 50%;
-    --chart-3: 45 93% 58%;
-    --chart-4: 0 72% 51%;
-    --chart-5: 142 71% 45%;
+    /* Vibrant chart colors for dark mode */
+    --chart-1: 217 91% 60%;
+    --chart-2: 173 58% 50%;
+    --chart-3: 35 92% 55%;
+    --chart-4: 0 72% 60%;
+    --chart-5: 142 76% 50%;
   }
 }
 
@@ -149,6 +163,61 @@ All colors MUST be HSL.
   
   .card:hover {
     box-shadow: var(--shadow-md);
+  }
+
+  /* Dark mode card enhancements */
+  .dark .card {
+    background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(224 71% 6%) 100%);
+    border-color: hsl(223 40% 15%);
+  }
+
+  .dark .card:hover {
+    border-color: hsl(217 91% 60% / 0.3);
+    box-shadow: var(--shadow-lg), 0 0 0 1px hsl(217 91% 60% / 0.1);
+  }
+
+  /* Dark mode badge enhancements */
+  .dark .badge {
+    border-color: hsl(var(--border) / 0.5);
+  }
+
+  /* Dark mode progress bar */
+  .dark [role="progressbar"] {
+    background-color: hsl(223 47% 15%);
+  }
+
+  /* Dark mode input fields */
+  .dark input,
+  .dark textarea,
+  .dark select {
+    background-color: hsl(223 47% 8%);
+    border-color: hsl(223 40% 18%);
+  }
+
+  .dark input:focus,
+  .dark textarea:focus,
+  .dark select:focus {
+    border-color: hsl(217 91% 60%);
+    box-shadow: 0 0 0 2px hsl(217 91% 60% / 0.2);
+  }
+
+  /* Dark mode scrollbar */
+  .dark ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .dark ::-webkit-scrollbar-track {
+    background: hsl(224 71% 6%);
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: hsl(223 40% 25%);
+    border-radius: 4px;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: hsl(223 40% 35%);
   }
   
   /* Ensure no element exceeds viewport width */
