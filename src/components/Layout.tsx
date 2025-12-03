@@ -126,6 +126,7 @@ const navigation = [
     key: "ai",
     icon: Sparkles,
     children: [
+      { name: "AI Chat Advisor", href: "/ai/chat", icon: Sparkles },
       { name: "AI Insights", href: "/insights", icon: Sparkles },
       { name: "Budget AI Advice", href: "/ai/budget-advice", icon: TrendingUp },
       { name: "Expense AI Advice", href: "/ai/expense-advice", icon: Receipt },

@@ -43,6 +43,7 @@ import BackupManager from "./pages/BackupManager";
 import BudgetAIAdvice from "./pages/ai/BudgetAIAdvice";
 import ExpenseAIAdvice from "./pages/ai/ExpenseAIAdvice";
 import LoanEMIAIAdvice from "./pages/ai/LoanEMIAIAdvice";
+import AIChatAdvisor from "./pages/ai/AIChatAdvisor";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PageTransition from "./components/PageTransition";
@@ -95,6 +96,7 @@ function AnimatedRoutes() {
         <Route path="/ai/budget-advice" element={<ProtectedRoute><Layout><PageTransition><BudgetAIAdvice /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/ai/expense-advice" element={<ProtectedRoute><Layout><PageTransition><ExpenseAIAdvice /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/ai/loan-advice" element={<ProtectedRoute><Layout><PageTransition><LoanEMIAIAdvice /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/ai/chat" element={<ProtectedRoute><Layout><PageTransition><AIChatAdvisor /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AnimatePresence>
