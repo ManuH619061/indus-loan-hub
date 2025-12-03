@@ -85,7 +85,7 @@ interface LayoutProps {
 }
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Home", href: "/dashboard", icon: LayoutDashboard },
   { 
     name: "Bank Manager", 
     key: "banking",
