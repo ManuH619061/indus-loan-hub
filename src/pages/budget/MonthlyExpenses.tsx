@@ -6,17 +6,26 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/currency";
-import { Plus, Edit2, Trash2, Search, Settings, Loader2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Search, Settings, Loader2, Calendar, TrendingUp, Receipt, Wallet, CreditCard, Banknote, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import FadeInStagger from "@/components/FadeInStagger";
+import { useNavigate } from "react-router-dom";
 
-const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--destructive))'];
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))', 'hsl(var(--destructive))'];
+
+const PAYMENT_METHODS = [
+  { value: "Cash", label: "Cash", icon: Banknote },
+  { value: "UPI", label: "UPI", icon: Wallet },
+  { value: "Card", label: "Card", icon: CreditCard },
+  { value: "Bank", label: "Bank Transfer", icon: Receipt },
+];
 
 interface ExpenseGroup {
   id: string;
@@ -38,16 +47,16 @@ interface MonthlyExpense {
   id: string;
   expense_date: string;
   description: string;
-  group_id: string;
-  subgroup_id: string;
+  group_id: string | null;
+  subgroup_id: string | null;
   amount: number;
   paid_from: string;
-  bank_account_id?: string;
-  from_location?: string;
-  to_location?: string;
-  travel_mode?: string;
-  tags?: string[];
-  notes?: string;
+  bank_account_id?: string | null;
+  from_location?: string | null;
+  to_location?: string | null;
+  travel_mode?: string | null;
+  tags?: string[] | null;
+  notes?: string | null;
 }
 
 interface BankAccount {
@@ -58,7 +67,9 @@ interface BankAccount {
 
 export default function MonthlyExpenses() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [expenses, setExpenses] = useState<MonthlyExpense[]>([]);
   const [groups, setGroups] = useState<ExpenseGroup[]>([]);
   const [subgroups, setSubgroups] = useState<ExpenseSubgroup[]>([]);
@@ -74,8 +85,8 @@ export default function MonthlyExpenses() {
   });
 
   const [openExpenseDialog, setOpenExpenseDialog] = useState(false);
-  const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
   const [editingExpense, setEditingExpense] = useState<MonthlyExpense | null>(null);
+  const [deleteExpense, setDeleteExpense] = useState<MonthlyExpense | null>(null);
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -110,19 +121,23 @@ export default function MonthlyExpenses() {
     setLoading(true);
     try {
       // Fetch expense groups
-      const { data: groupsData } = await supabase
+      const { data: groupsData, error: groupsError } = await supabase
         .from("expense_groups")
         .select("*")
         .eq("user_id", user.id)
         .order("display_order");
+      
+      if (groupsError) throw groupsError;
       setGroups(groupsData || []);
 
       // Fetch expense subgroups
-      const { data: subgroupsData } = await supabase
+      const { data: subgroupsData, error: subgroupsError } = await supabase
         .from("expense_subgroups")
         .select("*")
         .eq("user_id", user.id)
         .order("display_order");
+      
+      if (subgroupsError) throw subgroupsError;
       setSubgroups(subgroupsData || []);
 
       // Fetch bank accounts
@@ -133,15 +148,13 @@ export default function MonthlyExpenses() {
         .eq("is_active", true);
       setBankAccounts(accountsData || []);
 
-      // Fetch expenses
+      // Fetch expenses for selected month
+      const [year, month] = selectedMonth.split('-').map(Number);
       const startDate = `${selectedMonth}-01`;
-      const endDate = new Date(
-        parseInt(selectedMonth.split('-')[0]),
-        parseInt(selectedMonth.split('-')[1]),
-        0
-      ).toISOString().split('T')[0];
+      const lastDay = new Date(year, month, 0).getDate();
+      const endDate = `${selectedMonth}-${String(lastDay).padStart(2, '0')}`;
 
-      const { data: expensesData } = await supabase
+      const { data: expensesData, error: expensesError } = await supabase
         .from("monthly_expenses")
         .select("*")
         .eq("user_id", user.id)
@@ -149,9 +162,11 @@ export default function MonthlyExpenses() {
         .lte("expense_date", endDate)
         .order("expense_date", { ascending: false });
 
+      if (expensesError) throw expensesError;
       setExpenses(expensesData || []);
-    } catch (error) {
-      toast.error("Failed to fetch data");
+    } catch (error: any) {
+      console.error("Fetch error:", error);
+      toast.error("Failed to fetch data: " + (error.message || "Unknown error"));
     } finally {
       setLoading(false);
     }
@@ -184,8 +199,8 @@ export default function MonthlyExpenses() {
       setFormData({
         date: expense.expense_date,
         description: expense.description,
-        group_id: expense.group_id,
-        subgroup_id: expense.subgroup_id,
+        group_id: expense.group_id || "",
+        subgroup_id: expense.subgroup_id || "",
         amount: expense.amount.toString(),
         paid_from: expense.paid_from,
         bank_account_id: expense.bank_account_id || "",
@@ -212,12 +227,18 @@ export default function MonthlyExpenses() {
         notes: "",
       });
     }
+    setAiSuggestion(null);
     setOpenExpenseDialog(true);
   };
 
   const handleAICategorize = async () => {
     if (!formData.description || !formData.amount) {
       toast.error("Please enter description and amount first");
+      return;
+    }
+
+    if (groups.length === 0) {
+      toast.error("Please create expense categories first");
       return;
     }
 
@@ -262,10 +283,28 @@ export default function MonthlyExpenses() {
   };
 
   const handleSaveExpense = async () => {
-    if (!user || !formData.amount || !formData.description || !formData.group_id) {
-      toast.error("Please fill in all required fields");
+    if (!user) {
+      toast.error("Please log in to add expenses");
       return;
     }
+
+    // Validation
+    if (!formData.amount || isNaN(parseFloat(formData.amount)) || parseFloat(formData.amount) <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
+    if (!formData.description.trim()) {
+      toast.error("Please enter a description");
+      return;
+    }
+
+    if (!formData.date) {
+      toast.error("Please select a date");
+      return;
+    }
+
+    setSaving(true);
 
     try {
       const amount = parseFloat(formData.amount);
@@ -274,8 +313,8 @@ export default function MonthlyExpenses() {
       const expenseData = {
         user_id: user.id,
         expense_date: formData.date,
-        description: formData.description,
-        group_id: formData.group_id,
+        description: formData.description.trim(),
+        group_id: formData.group_id || null,
         subgroup_id: formData.subgroup_id || null,
         amount,
         paid_from: formData.paid_from,
@@ -293,18 +332,24 @@ export default function MonthlyExpenses() {
           .update(expenseData)
           .eq("id", editingExpense.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Update error:", error);
+          throw new Error(error.message || "Failed to update expense");
+        }
         toast.success("Expense updated successfully");
       } else {
         const { error } = await supabase
           .from("monthly_expenses")
           .insert(expenseData);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Insert error:", error);
+          throw new Error(error.message || "Failed to add expense");
+        }
 
         // If paid from bank account, create bank statement entry
         if (formData.bank_account_id) {
-          await supabase.from("bank_statement_entries").insert({
+          const { error: bankError } = await supabase.from("bank_statement_entries").insert({
             user_id: user.id,
             bank_account_id: formData.bank_account_id,
             transaction_date: formData.date,
@@ -314,6 +359,10 @@ export default function MonthlyExpenses() {
             subcategory: subgroups.find(s => s.id === formData.subgroup_id)?.name,
             notes: formData.notes || null,
           });
+          
+          if (bankError) {
+            console.warn("Bank entry warning:", bankError);
+          }
         }
 
         toast.success("Expense added successfully");
@@ -322,43 +371,46 @@ export default function MonthlyExpenses() {
       setOpenExpenseDialog(false);
       fetchData();
     } catch (error: any) {
-      toast.error("Failed to save expense");
-      console.error(error);
+      console.error("Save error:", error);
+      toast.error(error.message || "Failed to save expense");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDeleteExpense = async (expense: MonthlyExpense) => {
-    if (!confirm("Are you sure you want to delete this expense?")) return;
+  const handleDeleteExpense = async () => {
+    if (!deleteExpense) return;
 
     try {
       const { error } = await supabase
         .from("monthly_expenses")
         .delete()
-        .eq("id", expense.id);
+        .eq("id", deleteExpense.id);
 
       if (error) throw error;
 
       // Also delete from bank_statement_entries if it exists
-      if (expense.bank_account_id) {
+      if (deleteExpense.bank_account_id) {
         await supabase
           .from("bank_statement_entries")
           .delete()
-          .eq("bank_account_id", expense.bank_account_id)
-          .eq("narration", expense.description)
-          .eq("transaction_date", expense.expense_date);
+          .eq("bank_account_id", deleteExpense.bank_account_id)
+          .eq("narration", deleteExpense.description)
+          .eq("transaction_date", deleteExpense.expense_date);
       }
 
       toast.success("Expense deleted successfully");
+      setDeleteExpense(null);
       fetchData();
-    } catch (error) {
-      toast.error("Failed to delete expense");
+    } catch (error: any) {
+      toast.error("Failed to delete expense: " + (error.message || "Unknown error"));
     }
   };
 
   const getCategoryData = () => {
     const categoryTotals: Record<string, number> = {};
     filteredExpenses.forEach(e => {
-      const groupName = groups.find(g => g.id === e.group_id)?.name || "Unknown";
+      const groupName = groups.find(g => g.id === e.group_id)?.name || "Uncategorized";
       categoryTotals[groupName] = (categoryTotals[groupName] || 0) + e.amount;
     });
 
@@ -371,6 +423,12 @@ export default function MonthlyExpenses() {
   const categoryData = getCategoryData();
   const selectedSubgroup = subgroups.find(s => s.id === formData.subgroup_id);
 
+  // Month navigation
+  const getMonthLabel = (monthStr: string) => {
+    const [year, month] = monthStr.split('-').map(Number);
+    return new Date(year, month - 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -380,16 +438,23 @@ export default function MonthlyExpenses() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="container mx-auto p-4 md:p-6 space-y-6 max-w-7xl">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Monthly Expenses</h1>
-          <p className="text-muted-foreground">Advanced expense tracking with categories and groups</p>
+          <h1 className="text-2xl md:text-3xl font-bold">Monthly Expenses</h1>
+          <p className="text-muted-foreground">Track and categorize your spending</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setOpenCategoryDialog(true)}>
+        <div className="flex flex-wrap gap-2">
+          <Input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="w-[180px]"
+          />
+          <Button variant="outline" onClick={() => navigate("/budget/categories")}>
             <Settings className="h-4 w-4 mr-2" />
-            Manage Categories
+            Categories
           </Button>
           <Button onClick={() => handleOpenExpenseDialog()}>
             <Plus className="h-4 w-4 mr-2" />
@@ -399,35 +464,45 @@ export default function MonthlyExpenses() {
       </div>
 
       <FadeInStagger>
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>Total Expenses</CardTitle>
+        {/* Summary Cards */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Total Expenses
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{formatINR(totalExpenses)}</div>
-              <p className="text-sm text-muted-foreground mt-1">This month</p>
+              <div className="text-2xl md:text-3xl font-bold text-primary">{formatINR(totalExpenses)}</div>
+              <p className="text-xs text-muted-foreground mt-1">{getMonthLabel(selectedMonth)}</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Transactions</CardTitle>
+          <Card className="bg-gradient-to-br from-chart-2/10 to-chart-2/5 border-chart-2/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                Transactions
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{filteredExpenses.length}</div>
-              <p className="text-sm text-muted-foreground mt-1">Expense entries</p>
+              <div className="text-2xl md:text-3xl font-bold">{filteredExpenses.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">Expense entries</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Top Category</CardTitle>
+          <Card className="bg-gradient-to-br from-chart-3/10 to-chart-3/5 border-chart-3/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Wallet className="h-4 w-4" />
+                Top Category
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {categoryData.length > 0 ? (
                 <>
-                  <div className="text-2xl font-bold">{categoryData[0].name}</div>
+                  <div className="text-lg md:text-xl font-bold truncate">{categoryData[0].name}</div>
                   <p className="text-sm text-muted-foreground mt-1">{formatINR(categoryData[0].value)}</p>
                 </>
               ) : (
@@ -437,9 +512,15 @@ export default function MonthlyExpenses() {
           </Card>
         </div>
 
+        {/* Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Category-wise Spending</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                📊
+              </div>
+              Category-wise Spending
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {categoryData.length > 0 ? (
@@ -451,7 +532,7 @@ export default function MonthlyExpenses() {
                     cy="50%"
                     labelLine={false}
                     label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
+                    outerRadius={100}
                     fill="hsl(var(--primary))"
                     dataKey="value"
                   >
@@ -459,27 +540,40 @@ export default function MonthlyExpenses() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: any) => formatINR(value)} />
+                  <Tooltip 
+                    formatter={(value: any) => formatINR(value)} 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Legend />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                No expense data available
+              <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground">
+                <Receipt className="h-12 w-12 mb-4 opacity-50" />
+                <p>No expense data for this month</p>
+                <Button variant="link" onClick={() => handleOpenExpenseDialog()}>
+                  Add your first expense
+                </Button>
               </div>
             )}
           </CardContent>
         </Card>
 
+        {/* Expenses Table */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <CardTitle>All Expenses</CardTitle>
-                <CardDescription>View and manage your expenses</CardDescription>
+                <CardDescription>View and manage your expenses for {getMonthLabel(selectedMonth)}</CardDescription>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Select value={groupFilter} onValueChange={setGroupFilter}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[160px]">
                     <SelectValue placeholder="Filter by group" />
                   </SelectTrigger>
                   <SelectContent>
@@ -497,115 +591,193 @@ export default function MonthlyExpenses() {
                     placeholder="Search..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 w-[200px]"
+                    className="pl-9 w-[180px]"
                   />
                 </div>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Paid From</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredExpenses.map((expense) => {
-                    const group = groups.find(g => g.id === expense.group_id);
-                    const subgroup = subgroups.find(s => s.id === expense.subgroup_id);
-                    
-                    return (
-                      <TableRow key={expense.id}>
-                        <TableCell>{new Date(expense.expense_date).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{subgroup?.icon || group?.icon || "📄"}</span>
-                            <div>
-                              <div className="font-medium">{expense.description}</div>
-                              {expense.notes && (
-                                <div className="text-sm text-muted-foreground">{expense.notes}</div>
-                              )}
-                              {expense.tags && expense.tags.length > 0 && (
-                                <div className="flex gap-1 mt-1">
-                                  {expense.tags.map((tag, i) => (
-                                    <Badge key={i} variant="outline">{tag}</Badge>
-                                  ))}
-                                </div>
-                              )}
+            {filteredExpenses.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Receipt className="h-12 w-12 mb-4 opacity-50" />
+                <p className="text-lg font-medium">No expenses found</p>
+                <p className="text-sm">
+                  {expenses.length === 0 
+                    ? "Start tracking by adding your first expense" 
+                    : "Try adjusting your filters"}
+                </p>
+                {expenses.length === 0 && (
+                  <Button className="mt-4" onClick={() => handleOpenExpenseDialog()}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Expense
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto -mx-6 px-6">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold">Date</TableHead>
+                      <TableHead className="font-semibold">Description</TableHead>
+                      <TableHead className="font-semibold">Group</TableHead>
+                      <TableHead className="font-semibold">Sub-category</TableHead>
+                      <TableHead className="font-semibold">Paid From</TableHead>
+                      <TableHead className="text-right font-semibold">Amount</TableHead>
+                      <TableHead className="text-center font-semibold">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredExpenses.map((expense) => {
+                      const group = groups.find(g => g.id === expense.group_id);
+                      const subgroup = subgroups.find(s => s.id === expense.subgroup_id);
+                      const bankAccount = bankAccounts.find(b => b.id === expense.bank_account_id);
+                      
+                      return (
+                        <TableRow key={expense.id} className="hover:bg-muted/30 transition-colors">
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              {new Date(expense.expense_date).toLocaleDateString('en-IN', {
+                                day: '2-digit',
+                                month: 'short'
+                              })}
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{group?.name}</div>
-                            {subgroup && (
-                              <div className="text-sm text-muted-foreground">{subgroup.name}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-lg shrink-0">
+                                {subgroup?.icon || group?.icon || "📄"}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-medium truncate max-w-[200px]">{expense.description}</div>
+                                {expense.notes && (
+                                  <div className="text-xs text-muted-foreground truncate max-w-[200px]">{expense.notes}</div>
+                                )}
+                                {expense.tags && expense.tags.length > 0 && (
+                                  <div className="flex gap-1 mt-1 flex-wrap">
+                                    {expense.tags.slice(0, 2).map((tag, i) => (
+                                      <Badge key={i} variant="outline" className="text-xs px-1.5 py-0">{tag}</Badge>
+                                    ))}
+                                    {expense.tags.length > 2 && (
+                                      <Badge variant="outline" className="text-xs px-1.5 py-0">+{expense.tags.length - 2}</Badge>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {group ? (
+                              <Badge variant="secondary" className="font-normal">
+                                {group.icon} {group.name}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
                             )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{expense.paid_from}</TableCell>
-                        <TableCell className="text-right font-semibold">{formatINR(expense.amount)}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenExpenseDialog(expense)}
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteExpense(expense)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                          </TableCell>
+                          <TableCell>
+                            {subgroup ? (
+                              <span className="text-sm">{subgroup.icon} {subgroup.name}</span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {expense.paid_from === "Cash" && <Banknote className="h-4 w-4 text-green-500" />}
+                              {expense.paid_from === "UPI" && <Wallet className="h-4 w-4 text-blue-500" />}
+                              {expense.paid_from === "Card" && <CreditCard className="h-4 w-4 text-purple-500" />}
+                              {expense.paid_from === "Bank" && <Receipt className="h-4 w-4 text-orange-500" />}
+                              <span className="text-sm">
+                                {expense.paid_from}
+                                {bankAccount && (
+                                  <span className="text-muted-foreground text-xs block">
+                                    {bankAccount.bank_name}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="font-semibold text-destructive">{formatINR(expense.amount)}</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-primary/10"
+                                onClick={() => handleOpenExpenseDialog(expense)}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-destructive/10 text-destructive"
+                                onClick={() => setDeleteExpense(expense)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </FadeInStagger>
 
       {/* Add/Edit Expense Dialog */}
       <Dialog open={openExpenseDialog} onOpenChange={setOpenExpenseDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingExpense ? "Edit Expense" : "Add New Expense"}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {editingExpense ? (
+                <>
+                  <Edit2 className="h-5 w-5" />
+                  Edit Expense
+                </>
+              ) : (
+                <>
+                  <Plus className="h-5 w-5" />
+                  Add New Expense
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {editingExpense ? "Update the expense details below" : "Enter the expense details below"}
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Date</Label>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Date *</Label>
               <Input
                 type="date"
                 value={formData.date}
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               />
             </div>
-            <div>
-              <Label>Amount*</Label>
+            <div className="space-y-2">
+              <Label>Amount *</Label>
               <Input
                 type="number"
                 value={formData.amount}
                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                placeholder="1000"
+                placeholder="Enter amount"
+                min="0"
+                step="0.01"
               />
             </div>
-            <div className="col-span-2">
-              <Label>Description*</Label>
+            <div className="col-span-1 md:col-span-2 space-y-2">
+              <Label>Description *</Label>
               <div className="flex gap-2">
                 <Input
                   value={formData.description}
@@ -613,57 +785,74 @@ export default function MonthlyExpenses() {
                     setFormData({ ...formData, description: e.target.value });
                     setAiSuggestion(null);
                   }}
-                  placeholder="e.g., Groceries, Taxi fare"
+                  placeholder="e.g., Groceries, Taxi fare, Restaurant bill"
                   className="flex-1"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleAICategorize}
-                  disabled={aiCategorizing || !formData.description || !formData.amount}
-                >
-                  {aiCategorizing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      AI...
-                    </>
-                  ) : (
-                    "🤖 AI Suggest"
-                  )}
-                </Button>
+                {groups.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAICategorize}
+                    disabled={aiCategorizing || !formData.description || !formData.amount}
+                    className="shrink-0"
+                  >
+                    {aiCategorizing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        AI...
+                      </>
+                    ) : (
+                      "🤖 AI Suggest"
+                    )}
+                  </Button>
+                )}
               </div>
               {aiSuggestion && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  AI: {aiSuggestion.reasoning} (Confidence: {aiSuggestion.confidence}%)
+                <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                  <span>✓</span> AI: {aiSuggestion.reasoning} (Confidence: {aiSuggestion.confidence}%)
                 </p>
               )}
             </div>
-            <div>
-              <Label>Group*</Label>
-              <Select
-                value={formData.group_id}
-                onValueChange={(value) => setFormData({ ...formData, group_id: value, subgroup_id: "" })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {groups.map(group => (
-                    <SelectItem key={group.id} value={group.id}>
-                      {group.icon} {group.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            
+            <div className="space-y-2">
+              <Label>Group</Label>
+              {groups.length === 0 ? (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <AlertCircle className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm text-amber-600 dark:text-amber-400">
+                    <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/budget/categories")}>
+                      Create categories first
+                    </Button>
+                  </span>
+                </div>
+              ) : (
+                <Select
+                  value={formData.group_id}
+                  onValueChange={(value) => setFormData({ ...formData, group_id: value, subgroup_id: "" })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {groups.map(group => (
+                      <SelectItem key={group.id} value={group.id}>
+                        {group.icon} {group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
-            <div>
+            
+            <div className="space-y-2">
               <Label>Subgroup</Label>
               <Select
                 value={formData.subgroup_id}
                 onValueChange={(value) => setFormData({ ...formData, subgroup_id: value })}
+                disabled={!formData.group_id}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select subgroup" />
+                  <SelectValue placeholder="Select subgroup (optional)" />
                 </SelectTrigger>
                 <SelectContent>
                   {subgroups
@@ -676,17 +865,40 @@ export default function MonthlyExpenses() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Paid From</Label>
+            
+            <div className="space-y-2">
+              <Label>Paid From *</Label>
               <Select
                 value={formData.paid_from}
-                onValueChange={(value) => setFormData({ ...formData, paid_from: value, bank_account_id: value === "Cash" ? "" : value })}
+                onValueChange={(value) => setFormData({ ...formData, paid_from: value, bank_account_id: "" })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Cash">💵 Cash</SelectItem>
+                  {PAYMENT_METHODS.map(method => (
+                    <SelectItem key={method.value} value={method.value}>
+                      <div className="flex items-center gap-2">
+                        <method.icon className="h-4 w-4" />
+                        {method.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Bank Account (Optional)</Label>
+              <Select
+                value={formData.bank_account_id}
+                onValueChange={(value) => setFormData({ ...formData, bank_account_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select bank account" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
                   {bankAccounts.map(account => (
                     <SelectItem key={account.id} value={account.id}>
                       {account.bank_name} - {account.account_number_masked}
@@ -695,18 +907,19 @@ export default function MonthlyExpenses() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            
+            <div className="space-y-2">
               <Label>Tags (comma-separated)</Label>
               <Input
                 value={formData.tags}
                 onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                placeholder="food, essential"
+                placeholder="food, essential, monthly"
               />
             </div>
             
             {selectedSubgroup?.requires_location && (
               <>
-                <div>
+                <div className="space-y-2">
                   <Label>From Location</Label>
                   <Input
                     value={formData.from_location}
@@ -714,7 +927,7 @@ export default function MonthlyExpenses() {
                     placeholder="Home"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label>To Location</Label>
                   <Input
                     value={formData.to_location}
@@ -726,7 +939,7 @@ export default function MonthlyExpenses() {
             )}
 
             {selectedSubgroup?.requires_travel_mode && (
-              <div>
+              <div className="space-y-2">
                 <Label>Travel Mode/App</Label>
                 <Input
                   value={formData.travel_mode}
@@ -736,25 +949,61 @@ export default function MonthlyExpenses() {
               </div>
             )}
 
-            <div className="col-span-2">
+            <div className="col-span-1 md:col-span-2 space-y-2">
               <Label>Notes</Label>
               <Textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Additional notes"
+                placeholder="Additional notes (optional)"
+                rows={3}
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenExpenseDialog(false)}>
+          
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setOpenExpenseDialog(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={handleSaveExpense}>
-              Save Expense
+            <Button onClick={handleSaveExpense} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : editingExpense ? (
+                "Update Expense"
+              ) : (
+                "Add Expense"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteExpense} onOpenChange={() => setDeleteExpense(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Expense</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this expense?
+              <div className="mt-2 p-3 rounded-lg bg-muted">
+                <p className="font-medium">{deleteExpense?.description}</p>
+                <p className="text-sm text-muted-foreground">
+                  {deleteExpense?.expense_date && new Date(deleteExpense.expense_date).toLocaleDateString()} • {deleteExpense && formatINR(deleteExpense.amount)}
+                </p>
+              </div>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteExpense} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
