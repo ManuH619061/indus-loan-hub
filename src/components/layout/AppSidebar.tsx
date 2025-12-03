@@ -60,6 +60,7 @@ const navigation = [
     icon: TrendingUp,
     children: [
       { name: "Budget Planner", href: "/budget-planner", icon: TrendingUp },
+      { name: "12-Month Forecast", href: "/budget/forecast", icon: CalendarDays },
       { name: "Monthly Expenses", href: "/budget/monthly-expenses", icon: Receipt },
       { name: "Categories", href: "/budget/category-manager", icon: Settings },
       { name: "Budget History", href: "/budget-history", icon: BarChart3 },

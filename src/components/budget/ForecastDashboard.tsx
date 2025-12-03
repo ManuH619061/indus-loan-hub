@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { AlertCircle, TrendingDown, CheckCircle, Calendar, RefreshCw, TrendingUp, Wallet } from "lucide-react";
+import { AlertCircle, TrendingDown, CheckCircle, Calendar, RefreshCw, TrendingUp, Wallet, Expand } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format, addMonths, startOfMonth } from "date-fns";
@@ -255,15 +255,25 @@ export default function ForecastDashboard() {
               Data pulled from your budgets, loans, income sources & recurring expenses
             </CardDescription>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={fetchForecastData}
-            disabled={refreshing}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={fetchForecastData}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={() => navigate("/budget/forecast")}
+            >
+              <Expand className="h-4 w-4 mr-2" />
+              Full View
+            </Button>
+          </div>
         </div>
         
         {/* Quick Stats */}
