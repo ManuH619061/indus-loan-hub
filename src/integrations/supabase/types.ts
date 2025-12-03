@@ -106,6 +106,42 @@ export type Database = {
           },
         ]
       }
+      ai_settings: {
+        Row: {
+          created_at: string | null
+          detail_level: string | null
+          enable_chat_history: boolean | null
+          explanation_style: string | null
+          id: string
+          show_charts: boolean | null
+          show_tables: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          detail_level?: string | null
+          enable_chat_history?: boolean | null
+          explanation_style?: string | null
+          id?: string
+          show_charts?: boolean | null
+          show_tables?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          detail_level?: string | null
+          enable_chat_history?: boolean | null
+          explanation_style?: string | null
+          id?: string
+          show_charts?: boolean | null
+          show_tables?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       amortization_rows: {
         Row: {
           closing_principal: number
@@ -1083,6 +1119,63 @@ export type Database = {
           },
         ]
       }
+      notification_settings: {
+        Row: {
+          budget_overspend_alert: boolean | null
+          budget_overspend_percent: number | null
+          created_at: string | null
+          email_emi_reminder: boolean | null
+          email_emi_reminder_days: number | null
+          high_utilisation_alerts: boolean | null
+          id: string
+          inapp_ai_summary: boolean | null
+          inapp_emi_due_week: boolean | null
+          low_balance_alert: boolean | null
+          low_balance_threshold: number | null
+          monthly_ai_summary: boolean | null
+          payment_confirmations: boolean | null
+          reminders_time: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          budget_overspend_alert?: boolean | null
+          budget_overspend_percent?: number | null
+          created_at?: string | null
+          email_emi_reminder?: boolean | null
+          email_emi_reminder_days?: number | null
+          high_utilisation_alerts?: boolean | null
+          id?: string
+          inapp_ai_summary?: boolean | null
+          inapp_emi_due_week?: boolean | null
+          low_balance_alert?: boolean | null
+          low_balance_threshold?: number | null
+          monthly_ai_summary?: boolean | null
+          payment_confirmations?: boolean | null
+          reminders_time?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          budget_overspend_alert?: boolean | null
+          budget_overspend_percent?: number | null
+          created_at?: string | null
+          email_emi_reminder?: boolean | null
+          email_emi_reminder_days?: number | null
+          high_utilisation_alerts?: boolean | null
+          id?: string
+          inapp_ai_summary?: boolean | null
+          inapp_emi_due_week?: boolean | null
+          low_balance_alert?: boolean | null
+          low_balance_threshold?: number | null
+          monthly_ai_summary?: boolean | null
+          payment_confirmations?: boolean | null
+          reminders_time?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -1189,35 +1282,56 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
+          city: string | null
           created_at: string | null
           currency: string | null
           display_mode: string | null
           email: string
+          fixed_bills: number | null
           id: string
+          login_method: string | null
           monthly_income: number | null
           name: string | null
+          phone: string | null
+          risk_profile: string | null
+          savings_target: number | null
           timezone: string | null
           updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
+          city?: string | null
           created_at?: string | null
           currency?: string | null
           display_mode?: string | null
           email: string
+          fixed_bills?: number | null
           id: string
+          login_method?: string | null
           monthly_income?: number | null
           name?: string | null
+          phone?: string | null
+          risk_profile?: string | null
+          savings_target?: number | null
           timezone?: string | null
           updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
+          city?: string | null
           created_at?: string | null
           currency?: string | null
           display_mode?: string | null
           email?: string
+          fixed_bills?: number | null
           id?: string
+          login_method?: string | null
           monthly_income?: number | null
           name?: string | null
+          phone?: string | null
+          risk_profile?: string | null
+          savings_target?: number | null
           timezone?: string | null
           updated_at?: string | null
         }
@@ -1594,6 +1708,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_preferences: {
+        Row: {
+          accent_color: string | null
+          compact_mode: boolean | null
+          created_at: string | null
+          currency_symbol: string | null
+          default_bank_account_emi: string | null
+          default_bank_account_expense: string | null
+          default_brs_date_range: string | null
+          default_date_range: string | null
+          default_emi_calendar_view: string | null
+          default_home_tab: string | null
+          density: string | null
+          font_size: string | null
+          id: string
+          language: string | null
+          layout_mode: string | null
+          number_format: string | null
+          show_tooltips: boolean | null
+          sidebar_behavior: string | null
+          start_of_month: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          accent_color?: string | null
+          compact_mode?: boolean | null
+          created_at?: string | null
+          currency_symbol?: string | null
+          default_bank_account_emi?: string | null
+          default_bank_account_expense?: string | null
+          default_brs_date_range?: string | null
+          default_date_range?: string | null
+          default_emi_calendar_view?: string | null
+          default_home_tab?: string | null
+          density?: string | null
+          font_size?: string | null
+          id?: string
+          language?: string | null
+          layout_mode?: string | null
+          number_format?: string | null
+          show_tooltips?: boolean | null
+          sidebar_behavior?: string | null
+          start_of_month?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          accent_color?: string | null
+          compact_mode?: boolean | null
+          created_at?: string | null
+          currency_symbol?: string | null
+          default_bank_account_emi?: string | null
+          default_bank_account_expense?: string | null
+          default_brs_date_range?: string | null
+          default_date_range?: string | null
+          default_emi_calendar_view?: string | null
+          default_home_tab?: string | null
+          density?: string | null
+          font_size?: string | null
+          id?: string
+          language?: string | null
+          layout_mode?: string | null
+          number_format?: string | null
+          show_tooltips?: boolean | null
+          sidebar_behavior?: string | null
+          start_of_month?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
