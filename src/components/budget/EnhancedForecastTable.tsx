@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { formatINR, formatPercent } from "@/lib/currency";
@@ -30,6 +30,23 @@ export default function EnhancedForecastTable({
   onSavingsChange,
   onMonthClick,
 }: EnhancedForecastTableProps) {
+  // Calculate totals
+  const totals = forecasts.reduce(
+    (acc, f) => ({
+      income: acc.income + f.income,
+      emis: acc.emis + f.emis,
+      fixedExpenses: acc.fixedExpenses + f.fixedExpenses,
+      lifestyleBudget: acc.lifestyleBudget + f.lifestyleBudget,
+      plannedSavings: acc.plannedSavings + f.plannedSavings,
+      freeCash: acc.freeCash + f.freeCash,
+    }),
+    { income: 0, emis: 0, fixedExpenses: 0, lifestyleBudget: 0, plannedSavings: 0, freeCash: 0 }
+  );
+
+  const avgDebtBurden = totals.income > 0 ? (totals.emis / totals.income) * 100 : 0;
+  const negativeMonths = forecasts.filter(f => f.freeCash < 0).length;
+  const healthyMonths = forecasts.filter(f => f.freeCash > 0 && f.debtBurden < 40).length;
+
   return (
     <Card id="forecast">
       <CardHeader>
@@ -38,7 +55,17 @@ export default function EnhancedForecastTable({
           12-Month Forecast
         </CardTitle>
         <CardDescription>
-          Plan your budget for the next 12 months. Click any row to edit that month's budget. EMIs are auto-calculated from loan schedules.
+          Plan your budget for the next 12 months. Click any row to edit that month's budget.
+          {negativeMonths > 0 && (
+            <span className="text-destructive ml-2">
+              ⚠ {negativeMonths} month(s) with deficit
+            </span>
+          )}
+          {healthyMonths === 12 && (
+            <span className="text-success ml-2">
+              ✓ All months healthy!
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -127,18 +154,48 @@ export default function EnhancedForecastTable({
                 );
               })}
             </TableBody>
+            <TableFooter>
+              <TableRow className="bg-muted font-semibold">
+                <TableCell>12-Month Total</TableCell>
+                <TableCell className="text-right text-success">{formatINR(totals.income)}</TableCell>
+                <TableCell className="text-right text-primary">{formatINR(totals.emis)}</TableCell>
+                <TableCell className="text-right">{formatINR(totals.fixedExpenses)}</TableCell>
+                <TableCell className="text-right">{formatINR(totals.lifestyleBudget)}</TableCell>
+                <TableCell className="text-right">{formatINR(totals.plannedSavings)}</TableCell>
+                <TableCell className={`text-right ${totals.freeCash >= 0 ? "text-success" : "text-destructive"}`}>
+                  {formatINR(totals.freeCash)}
+                </TableCell>
+                <TableCell className="text-center">
+                  <Badge variant={avgDebtBurden > 40 ? "destructive" : "default"} className="text-xs">
+                    ~{formatPercent(avgDebtBurden)}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+              <TableRow className="bg-muted/50">
+                <TableCell>Monthly Average</TableCell>
+                <TableCell className="text-right text-muted-foreground">{formatINR(totals.income / 12)}</TableCell>
+                <TableCell className="text-right text-muted-foreground">{formatINR(totals.emis / 12)}</TableCell>
+                <TableCell className="text-right text-muted-foreground">{formatINR(totals.fixedExpenses / 12)}</TableCell>
+                <TableCell className="text-right text-muted-foreground">{formatINR(totals.lifestyleBudget / 12)}</TableCell>
+                <TableCell className="text-right text-muted-foreground">{formatINR(totals.plannedSavings / 12)}</TableCell>
+                <TableCell className={`text-right text-muted-foreground`}>
+                  {formatINR(totals.freeCash / 12)}
+                </TableCell>
+                <TableCell></TableCell>
+              </TableRow>
+            </TableFooter>
           </Table>
         </div>
         
         {/* Legend */}
-        <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-4 mt-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded bg-success/20 border border-success/50" />
-            <span>Healthy</span>
+            <span>Healthy ({healthyMonths})</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded bg-destructive/20 border border-destructive/50" />
-            <span>Deficit</span>
+            <span>Deficit ({negativeMonths})</span>
           </div>
           <div className="flex items-center gap-1">
             <AlertCircle className="h-3 w-3 text-destructive" />

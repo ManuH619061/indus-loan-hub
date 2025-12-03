@@ -3,7 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Trash2, TrendingUp, Info } from "lucide-react";
 import { formatINR } from "@/lib/currency";
 
 interface IncomeSource {
@@ -12,6 +13,7 @@ interface IncomeSource {
   amount: number;
   frequency: string;
   start_month: string;
+  end_month?: string;
 }
 
 interface SalarySettings {
@@ -76,6 +78,27 @@ export default function IncomeStep({
     onOtherIncomeChange(otherIncome.filter((source) => source.id !== id));
   };
 
+  // Calculate estimated salary after increment
+  const getEstimatedSalaryAfterIncrement = () => {
+    if (!salarySettings || !salary) return salary;
+    if (salarySettings.increment_type === "percentage") {
+      return salary * (1 + salarySettings.increment_value / 100);
+    }
+    return salary + salarySettings.increment_value;
+  };
+
+  const estimatedSalary = getEstimatedSalaryAfterIncrement();
+  const incrementMonth = salarySettings?.increment_month 
+    ? MONTHS.find(m => m.value === salarySettings.increment_month)?.label 
+    : "April";
+
+  const totalOtherIncome = otherIncome.reduce((sum, i) => {
+    if (i.frequency === "Monthly") return sum + (i.amount || 0);
+    if (i.frequency === "Quarterly") return sum + (i.amount || 0) / 3;
+    if (i.frequency === "Yearly") return sum + (i.amount || 0) / 12;
+    return sum;
+  }, 0);
+
   return (
     <div className="space-y-6">
       <Card>
@@ -91,8 +114,8 @@ export default function IncomeStep({
               onChange={(e) => onSalaryChange(Number(e.target.value))}
               placeholder="Enter your monthly salary"
             />
-            <p className="text-sm text-muted-foreground mt-1">
-              Current: {formatINR(salary)}
+            <p className="text-xs text-muted-foreground mt-1">
+              Used for all EMI and debt-burden calculations
             </p>
           </div>
 
@@ -143,7 +166,7 @@ export default function IncomeStep({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="percentage">Percentage %</SelectItem>
-                  <SelectItem value="amount">Fixed Amount</SelectItem>
+                  <SelectItem value="amount">Fixed Amount ₹</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -166,13 +189,39 @@ export default function IncomeStep({
               />
             </div>
           </div>
+
+          {/* Estimated Salary Preview */}
+          {salary > 0 && salarySettings?.increment_value && (
+            <div className="p-4 rounded-lg bg-success/10 border border-success/20">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-4 w-4 text-success" />
+                <span className="text-sm font-medium text-success">Estimated Salary After Increment</span>
+                <Badge variant="secondary" className="text-xs">{incrementMonth}</Badge>
+              </div>
+              <div className="flex items-baseline gap-3">
+                <span className="text-2xl font-bold text-success">{formatINR(estimatedSalary)}</span>
+                <span className="text-sm text-muted-foreground">
+                  (+{salarySettings.increment_type === "percentage" 
+                    ? `${salarySettings.increment_value}%` 
+                    : formatINR(salarySettings.increment_value)})
+                </span>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Other Income Sources</CardTitle>
+            <div>
+              <CardTitle>Other Income Sources</CardTitle>
+              {totalOtherIncome > 0 && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Monthly equivalent: {formatINR(totalOtherIncome)}
+                </p>
+              )}
+            </div>
             <Button onClick={addIncomeSource} size="sm">
               <Plus className="h-4 w-4 mr-1" />
               Add Income
@@ -181,26 +230,29 @@ export default function IncomeStep({
         </CardHeader>
         <CardContent>
           {otherIncome.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No additional income sources. Click "Add Income" to add one.
-            </p>
+            <div className="text-center py-6 border-2 border-dashed rounded-lg">
+              <Info className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+              <p className="text-sm text-muted-foreground">
+                No additional income sources. Click "Add Income" to add freelance, rental, or other income.
+              </p>
+            </div>
           ) : (
             <div className="space-y-4">
               {otherIncome.map((source) => (
                 <div
                   key={source.id}
-                  className="grid grid-cols-1 md:grid-cols-5 gap-3 p-4 border rounded-lg"
+                  className="grid grid-cols-1 md:grid-cols-6 gap-3 p-4 border rounded-lg"
                 >
-                  <div>
+                  <div className="md:col-span-2">
                     <Label className="text-xs">Name</Label>
                     <Input
                       value={source.name}
                       onChange={(e) => updateIncomeSource(source.id, "name", e.target.value)}
-                      placeholder="Freelance"
+                      placeholder="Freelance, Rent, etc."
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Amount</Label>
+                    <Label className="text-xs">Amount (₹)</Label>
                     <Input
                       type="number"
                       value={source.amount || ""}
@@ -230,7 +282,7 @@ export default function IncomeStep({
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs">Start Month</Label>
+                    <Label className="text-xs">Start Date</Label>
                     <Input
                       type="month"
                       value={source.start_month}
@@ -239,12 +291,23 @@ export default function IncomeStep({
                       }
                     />
                   </div>
-                  <div className="flex items-end">
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <Label className="text-xs">End Date</Label>
+                      <Input
+                        type="month"
+                        value={source.end_month || ""}
+                        onChange={(e) =>
+                          updateIncomeSource(source.id, "end_month", e.target.value || undefined)
+                        }
+                        placeholder="Optional"
+                      />
+                    </div>
                     <Button
                       variant="destructive"
-                      size="sm"
+                      size="icon"
                       onClick={() => removeIncomeSource(source.id)}
-                      className="w-full"
+                      className="shrink-0"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
