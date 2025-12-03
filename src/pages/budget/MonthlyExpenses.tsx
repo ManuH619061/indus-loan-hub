@@ -891,14 +891,14 @@ export default function MonthlyExpenses() {
             <div className="space-y-2">
               <Label>Bank Account (Optional)</Label>
               <Select
-                value={formData.bank_account_id}
-                onValueChange={(value) => setFormData({ ...formData, bank_account_id: value })}
+                value={formData.bank_account_id || "none"}
+                onValueChange={(value) => setFormData({ ...formData, bank_account_id: value === "none" ? "" : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select bank account" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {bankAccounts.map(account => (
                     <SelectItem key={account.id} value={account.id}>
                       {account.bank_name} - {account.account_number_masked}
