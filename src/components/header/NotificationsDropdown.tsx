@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, AlertTriangle, Clock, TrendingUp, Wallet, Landmark, RefreshCw, Check, CheckCheck, Trash2 } from "lucide-react";
+import { Bell, AlertTriangle, Clock, TrendingUp, Wallet, Landmark, RefreshCw, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -34,8 +34,7 @@ export function NotificationsDropdown() {
     isLoading, 
     refetch, 
     markAsRead, 
-    markAllAsRead,
-    clearAllRead 
+    markAllAsRead
   } = useNotifications();
 
   const handleNotificationClick = (notification: Notification) => {
@@ -47,8 +46,9 @@ export function NotificationsDropdown() {
     }
   };
 
-  const groupedNotifications = groupByTime(notifications);
-  const hasReadNotifications = notifications.some(n => n.isRead);
+  // Only show unread notifications in dropdown
+  const unreadNotifications = notifications.filter(n => !n.isRead);
+  const groupedNotifications = groupByTime(unreadNotifications);
 
   return (
     <Popover>
@@ -100,10 +100,10 @@ export function NotificationsDropdown() {
             <div className="p-4 text-center text-muted-foreground text-sm">
               Loading notifications...
             </div>
-          ) : notifications.length === 0 ? (
+          ) : unreadNotifications.length === 0 ? (
             <div className="p-8 text-center">
               <Bell className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-              <p className="text-sm text-muted-foreground">No notifications</p>
+              <p className="text-sm text-muted-foreground">No new notifications</p>
               <p className="text-xs text-muted-foreground mt-1">
                 You're all caught up!
               </p>
@@ -161,25 +161,15 @@ export function NotificationsDropdown() {
         </ScrollArea>
 
         {/* Footer */}
-        {notifications.length > 0 && (
-          <div className="p-2 border-t flex items-center gap-2">
+        {unreadNotifications.length > 0 && (
+          <div className="p-2 border-t">
             <Button 
               variant="ghost" 
-              className="flex-1 text-sm h-8"
+              className="w-full text-sm h-8"
               onClick={() => navigate("/settings?tab=notifications")}
             >
               Settings
             </Button>
-            {hasReadNotifications && (
-              <Button 
-                variant="ghost" 
-                className="text-sm h-8 text-destructive hover:text-destructive"
-                onClick={() => clearAllRead()}
-              >
-                <Trash2 className="h-3 w-3 mr-1" />
-                Clear read
-              </Button>
-            )}
           </div>
         )}
       </PopoverContent>
