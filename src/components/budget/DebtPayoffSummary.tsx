@@ -73,7 +73,7 @@ export default function DebtPayoffSummary({
             With this budget, you can afford extra prepayments up to{" "}
             <span className="font-semibold text-foreground">{formatINR(extraPaymentPotential)}</span> per month.
           </p>
-          <Button onClick={() => navigate("/debt-payoff-calculator")} className="gap-2">
+          <Button onClick={() => navigate("/budget/debt-optimizer")} className="gap-2">
             Open Debt Payoff Calculator
             <ArrowRight className="h-4 w-4" />
           </Button>

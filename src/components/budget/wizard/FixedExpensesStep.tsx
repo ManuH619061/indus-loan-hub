@@ -2,7 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Plus, Trash2, Info, CreditCard } from "lucide-react";
 import { formatINR } from "@/lib/currency";
 
 interface FixedExpense {
@@ -10,6 +12,8 @@ interface FixedExpense {
   name: string;
   amount: number;
   category: string;
+  dueDay?: number;
+  paidFrom?: string;
 }
 
 interface FixedExpensesStepProps {
@@ -38,13 +42,13 @@ export default function FixedExpensesStep({
   onCustomExpensesChange,
 }: FixedExpensesStepProps) {
   const fixedCategories = [
-    { label: "Rent", value: rent, field: "rent", icon: "🏠" },
-    { label: "Food", value: food, field: "food", icon: "🍽️" },
-    { label: "Transport", value: transport, field: "transport", icon: "🚗" },
-    { label: "Utilities", value: utilities, field: "utilities", icon: "💡" },
-    { label: "Insurance", value: insurance, field: "insurance", icon: "🛡️" },
-    { label: "Subscriptions", value: subscriptions, field: "subscriptions", icon: "📱" },
-    { label: "School/Education", value: school, field: "school", icon: "🎓" },
+    { label: "Rent", value: rent, field: "rent", icon: "🏠", hint: "Monthly rent or mortgage" },
+    { label: "Groceries & Food", value: food, field: "food", icon: "🍽️", hint: "Regular grocery budget" },
+    { label: "Transport", value: transport, field: "transport", icon: "🚗", hint: "Fuel, passes, parking" },
+    { label: "Utilities", value: utilities, field: "utilities", icon: "💡", hint: "Electricity, water, gas" },
+    { label: "Insurance", value: insurance, field: "insurance", icon: "🛡️", hint: "Health, life, vehicle" },
+    { label: "Subscriptions", value: subscriptions, field: "subscriptions", icon: "📱", hint: "Netflix, Spotify, etc." },
+    { label: "School/Education", value: school, field: "school", icon: "🎓", hint: "Tuition, courses" },
   ];
 
   const addCustomExpense = () => {
@@ -53,6 +57,8 @@ export default function FixedExpensesStep({
       name: "",
       amount: 0,
       category: "Others",
+      dueDay: 1,
+      paidFrom: "Bank",
     };
     onCustomExpensesChange([...customExpenses, newExpense]);
   };
@@ -81,6 +87,15 @@ export default function FixedExpensesStep({
 
   return (
     <div className="space-y-6">
+      {/* EMI Note */}
+      <Alert className="border-primary/30 bg-primary/5">
+        <CreditCard className="h-4 w-4 text-primary" />
+        <AlertDescription className="text-sm">
+          <strong>Note:</strong> Loan EMIs are automatically added from your Loan Manager.
+          You don't need to include them here.
+        </AlertDescription>
+      </Alert>
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -93,7 +108,7 @@ export default function FixedExpensesStep({
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {fixedCategories.map((category) => (
-              <div key={category.field} className="space-y-2">
+              <div key={category.field} className="space-y-2 p-3 border rounded-lg">
                 <Label className="flex items-center gap-2">
                   <span className="text-lg">{category.icon}</span>
                   {category.label}
@@ -104,9 +119,7 @@ export default function FixedExpensesStep({
                   onChange={(e) => onFieldChange(category.field, Number(e.target.value))}
                   placeholder="0"
                 />
-                {category.value > 0 && (
-                  <p className="text-xs text-muted-foreground">{formatINR(category.value)}</p>
-                )}
+                <p className="text-xs text-muted-foreground">{category.hint}</p>
               </div>
             ))}
           </div>
@@ -116,7 +129,12 @@ export default function FixedExpensesStep({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Custom Fixed Expenses</CardTitle>
+            <div>
+              <CardTitle>Custom Fixed Expenses</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Add any recurring bills not covered above
+              </p>
+            </div>
             <Button onClick={addCustomExpense} size="sm">
               <Plus className="h-4 w-4 mr-1" />
               Add Expense
@@ -125,26 +143,29 @@ export default function FixedExpensesStep({
         </CardHeader>
         <CardContent>
           {customExpenses.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No custom expenses. Click "Add Expense" to add one.
-            </p>
+            <div className="text-center py-6 border-2 border-dashed rounded-lg">
+              <Info className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+              <p className="text-sm text-muted-foreground">
+                No custom expenses. Add gym membership, maid salary, society maintenance, etc.
+              </p>
+            </div>
           ) : (
             <div className="space-y-3">
               {customExpenses.map((expense) => (
                 <div
                   key={expense.id}
-                  className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 border rounded-lg"
+                  className="grid grid-cols-1 md:grid-cols-5 gap-3 p-4 border rounded-lg"
                 >
-                  <div>
-                    <Label className="text-xs">Name</Label>
+                  <div className="md:col-span-2">
+                    <Label className="text-xs">Description</Label>
                     <Input
                       value={expense.name}
                       onChange={(e) => updateCustomExpense(expense.id, "name", e.target.value)}
-                      placeholder="Gym Membership"
+                      placeholder="Gym Membership, Maid, etc."
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Amount</Label>
+                    <Label className="text-xs">Amount (₹)</Label>
                     <Input
                       type="number"
                       value={expense.amount || ""}
@@ -154,12 +175,51 @@ export default function FixedExpensesStep({
                       placeholder="1000"
                     />
                   </div>
-                  <div className="flex items-end">
+                  <div>
+                    <Label className="text-xs">Due Day</Label>
+                    <Select
+                      value={expense.dueDay?.toString() || "1"}
+                      onValueChange={(value) =>
+                        updateCustomExpense(expense.id, "dueDay", Number(value))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Day" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                          <SelectItem key={day} value={day.toString()}>
+                            {day}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <Label className="text-xs">Paid From</Label>
+                      <Select
+                        value={expense.paidFrom || "Bank"}
+                        onValueChange={(value) =>
+                          updateCustomExpense(expense.id, "paidFrom", value)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Bank">Bank</SelectItem>
+                          <SelectItem value="Cash">Cash</SelectItem>
+                          <SelectItem value="Credit Card">Credit Card</SelectItem>
+                          <SelectItem value="UPI">UPI</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <Button
                       variant="destructive"
-                      size="sm"
+                      size="icon"
                       onClick={() => removeCustomExpense(expense.id)}
-                      className="w-full"
+                      className="shrink-0"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
