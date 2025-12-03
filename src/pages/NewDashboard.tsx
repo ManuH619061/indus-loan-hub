@@ -811,7 +811,7 @@ export default function NewDashboard() {
                       variant="ghost" 
                       size="sm" 
                       className="text-xs"
-                      onClick={() => navigate("/expenses")}
+                      onClick={() => navigate("/expenses?period=all_time")}
                     >
                       View All <ChevronRight className="h-3 w-3 ml-1" />
                     </Button>
@@ -862,8 +862,8 @@ export default function NewDashboard() {
 
               {/* Top Expenses This Month - Clickable */}
               <ClickableCard
-                onClick={() => navigate("/budget/monthly-expenses")}
-                tooltip="View detailed expense breakdown"
+                onClick={() => navigate("/expenses?period=current_month")}
+                tooltip="View all expenses and transactions"
                 className="w-full"
               >
                 <CardHeader className="p-4 md:p-6 pb-2">
