@@ -10,13 +10,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatINR, formatPercent } from "@/lib/currency";
-import { Wallet, Plus, Calendar, CreditCard, Pencil, Trash2, CheckSquare, X, Copy, LayoutGrid, List, Filter } from "lucide-react";
+import { Wallet, Plus, Calendar, CreditCard, Pencil, Trash2, CheckSquare, X, Copy, LayoutGrid, List, Filter, FileDown, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import QuickPaySheet from "@/components/QuickPaySheet";
 import FadeInStagger, { FadeInStaggerItem } from "@/components/FadeInStagger";
 import { deleteLoan } from "@/lib/loan-service";
 import LenderAvatar from "@/components/lenders/LenderAvatar";
 import { calculateLoanStatsFromPayments } from "@/lib/loan-calculations";
+import { exportLoansToPDF } from "@/lib/pdf-export";
 
 interface LoanCardProps {
   loan: any;
@@ -180,6 +181,7 @@ export default function NewLoans() {
   const [bulkStatus, setBulkStatus] = useState<"ACTIVE" | "CLOSED" | "DEFAULTED">("ACTIVE");
   const [groupByLender, setGroupByLender] = useState(false);
   const [filterLender, setFilterLender] = useState<string>("all");
+  const [exportingPDF, setExportingPDF] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -367,6 +369,38 @@ export default function NewLoans() {
     }
   };
 
+  const handleExportPDF = async () => {
+    if (filteredLoans.length === 0) {
+      toast({ title: "No loans to export", variant: "destructive" });
+      return;
+    }
+
+    setExportingPDF(true);
+    try {
+      const exportData = filteredLoans.map((loan) => ({
+        loan_name: loan.loan_name,
+        lender_name: loan.lenders?.name || "No Lender",
+        lender_logo: loan.logo_url || loan.lenders?.logo_url,
+        principal_amount: loan.principal_amount,
+        outstanding: loan.outstanding,
+        interest_rate_apy: loan.interest_rate_apy,
+        emi_amount: loan.emi_amount,
+        tenure_months: loan.tenure_months,
+        status: loan.status,
+        loan_type: loan.loan_type,
+        disbursed_on: loan.disbursed_on,
+        next_due: loan.nextDue,
+      }));
+      await exportLoansToPDF(exportData, "Loans Report");
+      toast({ title: "PDF exported successfully!" });
+    } catch (error: any) {
+      console.error("Export error:", error);
+      toast({ title: "Failed to export PDF", description: error.message, variant: "destructive" });
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
@@ -411,6 +445,17 @@ export default function NewLoans() {
           >
             {groupByLender ? <LayoutGrid className="h-4 w-4" /> : <List className="h-4 w-4" />}
             {groupByLender ? "Grouped" : "List"}
+          </Button>
+
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleExportPDF} 
+            disabled={exportingPDF || filteredLoans.length === 0}
+            className="gap-2"
+          >
+            {exportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+            Export PDF
           </Button>
 
           <Link to="/loans/new">

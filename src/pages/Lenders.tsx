@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Pencil, Trash2, ExternalLink, Building2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, ExternalLink, Building2, FileDown, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import FadeInStagger from "@/components/FadeInStagger";
 import LendersSummaryCard from "@/components/lenders/LendersSummaryCard";
@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatINR } from "@/lib/currency";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { exportLendersToPDF } from "@/lib/pdf-export";
 
 interface LenderWithStats {
   id: string;
@@ -62,6 +63,9 @@ export default function Lenders() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deletingLender, setDeletingLender] = useState<LenderWithStats | null>(null);
+  
+  // PDF export state
+  const [exportingPDF, setExportingPDF] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -271,6 +275,24 @@ export default function Lenders() {
     return variants[type] || "secondary";
   };
 
+  const handleExportPDF = async () => {
+    if (lenders.length === 0) {
+      toast({ title: "No lenders to export", variant: "destructive" });
+      return;
+    }
+    
+    setExportingPDF(true);
+    try {
+      await exportLendersToPDF(lenders, "Lender Master Report");
+      toast({ title: "PDF exported successfully!" });
+    } catch (error: any) {
+      console.error("Export error:", error);
+      toast({ title: "Failed to export PDF", description: error.message, variant: "destructive" });
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -278,10 +300,16 @@ export default function Lenders() {
           <h1 className="text-4xl font-bold">Lender Master</h1>
           <p className="text-muted-foreground mt-2">Manage all your lenders in one place</p>
         </div>
-        <Button onClick={() => setAddDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Lender
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportPDF} disabled={exportingPDF || lenders.length === 0}>
+            {exportingPDF ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
+            Export PDF
+          </Button>
+          <Button onClick={() => setAddDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Lender
+          </Button>
+        </div>
       </div>
 
       <FadeInStagger>
