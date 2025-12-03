@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "robots.txt", "apple-touch-icon.png"],
       manifest: {
-        name: "Indus Loan Hub - Personal Loan Manager",
-        short_name: "Loan Hub",
+        name: "FinPath Tracker - Personal Finance Manager",
+        short_name: "FinPath Tracker",
         description: "Track and manage your loans, EMIs, and payments efficiently",
         theme_color: "#3b82f6",
         background_color: "#ffffff",

@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Wallet, Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle2, Sparkles } from "lucide-react";
+import { Loader2, Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import finpathLogo from "@/assets/finpath-logo.png";
 
 const Auth = () => {
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
@@ -280,12 +281,10 @@ const Auth = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-3 bg-gradient-primary rounded-xl shadow-lg">
-              <Wallet className="h-8 w-8 text-primary-foreground" />
-            </div>
+            <img src={finpathLogo} alt="FinPath Tracker" className="h-16 w-16 rounded-xl shadow-lg" />
           </div>
           <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Loan Tracker
+            FinPath Tracker
           </h1>
           <p className="text-muted-foreground mt-2">
             Track your loans, EMIs, budget and financial health
