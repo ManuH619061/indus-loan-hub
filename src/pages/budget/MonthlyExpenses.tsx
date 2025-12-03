@@ -16,8 +16,8 @@ import { Plus, Edit2, Trash2, Search, Settings, Loader2, Calendar, TrendingUp, R
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import FadeInStagger from "@/components/FadeInStagger";
-import { useNavigate } from "react-router-dom";
 import RecurringExpenses from "@/components/budget/RecurringExpenses";
+import CategoryManagerSheet from "@/components/budget/CategoryManagerSheet";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))', 'hsl(var(--destructive))'];
 
@@ -68,9 +68,9 @@ interface BankAccount {
 
 export default function MonthlyExpenses() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [openCategoryManager, setOpenCategoryManager] = useState(false);
   const [expenses, setExpenses] = useState<MonthlyExpense[]>([]);
   const [groups, setGroups] = useState<ExpenseGroup[]>([]);
   const [subgroups, setSubgroups] = useState<ExpenseSubgroup[]>([]);
@@ -453,7 +453,7 @@ export default function MonthlyExpenses() {
             onChange={(e) => setSelectedMonth(e.target.value)}
             className="w-[180px]"
           />
-          <Button variant="outline" onClick={() => navigate("/budget/categories")}>
+          <Button variant="outline" onClick={() => setOpenCategoryManager(true)}>
             <Settings className="h-4 w-4 mr-2" />
             Categories
           </Button>
@@ -829,7 +829,7 @@ export default function MonthlyExpenses() {
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
                   <AlertCircle className="h-4 w-4 text-amber-500" />
                   <span className="text-sm text-amber-600 dark:text-amber-400">
-                    <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/budget/categories")}>
+                    <Button variant="link" className="p-0 h-auto" onClick={() => setOpenCategoryManager(true)}>
                       Create categories first
                     </Button>
                   </span>
@@ -1013,6 +1013,13 @@ export default function MonthlyExpenses() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Category Manager Sheet */}
+      <CategoryManagerSheet 
+        open={openCategoryManager} 
+        onOpenChange={setOpenCategoryManager}
+        onCategoriesUpdated={fetchData}
+      />
     </div>
   );
 }
