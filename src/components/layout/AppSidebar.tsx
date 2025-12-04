@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import finpathLogo from "@/assets/finpath-logo.png";
 
 interface AppSidebarProps {
   isOpen: boolean;
@@ -240,6 +241,24 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onCollapseToggle }: A
           isCollapsed ? "w-16" : "w-60"
         )}
       >
+        {/* Logo Header */}
+        <div className={cn(
+          "flex items-center gap-2 px-3 py-4 border-b",
+          isCollapsed ? "justify-center" : "justify-start"
+        )}>
+          <img 
+            src={finpathLogo} 
+            alt="FinPath" 
+            className={cn(
+              "rounded-lg shadow-sm transition-all",
+              isCollapsed ? "h-8 w-8" : "h-10 w-10"
+            )} 
+          />
+          {!isCollapsed && (
+            <span className="font-semibold text-foreground">FinPath</span>
+          )}
+        </div>
+
         <ScrollArea className="flex-1 py-4">
           <nav className="px-2 space-y-1">
             {navigation.map((item) =>
