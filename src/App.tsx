@@ -31,6 +31,10 @@ import DebtPayoffCalculator from "./pages/budget/DebtPayoffCalculator";
 import CategoryManager from "./pages/budget/CategoryManager";
 import BudgetReportsPage from "./pages/budget/BudgetReportsPage";
 import ForecastPage from "./pages/budget/ForecastPage";
+import BudgetOverview from "./pages/budget/BudgetOverview";
+import BudgetPlannerHub from "./pages/budget/BudgetPlannerHub";
+import SpendingTracker from "./pages/budget/SpendingTracker";
+import BudgetReportsHub from "./pages/budget/BudgetReportsHub";
 import BankStatementImport from "./pages/banking/BankStatementImport";
 import BankAccountsDashboard from "./pages/banking/BankAccountsDashboard";
 import Reconciliation from "./pages/banking/Reconciliation";
@@ -76,6 +80,10 @@ function AnimatedRoutes() {
         <Route path="/budget/visual-reports" element={<ProtectedRoute><Layout><PageTransition><BudgetReportsPage /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/budget/forecast" element={<ProtectedRoute><Layout><PageTransition><ForecastPage /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/budget/reports" element={<ProtectedRoute><Layout><PageTransition><BudgetReports /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/budget/overview" element={<ProtectedRoute><Layout><PageTransition><BudgetOverview /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/budget/planner" element={<ProtectedRoute><Layout><PageTransition><BudgetPlannerHub /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/budget/spending" element={<ProtectedRoute><Layout><PageTransition><SpendingTracker /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/budget/reports-hub" element={<ProtectedRoute><Layout><PageTransition><BudgetReportsHub /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/banking/accounts" element={<ProtectedRoute><Layout><PageTransition><BankAccountsDashboard /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/banking/add-account" element={<ProtectedRoute><Layout><PageTransition><AddBankAccount /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/banking/import/:accountId" element={<ProtectedRoute><Layout><PageTransition><BankStatementImport /></PageTransition></Layout></ProtectedRoute>} />
