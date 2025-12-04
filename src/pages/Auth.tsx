@@ -281,13 +281,13 @@ const Auth = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <img src={finpathLogo} alt="FinPath Tracker" className="h-16 w-16 rounded-xl shadow-lg" />
+            <img src={finpathLogo} alt="FinPath" className="h-20 w-20 rounded-2xl shadow-xl" />
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            FinPath Tracker
+          <h1 className="text-3xl font-bold text-foreground">
+            FinPath
           </h1>
-          <p className="text-muted-foreground mt-2">
-            Track your loans, EMIs, budget and financial health
+          <p className="text-sm text-muted-foreground mt-2">
+            Your financial journey, simplified
           </p>
         </div>
 
