@@ -52,6 +52,8 @@ import {
 } from "@/lib/portfolio-stats";
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 import { cn } from "@/lib/utils";
+import { FinancialCommandConsole } from "@/components/ai/FinancialCommandConsole";
+import { CashflowGuardian } from "@/components/ai/CashflowGuardian";
 
 interface DashboardStats {
   totalOutstanding: number;
@@ -452,6 +454,12 @@ export default function NewDashboard() {
           </div>
         ) : (
           <>
+            {/* AI Intelligence Hub - Command Console + Cashflow Guardian */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <FinancialCommandConsole />
+              <CashflowGuardian />
+            </div>
+
             {/* KPI Cards - 6 columns on desktop, 2 on mobile */}
             <div className="grid gap-3 md:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
               {/* Total Outstanding */}
