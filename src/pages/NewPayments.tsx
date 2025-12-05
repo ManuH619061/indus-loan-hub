@@ -12,7 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { formatINR } from "@/lib/currency";
-import { Plus, Smartphone, CreditCard, Banknote, Building2, TrendingUp, Calendar, AlertCircle, Pencil, Trash2, Upload, FileImage, X, ExternalLink, CheckSquare } from "lucide-react";
+import { Plus, Smartphone, CreditCard, Banknote, Building2, TrendingUp, Calendar, AlertCircle, Pencil, Trash2, Upload, FileImage, X, ExternalLink, CheckSquare, History } from "lucide-react";
+import PaymentHistoryTimeline from "@/components/payments/PaymentHistoryTimeline";
 import { ChartContainer } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
@@ -544,7 +545,7 @@ export default function NewPayments() {
       </div>
 
       <Tabs defaultValue="record" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="record">Record Payment</TabsTrigger>
           <TabsTrigger value="upcoming">Upcoming ({upcomingEMIs.length})</TabsTrigger>
           <TabsTrigger value="overdue">
@@ -552,6 +553,10 @@ export default function NewPayments() {
             {overdueEMIs.length > 0 && <Badge variant="destructive" className="ml-2">{overdueEMIs.length}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="timeline">
+            <History className="h-4 w-4 mr-1" />
+            Timeline
+          </TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
@@ -867,6 +872,10 @@ export default function NewPayments() {
               </ChartContainer>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="timeline">
+          <PaymentHistoryTimeline payments={payments} loans={loans} />
         </TabsContent>
       </Tabs>
 
