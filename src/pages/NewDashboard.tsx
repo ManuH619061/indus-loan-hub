@@ -54,6 +54,7 @@ import { format, startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns
 import { cn } from "@/lib/utils";
 import { FinancialCommandConsole } from "@/components/ai/FinancialCommandConsole";
 import { CashflowGuardian } from "@/components/ai/CashflowGuardian";
+import { CreditScoreSimulator } from "@/components/ai/CreditScoreSimulator";
 
 interface DashboardStats {
   totalOutstanding: number;
@@ -454,10 +455,11 @@ export default function NewDashboard() {
           </div>
         ) : (
           <>
-            {/* AI Intelligence Hub - Command Console + Cashflow Guardian */}
-            <div className="grid gap-4 md:grid-cols-2">
+            {/* AI Intelligence Hub - Command Console + Cashflow Guardian + Credit Score */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <FinancialCommandConsole />
               <CashflowGuardian />
+              <CreditScoreSimulator />
             </div>
 
             {/* KPI Cards - 6 columns on desktop, 2 on mobile */}
