@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Plus, 
   TrendingUp, 
@@ -16,7 +17,6 @@ import {
   Calendar,
   Clock,
   Wallet,
-  CreditCard,
   AlertTriangle,
   DollarSign,
   Building2,
@@ -25,10 +25,16 @@ import {
   Bell,
   Zap,
   Ban,
-  CheckCircle2
+  CheckCircle2,
+  Download,
+  Moon,
+  Sun
 } from "lucide-react";
+import { toast } from "sonner";
+import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
-import { formatINR, formatPercent } from "@/lib/currency";
+import { formatINR } from "@/lib/currency";
+import { exportDashboardToPDF } from "@/lib/pdf-export";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 import {
   fetchLoansWithAmortization,
@@ -87,10 +93,12 @@ interface AlertItem {
 export default function NewDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
   const { isNewUser, isLoading: onboardingLoading, refreshStatus } = useOnboardingStatus();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [loans, setLoans] = useState<LoanWithAmortization[]>([]);
   const [lenders, setLenders] = useState<{ id: string; name: string }[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
@@ -119,6 +127,29 @@ export default function NewDashboard() {
   });
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [calendarTab, setCalendarTab] = useState<'week' | 'month' | 'all'>('month');
+
+  // Export dashboard to PDF
+  const handleExportPDF = async () => {
+    setExporting(true);
+    try {
+      const fileName = exportDashboardToPDF({
+        ...stats,
+        payoffProgress,
+        lenderExposure,
+        alerts: alerts.map(a => ({ title: a.title, description: a.description, tag: a.tag })),
+      });
+      toast.success(`Downloaded ${fileName}`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
 
   // Show onboarding for new users
   useEffect(() => {
@@ -480,7 +511,44 @@ export default function NewDashboard() {
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold">Financial Dashboard</h1>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {/* Theme Toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={toggleTheme}
+                  className="h-9 w-9"
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Export PDF */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={handleExportPDF}
+                  disabled={exporting || loading}
+                  className="h-9 w-9"
+                >
+                  <Download className={cn("h-4 w-4", exporting && "animate-pulse")} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Export Dashboard as PDF</TooltipContent>
+            </Tooltip>
+
             <Button onClick={() => navigate("/loans/new")} className="flex-1 sm:flex-none">
               <Plus className="mr-2 h-4 w-4" />
               Add New Loan
@@ -507,67 +575,73 @@ export default function NewDashboard() {
             {/* Section 1: Key Summary - 3 cards */}
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
               {/* Card 1: Total Outstanding Loans */}
-              <Card className="p-6">
+              <Card className="p-6 border-border/50 bg-card hover:shadow-lg transition-shadow">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="p-2 rounded-lg bg-primary/10">
+                  <div className="p-2.5 rounded-xl bg-primary/10 dark:bg-primary/20">
                     <Wallet className="h-5 w-5 text-primary" />
                   </div>
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs font-medium">
                     Active Loans: {stats.activeLoans}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mb-1">Total Outstanding Loans</p>
-                <p className="text-3xl font-bold">{formatINR(stats.totalOutstandingPrincipal)}</p>
-                <p className="text-xs text-muted-foreground mt-1">Principal still to pay</p>
+                <p className="text-3xl font-bold tracking-tight">{formatINR(stats.totalOutstandingPrincipal)}</p>
+                <p className="text-xs text-muted-foreground mt-2">Principal still to pay</p>
               </Card>
 
               {/* Card 2: This Month's EMIs */}
-              <Card className="p-6">
+              <Card className="p-6 border-border/50 bg-card hover:shadow-lg transition-shadow">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="p-2 rounded-lg bg-chart-1/10">
+                  <div className="p-2.5 rounded-xl bg-chart-1/10 dark:bg-chart-1/20">
                     <Calendar className="h-5 w-5 text-chart-1" />
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground mb-1">This Month's EMIs</p>
-                <p className="text-3xl font-bold">{formatINR(stats.thisMonthEMI)}</p>
-                <p className="text-xs text-muted-foreground mt-2 mb-2">EMIs due this month</p>
-                <div className="space-y-1">
+                <p className="text-3xl font-bold tracking-tight">{formatINR(stats.thisMonthEMI)}</p>
+                <p className="text-xs text-muted-foreground mt-2 mb-3">EMIs due this month</p>
+                <div className="space-y-1.5">
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Paid</span>
-                    <span>{stats.paidThisMonthCount} / {stats.thisMonthEMICount}</span>
+                    <span className="font-medium">{stats.paidThisMonthCount} / {stats.thisMonthEMICount}</span>
                   </div>
                   <Progress 
                     value={stats.thisMonthEMICount > 0 ? (stats.paidThisMonthCount / stats.thisMonthEMICount) * 100 : 0} 
-                    className="h-2"
+                    className="h-2.5"
                   />
                 </div>
               </Card>
 
               {/* Card 3: Overdue & Next EMI */}
-              <Card className="p-6">
+              <Card className="p-6 border-border/50 bg-card hover:shadow-lg transition-shadow">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="p-2 rounded-lg bg-warning/10">
+                  <div className="p-2.5 rounded-xl bg-warning/10 dark:bg-warning/20">
                     <Clock className="h-5 w-5 text-warning" />
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground mb-2">Overdue & Next EMI</p>
-                <div className="space-y-3">
-                  <div className={cn(stats.overdueCount > 0 ? "text-destructive" : "text-muted-foreground")}>
-                    <p className="text-sm font-medium">
-                      Overdue EMIs: {stats.overdueCount} {stats.overdueCount > 0 && `– ${formatINR(stats.overdueAmount)}`}
+                <p className="text-sm text-muted-foreground mb-3">Overdue & Next EMI</p>
+                <div className="space-y-4">
+                  <div className={cn(
+                    "p-3 rounded-lg",
+                    stats.overdueCount > 0 
+                      ? "bg-destructive/10 dark:bg-destructive/20 border border-destructive/20" 
+                      : "bg-muted/50"
+                  )}>
+                    <p className={cn(
+                      "text-sm font-medium",
+                      stats.overdueCount > 0 ? "text-destructive" : "text-muted-foreground"
+                    )}>
+                      Overdue: {stats.overdueCount} {stats.overdueCount > 0 && `– ${formatINR(stats.overdueAmount)}`}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-sm">
-                      <span className="text-muted-foreground">Next EMI: </span>
-                      {stats.nextEMIDate ? (
-                        <span className="font-medium">
-                          {format(new Date(stats.nextEMIDate), 'MMM d, yyyy')} – {formatINR(stats.nextEMIAmount)}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">None scheduled</span>
-                      )}
-                    </p>
+                  <div className="p-3 rounded-lg bg-muted/50 dark:bg-muted/30">
+                    <p className="text-xs text-muted-foreground mb-1">Next EMI</p>
+                    {stats.nextEMIDate ? (
+                      <p className="text-sm font-semibold">
+                        {format(new Date(stats.nextEMIDate), 'MMM d')} – {formatINR(stats.nextEMIAmount)}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">None scheduled</p>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -576,17 +650,19 @@ export default function NewDashboard() {
             {/* Section 2: Loan Health & Cash Flow - 2 columns */}
             <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
               {/* Loan Risk Overview */}
-              <Card className="p-6">
+              <Card className="p-6 border-border/50 bg-card">
                 <CardHeader className="p-0 pb-4">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-warning" />
+                    <div className="p-2 rounded-lg bg-warning/10 dark:bg-warning/20">
+                      <AlertTriangle className="h-4 w-4 text-warning" />
+                    </div>
                     Loan Risk Overview
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0 space-y-4">
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                <CardContent className="p-0 space-y-3">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/40 dark:bg-muted/20 border border-border/50 hover:bg-muted/60 dark:hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded bg-destructive/10">
+                      <div className="p-2 rounded-lg bg-destructive/10 dark:bg-destructive/20">
                         <Zap className="h-4 w-4 text-destructive" />
                       </div>
                       <div>
@@ -595,20 +671,20 @@ export default function NewDashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <Badge variant={stats.highInterestLoans.count > 0 ? "destructive" : "secondary"}>
+                      <Badge variant={stats.highInterestLoans.count > 0 ? "destructive" : "secondary"} className="font-semibold">
                         {stats.highInterestLoans.count}
                       </Badge>
                       {stats.highInterestLoans.count > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-1 font-medium">
                           {formatINR(stats.highInterestLoans.outstanding)}
                         </p>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/40 dark:bg-muted/20 border border-border/50 hover:bg-muted/60 dark:hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded bg-success/10">
+                      <div className="p-2 rounded-lg bg-success/10 dark:bg-success/20">
                         <CheckCircle2 className="h-4 w-4 text-success" />
                       </div>
                       <div>
@@ -617,18 +693,18 @@ export default function NewDashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <Badge variant="secondary">{stats.closingIn90Days.count}</Badge>
+                      <Badge variant="secondary" className="font-semibold">{stats.closingIn90Days.count}</Badge>
                       {stats.closingIn90Days.count > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-1 font-medium">
                           {formatINR(stats.closingIn90Days.emiTotal)} EMIs
                         </p>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/40 dark:bg-muted/20 border border-border/50 hover:bg-muted/60 dark:hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded bg-warning/10">
+                      <div className="p-2 rounded-lg bg-warning/10 dark:bg-warning/20">
                         <Ban className="h-4 w-4 text-warning" />
                       </div>
                       <div>
@@ -636,7 +712,7 @@ export default function NewDashboard() {
                         <p className="text-xs text-muted-foreground">Last 6 months</p>
                       </div>
                     </div>
-                    <Badge variant={stats.missedLastSixMonths > 0 ? "destructive" : "secondary"}>
+                    <Badge variant={stats.missedLastSixMonths > 0 ? "destructive" : "secondary"} className="font-semibold">
                       {stats.missedLastSixMonths}
                     </Badge>
                   </div>
@@ -644,25 +720,27 @@ export default function NewDashboard() {
               </Card>
 
               {/* This Month's Cash Flow */}
-              <Card className="p-6">
+              <Card className="p-6 border-border/50 bg-card">
                 <CardHeader className="p-0 pb-4">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-success" />
+                    <div className="p-2 rounded-lg bg-success/10 dark:bg-success/20">
+                      <DollarSign className="h-4 w-4 text-success" />
+                    </div>
                     This Month's Cash Flow
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    <div className="text-center p-3 rounded-lg bg-success/10">
-                      <p className="text-xs text-muted-foreground">Income</p>
+                  <div className="grid grid-cols-3 gap-3 mb-5">
+                    <div className="text-center p-4 rounded-xl bg-success/10 dark:bg-success/15 border border-success/20">
+                      <p className="text-xs text-muted-foreground mb-1">Income</p>
                       <p className="text-lg font-bold text-success">{formatINR(stats.monthlyIncome)}</p>
                     </div>
-                    <div className="text-center p-3 rounded-lg bg-primary/10">
-                      <p className="text-xs text-muted-foreground">EMIs</p>
+                    <div className="text-center p-4 rounded-xl bg-primary/10 dark:bg-primary/15 border border-primary/20">
+                      <p className="text-xs text-muted-foreground mb-1">EMIs</p>
                       <p className="text-lg font-bold text-primary">{formatINR(stats.thisMonthEMI)}</p>
                     </div>
-                    <div className="text-center p-3 rounded-lg bg-warning/10">
-                      <p className="text-xs text-muted-foreground">Expenses</p>
+                    <div className="text-center p-4 rounded-xl bg-warning/10 dark:bg-warning/15 border border-warning/20">
+                      <p className="text-xs text-muted-foreground mb-1">Expenses</p>
                       <p className="text-lg font-bold text-warning">{formatINR(stats.monthlyExpenses)}</p>
                     </div>
                   </div>
@@ -670,12 +748,18 @@ export default function NewDashboard() {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={cashFlowData} layout="vertical">
                         <XAxis type="number" hide />
-                        <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 12 }} />
+                        <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
                         <RechartsTooltip 
                           formatter={(value: number) => formatINR(value)}
-                          contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                          contentStyle={{ 
+                            background: 'hsl(var(--card))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                          }}
+                          labelStyle={{ color: 'hsl(var(--foreground))' }}
                         />
-                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                        <Bar dataKey="value" radius={[0, 6, 6, 0]}>
                           {cashFlowData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.fill} />
                           ))}
@@ -688,15 +772,17 @@ export default function NewDashboard() {
             </div>
 
             {/* Section 3: EMI Calendar */}
-            <Card className="p-6">
+            <Card className="p-6 border-border/50 bg-card">
               <CardHeader className="p-0 pb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-primary" />
+                    <div className="p-2 rounded-lg bg-primary/10 dark:bg-primary/20">
+                      <Calendar className="h-4 w-4 text-primary" />
+                    </div>
                     EMI Calendar
                   </CardTitle>
                   <Tabs value={calendarTab} onValueChange={(v) => setCalendarTab(v as 'week' | 'month' | 'all')}>
-                    <TabsList className="grid w-full sm:w-auto grid-cols-3">
+                    <TabsList className="grid w-full sm:w-auto grid-cols-3 bg-muted/50 dark:bg-muted/30">
                       <TabsTrigger value="week" className="text-xs sm:text-sm">This Week</TabsTrigger>
                       <TabsTrigger value="month" className="text-xs sm:text-sm">This Month</TabsTrigger>
                       <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
@@ -776,10 +862,12 @@ export default function NewDashboard() {
             {/* Section 4: Lender Exposure & Loan Progress */}
             <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
               {/* Lender Exposure */}
-              <Card className="p-6">
+              <Card className="p-6 border-border/50 bg-card">
                 <CardHeader className="p-0 pb-4">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-chart-2" />
+                    <div className="p-2 rounded-lg bg-chart-2/10 dark:bg-chart-2/20">
+                      <Building2 className="h-4 w-4 text-chart-2" />
+                    </div>
                     Lender Exposure
                   </CardTitle>
                   <CardDescription>Outstanding by lender</CardDescription>
@@ -795,13 +883,19 @@ export default function NewDashboard() {
                       <div className="h-48">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={lenderChartData}>
-                            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}K`} />
+                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                            <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}K`} />
                             <RechartsTooltip 
                               formatter={(value: number) => formatINR(value)}
-                              contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                              contentStyle={{ 
+                                background: 'hsl(var(--card))', 
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                              }}
+                              labelStyle={{ color: 'hsl(var(--foreground))' }}
                             />
-                            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                            <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                               {lenderChartData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={entry.fill} />
                               ))}
@@ -809,10 +903,10 @@ export default function NewDashboard() {
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
-                      <div className="mt-4 pt-4 border-t">
+                      <div className="mt-4 pt-4 border-t border-border/50">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Total Outstanding</span>
-                          <span className="font-bold">{formatINR(totalLenderExposure)}</span>
+                          <span className="font-bold text-lg">{formatINR(totalLenderExposure)}</span>
                         </div>
                       </div>
                     </>
@@ -821,40 +915,50 @@ export default function NewDashboard() {
               </Card>
 
               {/* Loan Closure Progress */}
-              <Card className="p-6">
+              <Card className="p-6 border-border/50 bg-card">
                 <CardHeader className="p-0 pb-4">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-success" />
+                    <div className="p-2 rounded-lg bg-success/10 dark:bg-success/20">
+                      <TrendingUp className="h-4 w-4 text-success" />
+                    </div>
                     Loan Closure Progress
                   </CardTitle>
                   <CardDescription>Overall repayment progress</CardDescription>
                 </CardHeader>
-                <CardContent className="p-0 space-y-4">
-                  <div className="space-y-2">
+                <CardContent className="p-0 space-y-5">
+                  <div className="space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Progress</span>
-                      <span className="font-semibold">{payoffProgress.progressPercent.toFixed(1)}%</span>
+                      <span className="font-bold text-lg">{payoffProgress.progressPercent.toFixed(1)}%</span>
                     </div>
-                    <Progress value={payoffProgress.progressPercent} className="h-3" />
+                    <div className="relative">
+                      <Progress value={payoffProgress.progressPercent} className="h-4" />
+                      <div 
+                        className="absolute top-1/2 -translate-y-1/2 text-[10px] font-medium text-primary-foreground"
+                        style={{ left: `calc(${Math.min(payoffProgress.progressPercent, 90)}% + 4px)` }}
+                      >
+                        {payoffProgress.progressPercent > 10 && `${payoffProgress.progressPercent.toFixed(0)}%`}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 pt-2">
-                    <div className="p-4 rounded-lg bg-success/10">
-                      <p className="text-xs text-muted-foreground">Paid so far</p>
-                      <p className="text-xl font-bold text-success mt-1">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl bg-success/10 dark:bg-success/15 border border-success/20">
+                      <p className="text-xs text-muted-foreground mb-1">Paid so far</p>
+                      <p className="text-xl font-bold text-success">
                         {formatINR(payoffProgress.paidPrincipal)}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        ({payoffProgress.progressPercent.toFixed(1)}%)
+                      <p className="text-xs text-success/80 mt-1 font-medium">
+                        {payoffProgress.progressPercent.toFixed(1)}% complete
                       </p>
                     </div>
-                    <div className="p-4 rounded-lg bg-muted">
-                      <p className="text-xs text-muted-foreground">Remaining</p>
-                      <p className="text-xl font-bold mt-1">
+                    <div className="p-4 rounded-xl bg-muted/50 dark:bg-muted/30 border border-border/50">
+                      <p className="text-xs text-muted-foreground mb-1">Remaining</p>
+                      <p className="text-xl font-bold">
                         {formatINR(payoffProgress.remainingPrincipal)}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        ({(100 - payoffProgress.progressPercent).toFixed(1)}%)
+                      <p className="text-xs text-muted-foreground mt-1 font-medium">
+                        {(100 - payoffProgress.progressPercent).toFixed(1)}% to go
                       </p>
                     </div>
                   </div>
@@ -863,38 +967,43 @@ export default function NewDashboard() {
             </div>
 
             {/* Section 5: Alerts & Reminders */}
-            <Card className="p-6">
+            <Card className="p-6 border-border/50 bg-card">
               <CardHeader className="p-0 pb-4">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Bell className="h-5 w-5 text-warning" />
+                  <div className="p-2 rounded-lg bg-warning/10 dark:bg-warning/20">
+                    <Bell className="h-4 w-4 text-warning" />
+                  </div>
                   Alerts & Reminders
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 {alerts.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <CheckCircle2 className="h-10 w-10 mx-auto mb-2 text-success opacity-70" />
-                    <p className="text-sm">All caught up! No pending alerts.</p>
+                  <div className="text-center py-10 text-muted-foreground">
+                    <div className="p-4 rounded-full bg-success/10 dark:bg-success/20 inline-block mb-3">
+                      <CheckCircle2 className="h-8 w-8 text-success" />
+                    </div>
+                    <p className="text-sm font-medium">All caught up!</p>
+                    <p className="text-xs text-muted-foreground mt-1">No pending alerts or reminders.</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {alerts.map((alert) => (
                       <div
                         key={alert.id}
                         className={cn(
-                          "flex items-center justify-between p-4 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors",
-                          alert.type === 'danger' && "border-destructive/30 bg-destructive/5",
-                          alert.type === 'warning' && "border-warning/30 bg-warning/5",
-                          alert.type === 'info' && "border-primary/30 bg-primary/5"
+                          "flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all hover:scale-[1.01] hover:shadow-md",
+                          alert.type === 'danger' && "border-destructive/30 bg-destructive/5 dark:bg-destructive/10 hover:border-destructive/50",
+                          alert.type === 'warning' && "border-warning/30 bg-warning/5 dark:bg-warning/10 hover:border-warning/50",
+                          alert.type === 'info' && "border-primary/30 bg-primary/5 dark:bg-primary/10 hover:border-primary/50"
                         )}
                         onClick={() => alert.route && navigate(alert.route)}
                       >
                         <div className="flex items-center gap-3">
                           <div className={cn(
-                            "p-2 rounded-lg",
-                            alert.type === 'danger' && "bg-destructive/10",
-                            alert.type === 'warning' && "bg-warning/10",
-                            alert.type === 'info' && "bg-primary/10"
+                            "p-2.5 rounded-xl",
+                            alert.type === 'danger' && "bg-destructive/10 dark:bg-destructive/20",
+                            alert.type === 'warning' && "bg-warning/10 dark:bg-warning/20",
+                            alert.type === 'info' && "bg-primary/10 dark:bg-primary/20"
                           )}>
                             {alert.type === 'danger' ? (
                               <AlertCircle className="h-4 w-4 text-destructive" />
@@ -905,15 +1014,15 @@ export default function NewDashboard() {
                             )}
                           </div>
                           <div>
-                            <p className="text-sm font-medium">{alert.title}</p>
-                            <p className="text-xs text-muted-foreground">{alert.description}</p>
+                            <p className="text-sm font-semibold">{alert.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{alert.description}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           {alert.tag && (
                             <Badge 
                               variant={alert.type === 'danger' ? 'destructive' : 'secondary'}
-                              className="text-xs"
+                              className="text-xs font-medium"
                             >
                               {alert.tag}
                             </Badge>
