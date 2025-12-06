@@ -38,7 +38,7 @@ import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR } from "@/lib/currency";
 import { exportDashboardToPDF } from "@/lib/pdf-export";
-import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, LineChart, Line, ComposedChart, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, LineChart, Line, ComposedChart, Legend, PieChart as RechartsPieChart, Pie } from 'recharts';
 import {
   fetchLoansWithAmortization,
   calculatePortfolioStatsFromAmortization,
@@ -1111,119 +1111,25 @@ export default function NewDashboard() {
                       <p className="text-sm">No trend data available</p>
                     </div>
                   ) : (
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={emiTrend}>
-                          <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                          <YAxis 
-                            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
-                            tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}K`}
-                          />
-                          <RechartsTooltip 
-                            formatter={(value: number, name: string) => {
-                              const labels: Record<string, string> = {
-                                principal: 'Principal',
-                                interest: 'Interest',
-                                emiPaid: 'Total EMI',
-                                income: 'Income'
-                              };
-                              return [formatINR(value), labels[name] || name];
-                            }}
-                            contentStyle={{ 
-                              background: 'hsl(var(--card))', 
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px',
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                            }}
-                            labelStyle={{ color: 'hsl(var(--foreground))' }}
-                          />
-                          <Legend 
-                            wrapperStyle={{ paddingTop: '12px' }}
-                            formatter={(value) => {
-                              const labels: Record<string, string> = {
-                                principal: 'Principal',
-                                interest: 'Interest',
-                                income: 'Income'
-                              };
-                              return labels[value] || value;
-                            }}
-                          />
-                          <Bar 
-                            dataKey="principal" 
-                            name="principal"
-                            stackId="emi"
-                            fill="hsl(var(--chart-1))" 
-                            radius={[0, 0, 0, 0]}
-                            cursor="pointer"
-                            onClick={(data) => handleTrendBarClick(data)}
-                          />
-                          <Bar 
-                            dataKey="interest" 
-                            name="interest"
-                            stackId="emi"
-                            fill="hsl(var(--chart-2))" 
-                            radius={[4, 4, 0, 0]}
-                            cursor="pointer"
-                            onClick={(data) => handleTrendBarClick(data)}
-                          />
-                          {stats.monthlyIncome > 0 && (
-                            <Line 
-                              type="monotone" 
-                              dataKey="income" 
-                              name="income"
-                              stroke="hsl(var(--success))" 
-                              strokeWidth={2}
-                              dot={{ fill: 'hsl(var(--success))', r: 4 }}
-                              strokeDasharray="5 5"
-                            />
-                          )}
-                        </ComposedChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Lender Exposure - Clickable bars with drill-down */}
-              <Card className="p-6 border-border/50 bg-card">
-                <CardHeader className="p-0 pb-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <div className="p-2 rounded-lg bg-chart-2/10 dark:bg-chart-2/20">
-                          <Building2 className="h-4 w-4 text-chart-2" />
-                        </div>
-                        Lender Exposure
-                      </CardTitle>
-                      <CardDescription>Click on a bar to view lender details</CardDescription>
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => navigate('/lenders')}
-                      className="text-xs"
-                    >
-                      View all
-                      <ChevronRight className="ml-1 h-3 w-3" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {lenderExposure.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Building2 className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No lender data available</p>
-                    </div>
-                  ) : (
                     <>
-                      <div className="h-48">
+                      <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={lenderChartData}>
-                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                            <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}K`} />
+                          <ComposedChart data={emiTrend}>
+                            <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                            <YAxis 
+                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
+                              tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}K`}
+                            />
                             <RechartsTooltip 
-                              formatter={(value: number) => formatINR(value)}
-                              labelFormatter={(label, payload) => payload?.[0]?.payload?.fullName || label}
+                              formatter={(value: number, name: string) => {
+                                const labels: Record<string, string> = {
+                                  principal: 'Principal',
+                                  interest: 'Interest',
+                                  emiPaid: 'Total EMI',
+                                  income: 'Income'
+                                };
+                                return [formatINR(value), labels[name] || name];
+                              }}
                               contentStyle={{ 
                                 background: 'hsl(var(--card))', 
                                 border: '1px solid hsl(var(--border))',
@@ -1232,30 +1138,265 @@ export default function NewDashboard() {
                               }}
                               labelStyle={{ color: 'hsl(var(--foreground))' }}
                             />
+                            <Legend 
+                              wrapperStyle={{ paddingTop: '12px' }}
+                              formatter={(value) => {
+                                const labels: Record<string, string> = {
+                                  principal: 'Principal',
+                                  interest: 'Interest',
+                                  income: 'Income'
+                                };
+                                return labels[value] || value;
+                              }}
+                            />
                             <Bar 
-                              dataKey="value" 
-                              radius={[6, 6, 0, 0]} 
+                              dataKey="principal" 
+                              name="principal"
+                              stackId="emi"
+                              fill="hsl(var(--chart-1))" 
+                              radius={[0, 0, 0, 0]}
                               cursor="pointer"
-                              onClick={(data) => handleLenderBarClick(data)}
-                            >
-                              {lenderChartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                              ))}
-                            </Bar>
-                          </BarChart>
+                              onClick={(data) => handleTrendBarClick(data)}
+                            />
+                            <Bar 
+                              dataKey="interest" 
+                              name="interest"
+                              stackId="emi"
+                              fill="hsl(var(--chart-2))" 
+                              radius={[4, 4, 0, 0]}
+                              cursor="pointer"
+                              onClick={(data) => handleTrendBarClick(data)}
+                            />
+                            {stats.monthlyIncome > 0 && (
+                              <Line 
+                                type="monotone" 
+                                dataKey="income" 
+                                name="income"
+                                stroke="hsl(var(--success))" 
+                                strokeWidth={2}
+                                dot={{ fill: 'hsl(var(--success))', r: 4 }}
+                                strokeDasharray="5 5"
+                              />
+                            )}
+                          </ComposedChart>
                         </ResponsiveContainer>
                       </div>
-                      <div className="mt-4 pt-4 border-t border-border/50">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Total Outstanding</span>
-                          <span className="font-bold text-lg">{formatINR(totalLenderExposure)}</span>
-                        </div>
+                    {/* EMI Breakdown Table */}
+                    {emiTrend.some(t => t.emiPaid > 0) && (
+                      <div className="mt-4 pt-4 border-t border-border/50 overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border/50">
+                              <th className="text-left py-2 px-2 font-medium text-muted-foreground">Month</th>
+                              <th className="text-right py-2 px-2 font-medium text-muted-foreground">Principal</th>
+                              <th className="text-right py-2 px-2 font-medium text-muted-foreground">Interest</th>
+                              <th className="text-right py-2 px-2 font-medium text-muted-foreground">Total EMI</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {emiTrend.map((row) => (
+                              <tr 
+                                key={row.monthKey} 
+                                className="border-b border-border/30 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                                onClick={() => navigate(`/payments?month=${row.monthKey}`)}
+                              >
+                                <td className="py-2 px-2 font-medium">{row.month}</td>
+                                <td className="py-2 px-2 text-right font-mono text-chart-1">{formatINR(row.principal)}</td>
+                                <td className="py-2 px-2 text-right font-mono text-chart-2">{formatINR(row.interest)}</td>
+                                <td className="py-2 px-2 text-right font-mono font-semibold">{formatINR(row.emiPaid)}</td>
+                              </tr>
+                            ))}
+                            <tr className="bg-muted/40 dark:bg-muted/20 font-semibold">
+                              <td className="py-2 px-2">Total</td>
+                              <td className="py-2 px-2 text-right font-mono text-chart-1">
+                                {formatINR(emiTrend.reduce((sum, r) => sum + r.principal, 0))}
+                              </td>
+                              <td className="py-2 px-2 text-right font-mono text-chart-2">
+                                {formatINR(emiTrend.reduce((sum, r) => sum + r.interest, 0))}
+                              </td>
+                              <td className="py-2 px-2 text-right font-mono">
+                                {formatINR(emiTrend.reduce((sum, r) => sum + r.emiPaid, 0))}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
-                    </>
+                    )}
+                  </>
                   )}
                 </CardContent>
               </Card>
+
+              {/* Principal vs Interest Pie Chart */}
+              <Card className="p-6 border-border/50 bg-card">
+                <CardHeader className="p-0 pb-4">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-primary/10 dark:bg-primary/20">
+                      <PieChart className="h-4 w-4 text-primary" />
+                    </div>
+                    Principal vs Interest
+                  </CardTitle>
+                  <CardDescription>Overall breakdown for active loans</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {(() => {
+                    const totalPrincipal = emiTrend.reduce((sum, r) => sum + r.principal, 0);
+                    const totalInterest = emiTrend.reduce((sum, r) => sum + r.interest, 0);
+                    const total = totalPrincipal + totalInterest;
+                    
+                    if (total === 0) {
+                      return (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <PieChart className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">No payment data available</p>
+                        </div>
+                      );
+                    }
+                    
+                    const pieData = [
+                      { name: 'Principal', value: totalPrincipal, fill: 'hsl(var(--chart-1))' },
+                      { name: 'Interest', value: totalInterest, fill: 'hsl(var(--chart-2))' },
+                    ];
+                    
+                    const principalPercent = ((totalPrincipal / total) * 100).toFixed(1);
+                    const interestPercent = ((totalInterest / total) * 100).toFixed(1);
+                    
+                    return (
+                      <>
+                        <div className="h-48">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RechartsPieChart>
+                              <Pie
+                                data={pieData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={50}
+                                outerRadius={70}
+                                paddingAngle={3}
+                                dataKey="value"
+                                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                labelLine={false}
+                              >
+                                {pieData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                              </Pie>
+                              <RechartsTooltip 
+                                formatter={(value: number) => formatINR(value)}
+                                contentStyle={{ 
+                                  background: 'hsl(var(--card))', 
+                                  border: '1px solid hsl(var(--border))',
+                                  borderRadius: '8px',
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                                }}
+                              />
+                            </RechartsPieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-chart-1" />
+                              <span className="text-sm">Principal Paid</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-semibold">{formatINR(totalPrincipal)}</span>
+                              <span className="text-xs text-muted-foreground ml-2">({principalPercent}%)</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-chart-2" />
+                              <span className="text-sm">Interest Paid</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-semibold">{formatINR(totalInterest)}</span>
+                              <span className="text-xs text-muted-foreground ml-2">({interestPercent}%)</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                            <span className="text-sm font-medium">Total Paid (6 months)</span>
+                            <span className="font-bold text-lg">{formatINR(total)}</span>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
             </div>
+
+            {/* Lender Exposure - Full width */}
+            <Card className="p-6 border-border/50 bg-card">
+              <CardHeader className="p-0 pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-chart-2/10 dark:bg-chart-2/20">
+                        <Building2 className="h-4 w-4 text-chart-2" />
+                      </div>
+                      Lender Exposure
+                    </CardTitle>
+                    <CardDescription>Click on a bar to view lender details</CardDescription>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => navigate('/lenders')}
+                    className="text-xs"
+                  >
+                    View all
+                    <ChevronRight className="ml-1 h-3 w-3" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {lenderExposure.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Building2 className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No lender data available</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={lenderChartData}>
+                          <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                          <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}K`} />
+                          <RechartsTooltip 
+                            formatter={(value: number) => formatINR(value)}
+                            labelFormatter={(label, payload) => payload?.[0]?.payload?.fullName || label}
+                            contentStyle={{ 
+                              background: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                            }}
+                            labelStyle={{ color: 'hsl(var(--foreground))' }}
+                          />
+                          <Bar 
+                            dataKey="value" 
+                            radius={[6, 6, 0, 0]} 
+                            cursor="pointer"
+                            onClick={(data) => handleLenderBarClick(data)}
+                          >
+                            {lenderChartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-border/50">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Total Outstanding</span>
+                        <span className="font-bold text-lg">{formatINR(totalLenderExposure)}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Section 5: Loan Closure Progress - Clickable */}
             <Card 
