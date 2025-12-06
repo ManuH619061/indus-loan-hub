@@ -105,6 +105,8 @@ interface MonthlyEMITrend {
   month: string;
   monthKey: string;
   emiPaid: number;
+  principal: number;
+  interest: number;
   income: number;
 }
 
@@ -420,7 +422,7 @@ export default function NewDashboard() {
       })).sort((a, b) => b.outstanding - a.outstanding);
       setLenderExposure(exposureData);
 
-      // Calculate EMI trend for last 6 months
+      // Calculate EMI trend for last 6 months with principal and interest breakdown
       const trendData: MonthlyEMITrend[] = [];
       for (let i = 5; i >= 0; i--) {
         const monthDate = subMonths(today, i);
@@ -428,12 +430,17 @@ export default function NewDashboard() {
         const mEnd = endOfMonth(monthDate);
         
         let emiPaidThisMonth = 0;
+        let principalThisMonth = 0;
+        let interestThisMonth = 0;
+        
         loansData.forEach(loan => {
           const paidRows = loan.amortization_rows?.filter(r => r.is_paid) || [];
           paidRows.forEach(row => {
             const dueDate = new Date(row.due_on);
             if (isWithinInterval(dueDate, { start: mStart, end: mEnd })) {
               emiPaidThisMonth += row.scheduled_emi;
+              principalThisMonth += row.principal_component;
+              interestThisMonth += row.interest_component;
             }
           });
         });
@@ -442,7 +449,9 @@ export default function NewDashboard() {
           month: format(monthDate, 'MMM'),
           monthKey: format(monthDate, 'yyyy-MM'),
           emiPaid: emiPaidThisMonth,
-          income: income, // Using current income as approximation
+          principal: principalThisMonth,
+          interest: interestThisMonth,
+          income: income,
         });
       }
       setEmiTrend(trendData);
@@ -1084,16 +1093,16 @@ export default function NewDashboard() {
 
             {/* Section 4: Trends & Lenders - Charts with click handlers */}
             <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-              {/* EMI Trend (Last 6 Months) - Clickable bars */}
+            {/* EMI Trend (Last 6 Months) - Stacked Principal & Interest */}
               <Card className="p-6 border-border/50 bg-card">
                 <CardHeader className="p-0 pb-4">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <div className="p-2 rounded-lg bg-chart-3/10 dark:bg-chart-3/20">
                       <BarChart3 className="h-4 w-4 text-chart-3" />
                     </div>
-                    EMI Trend (Last 6 Months)
+                    6-Month EMI Trend
                   </CardTitle>
-                  <CardDescription>Click on a bar to view that month's payments</CardDescription>
+                  <CardDescription>Principal & Interest breakdown • Click bar for details</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                   {emiTrend.length === 0 ? (
@@ -1102,7 +1111,7 @@ export default function NewDashboard() {
                       <p className="text-sm">No trend data available</p>
                     </div>
                   ) : (
-                    <div className="h-52">
+                    <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={emiTrend}>
                           <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
@@ -1111,7 +1120,15 @@ export default function NewDashboard() {
                             tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}K`}
                           />
                           <RechartsTooltip 
-                            formatter={(value: number, name: string) => [formatINR(value), name === 'emiPaid' ? 'EMIs Paid' : 'Income']}
+                            formatter={(value: number, name: string) => {
+                              const labels: Record<string, string> = {
+                                principal: 'Principal',
+                                interest: 'Interest',
+                                emiPaid: 'Total EMI',
+                                income: 'Income'
+                              };
+                              return [formatINR(value), labels[name] || name];
+                            }}
                             contentStyle={{ 
                               background: 'hsl(var(--card))', 
                               border: '1px solid hsl(var(--border))',
@@ -1120,11 +1137,31 @@ export default function NewDashboard() {
                             }}
                             labelStyle={{ color: 'hsl(var(--foreground))' }}
                           />
-                          <Legend />
+                          <Legend 
+                            wrapperStyle={{ paddingTop: '12px' }}
+                            formatter={(value) => {
+                              const labels: Record<string, string> = {
+                                principal: 'Principal',
+                                interest: 'Interest',
+                                income: 'Income'
+                              };
+                              return labels[value] || value;
+                            }}
+                          />
                           <Bar 
-                            dataKey="emiPaid" 
-                            name="EMIs Paid"
-                            fill="hsl(var(--primary))" 
+                            dataKey="principal" 
+                            name="principal"
+                            stackId="emi"
+                            fill="hsl(var(--chart-1))" 
+                            radius={[0, 0, 0, 0]}
+                            cursor="pointer"
+                            onClick={(data) => handleTrendBarClick(data)}
+                          />
+                          <Bar 
+                            dataKey="interest" 
+                            name="interest"
+                            stackId="emi"
+                            fill="hsl(var(--chart-2))" 
                             radius={[4, 4, 0, 0]}
                             cursor="pointer"
                             onClick={(data) => handleTrendBarClick(data)}
@@ -1133,10 +1170,11 @@ export default function NewDashboard() {
                             <Line 
                               type="monotone" 
                               dataKey="income" 
-                              name="Income"
+                              name="income"
                               stroke="hsl(var(--success))" 
                               strokeWidth={2}
                               dot={{ fill: 'hsl(var(--success))', r: 4 }}
+                              strokeDasharray="5 5"
                             />
                           )}
                         </ComposedChart>
