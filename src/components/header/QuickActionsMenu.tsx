@@ -118,7 +118,7 @@ export function QuickActionsMenu() {
                 e.preventDefault();
                 handleAction(action);
               }}
-              className="flex items-center gap-3 py-3 px-3 cursor-pointer"
+              className="flex items-center gap-3 py-3 px-3 cursor-pointer focus:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 data-[highlighted]:bg-accent"
             >
               <div className={cn(
                 "h-9 w-9 rounded-lg flex items-center justify-center shrink-0",
