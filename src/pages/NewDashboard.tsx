@@ -122,6 +122,15 @@ interface YTDStats {
   principalChange: number;
   interestChange: number;
   totalChange: number;
+  // Projections
+  monthsElapsed: number;
+  monthsRemaining: number;
+  projectedYearInterest: number;
+  projectedYearTotal: number;
+  prevYearFullInterest: number;
+  projectedInterestSavings: number;
+  avgMonthlyInterest: number;
+  prevAvgMonthlyInterest: number;
 }
 
 export default function NewDashboard() {
@@ -179,6 +188,14 @@ export default function NewDashboard() {
     principalChange: 0,
     interestChange: 0,
     totalChange: 0,
+    monthsElapsed: 0,
+    monthsRemaining: 0,
+    projectedYearInterest: 0,
+    projectedYearTotal: 0,
+    prevYearFullInterest: 0,
+    projectedInterestSavings: 0,
+    avgMonthlyInterest: 0,
+    prevAvgMonthlyInterest: 0,
   });
 
   // Export dashboard to PDF
@@ -515,6 +532,39 @@ export default function NewDashboard() {
       const calcChange = (current: number, prev: number) => 
         prev > 0 ? ((current - prev) / prev) * 100 : current > 0 ? 100 : 0;
 
+      // Calculate projections for full year
+      const currentMonth = today.getMonth() + 1; // 1-12
+      const monthsElapsed = currentMonth;
+      const monthsRemaining = 12 - monthsElapsed;
+      
+      // Average monthly interest this year
+      const avgMonthlyInterest = monthsElapsed > 0 ? ytdInterest / monthsElapsed : 0;
+      
+      // Projected full year interest based on current trend
+      const projectedYearInterest = ytdInterest + (avgMonthlyInterest * monthsRemaining);
+      const projectedYearTotal = ytdTotal + ((ytdTotal / monthsElapsed) * monthsRemaining);
+      
+      // Get previous year full interest (need to calculate full year data)
+      let prevYearFullInterest = 0;
+      const prevYearEnd = new Date(subYears(today, 1).getFullYear(), 11, 31); // Dec 31 of prev year
+      loansData.forEach(loan => {
+        const paidRows = loan.amortization_rows?.filter(r => r.is_paid) || [];
+        paidRows.forEach(row => {
+          const dueDate = new Date(row.due_on);
+          if (isWithinInterval(dueDate, { start: prevYearStart, end: prevYearEnd })) {
+            prevYearFullInterest += row.interest_component;
+          }
+        });
+      });
+      
+      // Previous year average monthly interest
+      const prevAvgMonthlyInterest = prevYtdEmiCount > 0 ? prevYtdInterest / monthsElapsed : 0;
+      
+      // Projected savings compared to if previous year trend continued
+      const projectedInterestSavings = prevYearFullInterest > 0 
+        ? prevYearFullInterest - projectedYearInterest 
+        : 0;
+
       setYtdStats({
         ytdPrincipal,
         ytdInterest,
@@ -527,6 +577,14 @@ export default function NewDashboard() {
         principalChange: calcChange(ytdPrincipal, prevYtdPrincipal),
         interestChange: calcChange(ytdInterest, prevYtdInterest),
         totalChange: calcChange(ytdTotal, prevYtdTotal),
+        monthsElapsed,
+        monthsRemaining,
+        projectedYearInterest,
+        projectedYearTotal,
+        prevYearFullInterest,
+        projectedInterestSavings,
+        avgMonthlyInterest,
+        prevAvgMonthlyInterest,
       });
 
       // Calculate average months remaining
@@ -1556,16 +1614,93 @@ export default function NewDashboard() {
                       </table>
                     </div>
 
-                    {/* Savings Insight */}
+                    {/* Full Year Projections */}
+                    {ytdStats.monthsElapsed > 0 && (
+                      <div className="border-t border-border/50 pt-4 mt-4">
+                        <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-primary" />
+                          Full Year Projection (Based on Current Trend)
+                        </h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <div className="p-3 rounded-lg bg-muted/20 border border-border/30">
+                            <p className="text-xs text-muted-foreground">Months Elapsed</p>
+                            <p className="text-lg font-bold">{ytdStats.monthsElapsed} / 12</p>
+                            <Progress value={(ytdStats.monthsElapsed / 12) * 100} className="h-1 mt-2" />
+                          </div>
+                          <div className="p-3 rounded-lg bg-muted/20 border border-border/30">
+                            <p className="text-xs text-muted-foreground">Avg Monthly Interest</p>
+                            <p className="text-lg font-bold text-chart-2">{formatINR(ytdStats.avgMonthlyInterest)}</p>
+                            {ytdStats.prevAvgMonthlyInterest > 0 && (
+                              <p className={cn(
+                                "text-xs mt-1",
+                                ytdStats.avgMonthlyInterest < ytdStats.prevAvgMonthlyInterest ? "text-success" : "text-destructive"
+                              )}>
+                                vs {formatINR(ytdStats.prevAvgMonthlyInterest)} last year
+                              </p>
+                            )}
+                          </div>
+                          <div className="p-3 rounded-lg bg-muted/20 border border-border/30">
+                            <p className="text-xs text-muted-foreground">Projected Year Interest</p>
+                            <p className="text-lg font-bold text-chart-2">{formatINR(ytdStats.projectedYearInterest)}</p>
+                            {ytdStats.prevYearFullInterest > 0 && (
+                              <p className={cn(
+                                "text-xs mt-1",
+                                ytdStats.projectedYearInterest < ytdStats.prevYearFullInterest ? "text-success" : "text-destructive"
+                              )}>
+                                vs {formatINR(ytdStats.prevYearFullInterest)} last year
+                              </p>
+                            )}
+                          </div>
+                          <div className="p-3 rounded-lg bg-muted/20 border border-border/30">
+                            <p className="text-xs text-muted-foreground">Projected Year Total</p>
+                            <p className="text-lg font-bold">{formatINR(ytdStats.projectedYearTotal)}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {ytdStats.monthsRemaining} months remaining
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Interest Savings Projection */}
+                        {ytdStats.projectedInterestSavings > 0 && (
+                          <div className="flex items-center gap-3 p-3 mt-4 rounded-lg bg-success/10 dark:bg-success/20 border border-success/20">
+                            <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium text-success">
+                                Projected Interest Savings: {formatINR(ytdStats.projectedInterestSavings)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                At current pace, you'll pay less interest than last year
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {ytdStats.projectedInterestSavings < 0 && ytdStats.prevYearFullInterest > 0 && (
+                          <div className="flex items-center gap-3 p-3 mt-4 rounded-lg bg-warning/10 dark:bg-warning/20 border border-warning/20">
+                            <AlertTriangle className="h-5 w-5 text-warning shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium text-warning">
+                                Projected Additional Interest: {formatINR(Math.abs(ytdStats.projectedInterestSavings))}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                At current pace, you'll pay more interest than last year
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Current YTD Savings Insight */}
                     {ytdStats.prevYtdInterest > 0 && ytdStats.ytdInterest < ytdStats.prevYtdInterest && (
-                      <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10 dark:bg-success/20 border border-success/20">
-                        <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/20 mt-4">
+                        <Wallet className="h-5 w-5 text-primary shrink-0" />
                         <div>
-                          <p className="text-sm font-medium text-success">
-                            Interest Savings: {formatINR(ytdStats.prevYtdInterest - ytdStats.ytdInterest)}
+                          <p className="text-sm font-medium text-primary">
+                            YTD Interest Savings: {formatINR(ytdStats.prevYtdInterest - ytdStats.ytdInterest)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            You've paid less interest compared to the same period last year
+                            You've already saved this much compared to the same period last year
                           </p>
                         </div>
                       </div>
