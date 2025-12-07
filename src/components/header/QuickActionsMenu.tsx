@@ -17,7 +17,7 @@ interface QuickAction {
   id: string;
   label: string;
   description: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   route: string;
   queryParams?: string;
   color: string;
@@ -83,23 +83,29 @@ export function QuickActionsMenu() {
   const navigate = useNavigate();
 
   const handleAction = (action: QuickAction) => {
-    navigate(`${action.route}${action.queryParams || ""}`);
+    const fullPath = `${action.route}${action.queryParams || ""}`;
+    navigate(fullPath);
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/10"
+          className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/10 touch-manipulation"
+          aria-label="Quick Actions"
         >
           <Plus className="h-5 w-5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        <div className="px-2 py-1.5">
-          <p className="text-sm font-medium">Quick Actions</p>
+      <DropdownMenuContent 
+        align="end" 
+        sideOffset={8}
+        className="w-72 bg-popover border-border shadow-xl"
+      >
+        <div className="px-3 py-2">
+          <p className="text-sm font-semibold">Quick Actions</p>
           <p className="text-xs text-muted-foreground">Create or record items quickly</p>
         </div>
         <DropdownMenuSeparator />
@@ -108,18 +114,21 @@ export function QuickActionsMenu() {
           return (
             <DropdownMenuItem
               key={action.id}
-              onClick={() => handleAction(action)}
-              className="flex items-center gap-3 py-2 cursor-pointer"
+              onSelect={(e) => {
+                e.preventDefault();
+                handleAction(action);
+              }}
+              className="flex items-center gap-3 py-3 px-3 cursor-pointer"
             >
               <div className={cn(
-                "h-8 w-8 rounded-md flex items-center justify-center shrink-0",
+                "h-9 w-9 rounded-lg flex items-center justify-center shrink-0",
                 action.color
               )}>
                 <Icon className="h-4 w-4" />
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm">{action.label}</p>
-                <p className="text-xs text-muted-foreground">{action.description}</p>
+                <p className="text-xs text-muted-foreground truncate">{action.description}</p>
               </div>
             </DropdownMenuItem>
           );
