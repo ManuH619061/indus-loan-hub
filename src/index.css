@@ -42,7 +42,7 @@ All colors MUST be HSL.
     --input: 220 15% 90%;
     --ring: 216 92% 53%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     /* Sidebar - Light Mode */
     --sidebar: 0 0% 100%;
@@ -130,6 +130,53 @@ All colors MUST be HSL.
     --sidebar-accent: 223 47% 13%;
     
     /* Vibrant chart colors for dark mode */
+    --chart-1: 217 91% 60%;
+    --chart-2: 173 58% 50%;
+    --chart-3: 35 92% 55%;
+    --chart-4: 0 72% 60%;
+    --chart-5: 142 76% 50%;
+  }
+
+  /* AMOLED Black Mode */
+  .amoled {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 3%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 173 58% 39%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 8%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 35 92% 50%;
+    --accent-foreground: 0 0% 0%;
+
+    --destructive: 0 62% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    --success: 142 76% 45%;
+    --success-foreground: 0 0% 98%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 0%;
+
+    --border: 0 0% 12%;
+    --input: 0 0% 10%;
+    --ring: 217 91% 60%;
+
+    --sidebar: 0 0% 2%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 8%;
+    
     --chart-1: 217 91% 60%;
     --chart-2: 173 58% 50%;
     --chart-3: 35 92% 55%;
