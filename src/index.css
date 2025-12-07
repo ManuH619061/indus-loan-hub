@@ -302,12 +302,13 @@ All colors MUST be HSL.
 /* Mobile View Optimizations - Apply when .mobile-view class is present */
 .mobile-view {
   /* Force single column layouts */
-  --mobile-padding: 0.75rem;
+  --mobile-padding: 1rem;
   --mobile-gap: 1rem;
 }
 
-.mobile-view .grid {
-  grid-template-columns: 1fr !important;
+/* Bottom padding for fixed bottom nav */
+.mobile-view {
+  padding-bottom: 4rem;
 }
 
 .mobile-view .space-y-4 > * + * {
@@ -319,11 +320,10 @@ All colors MUST be HSL.
 }
 
 /* Larger touch targets in mobile view */
-.mobile-view button,
-.mobile-view a,
-.mobile-view [role="button"] {
+.mobile-view button:not(.fab-exclude),
+.mobile-view a:not(.fab-exclude),
+.mobile-view [role="button"]:not(.fab-exclude) {
   min-height: 44px;
-  min-width: 44px;
 }
 
 /* Mobile typography */

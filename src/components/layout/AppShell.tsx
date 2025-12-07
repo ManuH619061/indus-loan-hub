@@ -1,10 +1,12 @@
 import { useState, useCallback, useEffect, useRef, ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useDisplayMode } from "@/hooks/useDisplayMode";
 import { cn } from "@/lib/utils";
 import { AppHeader } from "./AppHeader";
 import { AppSidebar } from "./AppSidebar";
+import { BottomNavBar } from "@/components/mobile/BottomNavBar";
+import { FloatingActionButton } from "@/components/mobile/FloatingActionButton";
 
 interface AppShellProps {
   children: ReactNode;
@@ -60,8 +62,12 @@ function useSwipeToOpen(onOpen: () => void, edgeThreshold = 30, minSwipeDistance
   }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 }
 
+// Pages where FAB should be hidden (e.g., AI chat with its own input)
+const HIDE_FAB_PATHS = ["/ai/chat"];
+
 export function AppShell({ children }: AppShellProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, signOut } = useAuth();
   const { isMobileLayout } = useDisplayMode();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -84,11 +90,13 @@ export function AppShell({ children }: AppShellProps) {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
+  const showFab = isMobileLayout && !HIDE_FAB_PATHS.includes(location.pathname);
+
   return (
     <div
       className={cn(
         "min-h-screen bg-background overflow-x-hidden",
-        isMobileLayout && "mobile-view"
+        isMobileLayout && "mobile-view pb-16"
       )}
     >
       {/* Header */}
@@ -118,6 +126,12 @@ export function AppShell({ children }: AppShellProps) {
           {children}
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      {isMobileLayout && <BottomNavBar />}
+
+      {/* Floating Action Button */}
+      {showFab && <FloatingActionButton />}
     </div>
   );
 }

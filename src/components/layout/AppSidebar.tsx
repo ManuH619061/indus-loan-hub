@@ -232,7 +232,9 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onCollapseToggle }: A
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-14 md:top-16 bottom-0 left-0 z-40 bg-sidebar border-r transition-all duration-300 flex flex-col",
+          "fixed top-14 md:top-16 left-0 z-40 bg-sidebar border-r transition-all duration-300 flex flex-col",
+          // On mobile, extend to bottom nav; on desktop, extend to screen bottom
+          "bottom-16 md:bottom-0",
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
           isCollapsed ? "w-16" : "w-60"
         )}
