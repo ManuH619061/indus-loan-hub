@@ -49,7 +49,7 @@ import {
   calculateOutstandingFromAmortization,
   type LoanWithAmortization
 } from "@/lib/portfolio-stats";
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, addDays, differenceInDays, isWithinInterval, isBefore } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, subYears, startOfYear, addDays, differenceInDays, isWithinInterval, isBefore } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface DashboardStats {
@@ -110,6 +110,20 @@ interface MonthlyEMITrend {
   income: number;
 }
 
+interface YTDStats {
+  ytdPrincipal: number;
+  ytdInterest: number;
+  ytdTotal: number;
+  ytdEmiCount: number;
+  prevYtdPrincipal: number;
+  prevYtdInterest: number;
+  prevYtdTotal: number;
+  prevYtdEmiCount: number;
+  principalChange: number;
+  interestChange: number;
+  totalChange: number;
+}
+
 export default function NewDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -153,6 +167,19 @@ export default function NewDashboard() {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [calendarTab, setCalendarTab] = useState<'week' | 'month' | 'all'>('month');
   const [emiTrend, setEmiTrend] = useState<MonthlyEMITrend[]>([]);
+  const [ytdStats, setYtdStats] = useState<YTDStats>({
+    ytdPrincipal: 0,
+    ytdInterest: 0,
+    ytdTotal: 0,
+    ytdEmiCount: 0,
+    prevYtdPrincipal: 0,
+    prevYtdInterest: 0,
+    prevYtdTotal: 0,
+    prevYtdEmiCount: 0,
+    principalChange: 0,
+    interestChange: 0,
+    totalChange: 0,
+  });
 
   // Export dashboard to PDF
   const handleExportPDF = async () => {
@@ -455,6 +482,52 @@ export default function NewDashboard() {
         });
       }
       setEmiTrend(trendData);
+
+      // Calculate YTD EMI statistics with previous year comparison
+      const yearStart = startOfYear(today);
+      const prevYearStart = startOfYear(subYears(today, 1));
+      const prevYearSameDate = subYears(today, 1);
+
+      let ytdPrincipal = 0, ytdInterest = 0, ytdTotal = 0, ytdEmiCount = 0;
+      let prevYtdPrincipal = 0, prevYtdInterest = 0, prevYtdTotal = 0, prevYtdEmiCount = 0;
+
+      loansData.forEach(loan => {
+        const paidRows = loan.amortization_rows?.filter(r => r.is_paid) || [];
+        paidRows.forEach(row => {
+          const dueDate = new Date(row.due_on);
+          // Current year YTD
+          if (isWithinInterval(dueDate, { start: yearStart, end: today })) {
+            ytdPrincipal += row.principal_component;
+            ytdInterest += row.interest_component;
+            ytdTotal += row.scheduled_emi;
+            ytdEmiCount++;
+          }
+          // Previous year same period
+          if (isWithinInterval(dueDate, { start: prevYearStart, end: prevYearSameDate })) {
+            prevYtdPrincipal += row.principal_component;
+            prevYtdInterest += row.interest_component;
+            prevYtdTotal += row.scheduled_emi;
+            prevYtdEmiCount++;
+          }
+        });
+      });
+
+      const calcChange = (current: number, prev: number) => 
+        prev > 0 ? ((current - prev) / prev) * 100 : current > 0 ? 100 : 0;
+
+      setYtdStats({
+        ytdPrincipal,
+        ytdInterest,
+        ytdTotal,
+        ytdEmiCount,
+        prevYtdPrincipal,
+        prevYtdInterest,
+        prevYtdTotal,
+        prevYtdEmiCount,
+        principalChange: calcChange(ytdPrincipal, prevYtdPrincipal),
+        interestChange: calcChange(ytdInterest, prevYtdInterest),
+        totalChange: calcChange(ytdTotal, prevYtdTotal),
+      });
 
       // Calculate average months remaining
       let totalMonthsRemaining = 0;
@@ -1325,6 +1398,182 @@ export default function NewDashboard() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* YTD EMI Statistics with YoY Comparison */}
+            <Card className="p-6 border-border/50 bg-card">
+              <CardHeader className="p-0 pb-4">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-success/10 dark:bg-success/20">
+                    <TrendingUp className="h-4 w-4 text-success" />
+                  </div>
+                  Year-to-Date EMI Statistics
+                </CardTitle>
+                <CardDescription>
+                  {format(new Date(), 'yyyy')} YTD vs {format(subYears(new Date(), 1), 'yyyy')} same period
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                {ytdStats.ytdTotal === 0 && ytdStats.prevYtdTotal === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <TrendingUp className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No YTD payment data available</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Summary Stats */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="p-4 rounded-lg bg-muted/30 dark:bg-muted/20">
+                        <p className="text-xs text-muted-foreground mb-1">Total EMIs Paid</p>
+                        <p className="text-xl font-bold">{formatINR(ytdStats.ytdTotal)}</p>
+                        {ytdStats.prevYtdTotal > 0 && (
+                          <div className={cn(
+                            "flex items-center gap-1 text-xs mt-1",
+                            ytdStats.totalChange >= 0 ? "text-destructive" : "text-success"
+                          )}>
+                            {ytdStats.totalChange >= 0 ? (
+                              <TrendingUp className="h-3 w-3" />
+                            ) : (
+                              <TrendingUp className="h-3 w-3 rotate-180" />
+                            )}
+                            {Math.abs(ytdStats.totalChange).toFixed(1)}% vs last year
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4 rounded-lg bg-muted/30 dark:bg-muted/20">
+                        <p className="text-xs text-muted-foreground mb-1">Principal Paid</p>
+                        <p className="text-xl font-bold text-chart-1">{formatINR(ytdStats.ytdPrincipal)}</p>
+                        {ytdStats.prevYtdPrincipal > 0 && (
+                          <div className={cn(
+                            "flex items-center gap-1 text-xs mt-1",
+                            ytdStats.principalChange >= 0 ? "text-success" : "text-destructive"
+                          )}>
+                            {ytdStats.principalChange >= 0 ? (
+                              <TrendingUp className="h-3 w-3" />
+                            ) : (
+                              <TrendingUp className="h-3 w-3 rotate-180" />
+                            )}
+                            {Math.abs(ytdStats.principalChange).toFixed(1)}% vs last year
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4 rounded-lg bg-muted/30 dark:bg-muted/20">
+                        <p className="text-xs text-muted-foreground mb-1">Interest Paid</p>
+                        <p className="text-xl font-bold text-chart-2">{formatINR(ytdStats.ytdInterest)}</p>
+                        {ytdStats.prevYtdInterest > 0 && (
+                          <div className={cn(
+                            "flex items-center gap-1 text-xs mt-1",
+                            ytdStats.interestChange <= 0 ? "text-success" : "text-destructive"
+                          )}>
+                            {ytdStats.interestChange >= 0 ? (
+                              <TrendingUp className="h-3 w-3" />
+                            ) : (
+                              <TrendingUp className="h-3 w-3 rotate-180" />
+                            )}
+                            {Math.abs(ytdStats.interestChange).toFixed(1)}% vs last year
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4 rounded-lg bg-muted/30 dark:bg-muted/20">
+                        <p className="text-xs text-muted-foreground mb-1">EMIs Count</p>
+                        <p className="text-xl font-bold">{ytdStats.ytdEmiCount}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          vs {ytdStats.prevYtdEmiCount} last year
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* YoY Comparison Table */}
+                    <div className="overflow-x-auto border-t border-border/50 pt-4">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border/50">
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Metric</th>
+                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">
+                              {format(new Date(), 'yyyy')} YTD
+                            </th>
+                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">
+                              {format(subYears(new Date(), 1), 'yyyy')} YTD
+                            </th>
+                            <th className="text-right py-2 px-3 font-medium text-muted-foreground">Change</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b border-border/30">
+                            <td className="py-2 px-3 font-medium">Total EMI Paid</td>
+                            <td className="py-2 px-3 text-right font-mono">{formatINR(ytdStats.ytdTotal)}</td>
+                            <td className="py-2 px-3 text-right font-mono text-muted-foreground">
+                              {formatINR(ytdStats.prevYtdTotal)}
+                            </td>
+                            <td className={cn(
+                              "py-2 px-3 text-right font-mono font-semibold",
+                              ytdStats.totalChange >= 0 ? "text-destructive" : "text-success"
+                            )}>
+                              {ytdStats.totalChange >= 0 ? "+" : ""}{ytdStats.totalChange.toFixed(1)}%
+                            </td>
+                          </tr>
+                          <tr className="border-b border-border/30">
+                            <td className="py-2 px-3 font-medium">Principal Paid</td>
+                            <td className="py-2 px-3 text-right font-mono text-chart-1">
+                              {formatINR(ytdStats.ytdPrincipal)}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-muted-foreground">
+                              {formatINR(ytdStats.prevYtdPrincipal)}
+                            </td>
+                            <td className={cn(
+                              "py-2 px-3 text-right font-mono font-semibold",
+                              ytdStats.principalChange >= 0 ? "text-success" : "text-destructive"
+                            )}>
+                              {ytdStats.principalChange >= 0 ? "+" : ""}{ytdStats.principalChange.toFixed(1)}%
+                            </td>
+                          </tr>
+                          <tr className="border-b border-border/30">
+                            <td className="py-2 px-3 font-medium">Interest Paid</td>
+                            <td className="py-2 px-3 text-right font-mono text-chart-2">
+                              {formatINR(ytdStats.ytdInterest)}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-muted-foreground">
+                              {formatINR(ytdStats.prevYtdInterest)}
+                            </td>
+                            <td className={cn(
+                              "py-2 px-3 text-right font-mono font-semibold",
+                              ytdStats.interestChange <= 0 ? "text-success" : "text-destructive"
+                            )}>
+                              {ytdStats.interestChange >= 0 ? "+" : ""}{ytdStats.interestChange.toFixed(1)}%
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="py-2 px-3 font-medium">EMI Count</td>
+                            <td className="py-2 px-3 text-right font-mono">{ytdStats.ytdEmiCount}</td>
+                            <td className="py-2 px-3 text-right font-mono text-muted-foreground">
+                              {ytdStats.prevYtdEmiCount}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-muted-foreground">
+                              {ytdStats.ytdEmiCount - ytdStats.prevYtdEmiCount >= 0 ? "+" : ""}
+                              {ytdStats.ytdEmiCount - ytdStats.prevYtdEmiCount}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Savings Insight */}
+                    {ytdStats.prevYtdInterest > 0 && ytdStats.ytdInterest < ytdStats.prevYtdInterest && (
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10 dark:bg-success/20 border border-success/20">
+                        <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-success">
+                            Interest Savings: {formatINR(ytdStats.prevYtdInterest - ytdStats.ytdInterest)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            You've paid less interest compared to the same period last year
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Lender Exposure - Full width */}
             <Card className="p-6 border-border/50 bg-card">
