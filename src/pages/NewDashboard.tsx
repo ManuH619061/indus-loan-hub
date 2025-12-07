@@ -51,6 +51,7 @@ import {
 } from "@/lib/portfolio-stats";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, subYears, startOfYear, addDays, differenceInDays, isWithinInterval, isBefore } from "date-fns";
 import { cn } from "@/lib/utils";
+import { PrepaymentImpactCard } from "@/components/dashboard/PrepaymentImpactCard";
 
 interface DashboardStats {
   totalOutstandingPrincipal: number;
@@ -1709,6 +1710,9 @@ export default function NewDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Prepayment Impact Analysis */}
+            <PrepaymentImpactCard loans={loans} />
 
             {/* Lender Exposure - Full width */}
             <Card className="p-6 border-border/50 bg-card">
