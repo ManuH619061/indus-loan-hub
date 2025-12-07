@@ -46,7 +46,8 @@ import {
   Cloud,
   AlertCircle,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  Check
 } from "lucide-react";
 import FadeInStagger from "@/components/FadeInStagger";
 import { useTheme } from "next-themes";
@@ -67,10 +68,16 @@ const TIMEZONES = [
 ];
 
 const ACCENT_COLORS = [
-  { value: "blue", label: "Blue", color: "hsl(216, 92%, 53%)" },
-  { value: "green", label: "Green", color: "hsl(142, 71%, 45%)" },
-  { value: "purple", label: "Purple", color: "hsl(262, 83%, 58%)" },
-  { value: "teal", label: "Teal", color: "hsl(177, 55%, 50%)" },
+  { value: "blue", label: "Blue", color: "hsl(216, 92%, 53%)", hsl: "216 92% 53%" },
+  { value: "indigo", label: "Indigo", color: "hsl(234, 89%, 63%)", hsl: "234 89% 63%" },
+  { value: "purple", label: "Purple", color: "hsl(262, 83%, 58%)", hsl: "262 83% 58%" },
+  { value: "pink", label: "Pink", color: "hsl(330, 81%, 60%)", hsl: "330 81% 60%" },
+  { value: "red", label: "Red", color: "hsl(0, 84%, 60%)", hsl: "0 84% 60%" },
+  { value: "orange", label: "Orange", color: "hsl(25, 95%, 53%)", hsl: "25 95% 53%" },
+  { value: "amber", label: "Amber", color: "hsl(38, 92%, 50%)", hsl: "38 92% 50%" },
+  { value: "green", label: "Green", color: "hsl(142, 71%, 45%)", hsl: "142 71% 45%" },
+  { value: "teal", label: "Teal", color: "hsl(177, 55%, 50%)", hsl: "177 55% 50%" },
+  { value: "cyan", label: "Cyan", color: "hsl(189, 94%, 43%)", hsl: "189 94% 43%" },
 ];
 
 export default function Settings() {
@@ -654,26 +661,39 @@ export default function Settings() {
 
                   <Separator />
 
-                  <div className="space-y-3">
-                    <Label>Accent Color</Label>
-                    <div className="flex gap-3">
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <Label>Accent Color</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Choose your preferred primary color for the app
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-5 gap-3 sm:grid-cols-10">
                       {ACCENT_COLORS.map(color => (
                         <button
                           key={color.value}
                           onClick={() => setPreferences(prev => ({ ...prev, accent_color: color.value }))}
-                          className={`w-10 h-10 rounded-full border-2 transition-all ${
+                          className={`group relative w-10 h-10 rounded-full transition-all duration-200 ${
                             preferences.accent_color === color.value 
-                              ? 'border-foreground scale-110' 
-                              : 'border-transparent hover:scale-105'
+                              ? 'ring-2 ring-offset-2 ring-offset-background ring-foreground scale-110' 
+                              : 'hover:scale-110 hover:ring-2 hover:ring-offset-2 hover:ring-offset-background hover:ring-muted-foreground/50'
                           }`}
                           style={{ backgroundColor: color.color }}
                           title={color.label}
-                        />
+                        >
+                          {preferences.accent_color === color.value && (
+                            <span className="absolute inset-0 flex items-center justify-center">
+                              <Check className="h-5 w-5 text-white drop-shadow-md" />
+                            </span>
+                          )}
+                          <span className="sr-only">{color.label}</span>
+                        </button>
                       ))}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Note: Accent color changes will apply after refresh
-                    </p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Palette className="h-4 w-4" />
+                      <span>Selected: <span className="font-medium text-foreground">{ACCENT_COLORS.find(c => c.value === preferences.accent_color)?.label || 'Blue'}</span></span>
+                    </div>
                   </div>
 
                   <Separator />

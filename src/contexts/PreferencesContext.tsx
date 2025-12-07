@@ -121,16 +121,23 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     document.body.classList.add(densityClass);
 
     // Apply accent color
-    const accentColors: Record<string, { primary: string; ring: string }> = {
-      blue: { primary: '216 92% 53%', ring: '216 92% 53%' },
-      green: { primary: '142 71% 45%', ring: '142 71% 45%' },
-      purple: { primary: '262 83% 58%', ring: '262 83% 58%' },
-      teal: { primary: '177 55% 50%', ring: '177 55% 50%' },
+    const accentColors: Record<string, { primary: string; ring: string; primaryForeground: string }> = {
+      blue: { primary: '216 92% 53%', ring: '216 92% 53%', primaryForeground: '0 0% 100%' },
+      indigo: { primary: '234 89% 63%', ring: '234 89% 63%', primaryForeground: '0 0% 100%' },
+      purple: { primary: '262 83% 58%', ring: '262 83% 58%', primaryForeground: '0 0% 100%' },
+      pink: { primary: '330 81% 60%', ring: '330 81% 60%', primaryForeground: '0 0% 100%' },
+      red: { primary: '0 84% 60%', ring: '0 84% 60%', primaryForeground: '0 0% 100%' },
+      orange: { primary: '25 95% 53%', ring: '25 95% 53%', primaryForeground: '0 0% 100%' },
+      amber: { primary: '38 92% 50%', ring: '38 92% 50%', primaryForeground: '0 0% 0%' },
+      green: { primary: '142 71% 45%', ring: '142 71% 45%', primaryForeground: '0 0% 100%' },
+      teal: { primary: '177 55% 50%', ring: '177 55% 50%', primaryForeground: '0 0% 100%' },
+      cyan: { primary: '189 94% 43%', ring: '189 94% 43%', primaryForeground: '0 0% 100%' },
     };
     
     const accent = accentColors[preferences.accent_color] || accentColors.blue;
     root.style.setProperty('--primary', accent.primary);
     root.style.setProperty('--ring', accent.ring);
+    root.style.setProperty('--primary-foreground', accent.primaryForeground);
 
   }, [preferences.font_size, preferences.density, preferences.accent_color]);
 
