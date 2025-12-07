@@ -42,7 +42,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     id: "ai",
-    label: "AI",
+    label: "FinPath AI",
     icon: Sparkles,
     path: "/ai/chat",
     matchPaths: ["/ai"],
@@ -59,8 +59,8 @@ export function BottomNavBar() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card border-t border-border safe-bottom">
-      <div className="flex items-center justify-around h-16 px-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card/95 backdrop-blur-lg border-t border-border/50 safe-bottom shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+      <div className="flex items-center justify-around h-16 px-1 max-w-lg mx-auto">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = isActive(item);
@@ -70,22 +70,32 @@ export function BottomNavBar() {
               key={item.id}
               onClick={() => navigate(item.path)}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 h-full pt-1 pb-1 relative transition-colors touch-manipulation",
-                active ? "text-primary" : "text-muted-foreground"
+                "flex flex-col items-center justify-center flex-1 h-full py-1.5 relative transition-all duration-200 touch-manipulation rounded-xl mx-0.5",
+                active 
+                  ? "text-primary" 
+                  : "text-muted-foreground hover:text-foreground active:scale-95"
               )}
             >
               {active && (
                 <motion.div
                   layoutId="bottomNavIndicator"
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary rounded-b-full"
+                  className="absolute inset-1 bg-primary/10 rounded-xl"
                   initial={false}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               )}
-              <Icon className={cn("h-5 w-5 mb-0.5", active && "scale-110")} />
-              <span className={cn("text-[10px] font-medium", active && "font-semibold")}>
-                {item.label}
-              </span>
+              <div className="relative z-10 flex flex-col items-center gap-0.5">
+                <Icon className={cn(
+                  "h-5 w-5 transition-transform duration-200",
+                  active && "scale-110"
+                )} />
+                <span className={cn(
+                  "text-[10px] font-medium leading-tight",
+                  active && "font-semibold"
+                )}>
+                  {item.label}
+                </span>
+              </div>
             </button>
           );
         })}

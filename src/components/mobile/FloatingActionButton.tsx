@@ -10,6 +10,7 @@ import {
   Building2,
   FileUp,
   CreditCard,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,8 +20,7 @@ interface QuickAction {
   icon: React.ComponentType<{ className?: string }>;
   route: string;
   queryParams?: string;
-  color: string;
-  bgColor: string;
+  gradient: string;
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
@@ -30,8 +30,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: Receipt,
     route: "/budget/monthly-expenses",
     queryParams: "?action=add",
-    color: "text-orange-600 dark:text-orange-400",
-    bgColor: "bg-orange-100 dark:bg-orange-900/40",
+    gradient: "from-orange-500 to-amber-500",
   },
   {
     id: "record-payment",
@@ -39,16 +38,14 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: DollarSign,
     route: "/payments",
     queryParams: "?action=add",
-    color: "text-green-600 dark:text-green-400",
-    bgColor: "bg-green-100 dark:bg-green-900/40",
+    gradient: "from-emerald-500 to-green-500",
   },
   {
     id: "add-loan",
     label: "Add Loan",
     icon: Wallet,
     route: "/loans/new",
-    color: "text-blue-600 dark:text-blue-400",
-    bgColor: "bg-blue-100 dark:bg-blue-900/40",
+    gradient: "from-blue-500 to-cyan-500",
   },
   {
     id: "add-lender",
@@ -56,8 +53,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: Building2,
     route: "/lenders",
     queryParams: "?action=add",
-    color: "text-purple-600 dark:text-purple-400",
-    bgColor: "bg-purple-100 dark:bg-purple-900/40",
+    gradient: "from-purple-500 to-violet-500",
   },
   {
     id: "add-bank-txn",
@@ -65,8 +61,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: CreditCard,
     route: "/banking/accounts",
     queryParams: "?action=add-transaction",
-    color: "text-indigo-600 dark:text-indigo-400",
-    bgColor: "bg-indigo-100 dark:bg-indigo-900/40",
+    gradient: "from-indigo-500 to-blue-500",
   },
   {
     id: "upload-doc",
@@ -74,8 +69,15 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: FileUp,
     route: "/documents",
     queryParams: "?action=upload",
-    color: "text-teal-600 dark:text-teal-400",
-    bgColor: "bg-teal-100 dark:bg-teal-900/40",
+    gradient: "from-teal-500 to-cyan-500",
+  },
+  {
+    id: "create-goal",
+    label: "Create Goal",
+    icon: Target,
+    route: "/budget/savings-goals",
+    queryParams: "?action=add",
+    gradient: "from-pink-500 to-rose-500",
   },
 ];
 
@@ -98,7 +100,7 @@ export function FloatingActionButton() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden"
+            className="fixed inset-0 bg-background/80 backdrop-blur-md z-40 md:hidden"
             onClick={() => setIsOpen(false)}
           />
         )}
@@ -111,20 +113,24 @@ export function FloatingActionButton() {
             initial={{ y: "100%", opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-20 left-4 right-4 z-50 bg-card rounded-2xl border border-border shadow-xl p-4 md:hidden"
+            transition={{ type: "spring", damping: 28, stiffness: 350 }}
+            className="fixed bottom-20 left-3 right-3 z-50 bg-card rounded-2xl border border-border/50 shadow-2xl p-4 md:hidden"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-foreground">Quick Actions</h3>
-              <button
+              <div>
+                <h3 className="font-bold text-lg text-foreground">Quick Actions</h3>
+                <p className="text-xs text-muted-foreground">Create or record items</p>
+              </div>
+              <motion.button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-full bg-muted hover:bg-muted/80 transition-colors"
+                className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors"
+                whileTap={{ scale: 0.9 }}
               >
-                <X className="h-4 w-4 text-muted-foreground" />
-              </button>
+                <X className="h-5 w-5 text-muted-foreground" />
+              </motion.button>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-2">
               {QUICK_ACTIONS.map((action, index) => {
                 const Icon = action.icon;
                 return (
@@ -132,14 +138,17 @@ export function FloatingActionButton() {
                     key={action.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
+                    transition={{ delay: index * 0.04 }}
                     onClick={() => handleAction(action)}
-                    className="flex flex-col items-center gap-2 p-3 rounded-xl bg-muted/50 hover:bg-muted active:scale-95 transition-all touch-manipulation"
+                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-muted/50 hover:bg-muted active:scale-95 transition-all touch-manipulation"
                   >
-                    <div className={cn("p-2.5 rounded-full", action.bgColor)}>
-                      <Icon className={cn("h-5 w-5", action.color)} />
+                    <div className={cn(
+                      "p-2.5 rounded-xl bg-gradient-to-br shadow-sm",
+                      action.gradient
+                    )}>
+                      <Icon className="h-5 w-5 text-white" />
                     </div>
-                    <span className="text-xs font-medium text-foreground text-center leading-tight">
+                    <span className="text-[10px] font-medium text-foreground text-center leading-tight line-clamp-2">
                       {action.label}
                     </span>
                   </motion.button>
@@ -154,16 +163,21 @@ export function FloatingActionButton() {
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "fixed right-4 z-50 md:hidden w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors touch-manipulation",
-          isOpen
-            ? "bg-muted text-muted-foreground bottom-24"
-            : "bg-primary text-primary-foreground bottom-20"
+          "fixed z-50 md:hidden w-14 h-14 rounded-full shadow-xl flex items-center justify-center touch-manipulation",
+          "bg-gradient-to-br from-primary to-primary/80",
+          isOpen ? "right-4 bottom-24" : "right-4 bottom-20"
         )}
-        whileTap={{ scale: 0.95 }}
-        animate={{ rotate: isOpen ? 45 : 0 }}
+        whileTap={{ scale: 0.92 }}
+        animate={{ 
+          rotate: isOpen ? 45 : 0,
+          scale: isOpen ? 0.95 : 1 
+        }}
         transition={{ duration: 0.2 }}
+        style={{
+          boxShadow: "0 8px 32px rgba(31, 108, 255, 0.35)"
+        }}
       >
-        <Plus className="h-6 w-6" />
+        <Plus className="h-7 w-7 text-primary-foreground" />
       </motion.button>
     </>
   );

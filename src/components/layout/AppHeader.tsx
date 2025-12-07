@@ -23,8 +23,10 @@ import { GlobalSearchDialog } from "@/components/header/GlobalSearchDialog";
 import { NotificationsDropdown } from "@/components/header/NotificationsDropdown";
 import { QuickActionsMenu } from "@/components/header/QuickActionsMenu";
 import { KeyboardShortcutsDialog } from "@/components/header/KeyboardShortcutsDialog";
+import { MobileSearchOverlay } from "@/components/mobile/MobileSearchOverlay";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useRecentPages } from "@/hooks/useRecentPages";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface AppHeaderProps {
   user: any;
@@ -35,6 +37,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ user, onSignOut, onMenuToggle, isSidebarOpen }: AppHeaderProps) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -61,7 +64,11 @@ export function AppHeader({ user, onSignOut, onMenuToggle, isSidebarOpen }: AppH
   });
 
   const handleSearchClick = () => {
-    setSearchOpen(true);
+    if (isMobile) {
+      setMobileSearchOpen(true);
+    } else {
+      setSearchOpen(true);
+    }
   };
 
   return (
@@ -234,8 +241,11 @@ export function AppHeader({ user, onSignOut, onMenuToggle, isSidebarOpen }: AppH
         </div>
       </header>
 
-      {/* Global Search Dialog */}
+      {/* Global Search Dialog - Desktop */}
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
+
+      {/* Mobile Search Overlay */}
+      <MobileSearchOverlay open={mobileSearchOpen} onClose={() => setMobileSearchOpen(false)} />
 
       {/* Keyboard Shortcuts Dialog */}
       <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
