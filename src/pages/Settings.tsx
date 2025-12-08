@@ -832,6 +832,81 @@ export default function Settings() {
                           </div>
                         </div>
                       </div>
+
+                      {/* Density Preview */}
+                      <div className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Density Preview ({preferences.density === 'compact' ? 'Compact' : 'Comfortable'})
+                        </span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div 
+                            className="rounded-lg border bg-card transition-all duration-300"
+                            style={{ padding: preferences.density === 'compact' ? '8px' : '16px' }}
+                          >
+                            <div className="flex items-center" style={{ gap: preferences.density === 'compact' ? '8px' : '12px' }}>
+                              <div 
+                                className="rounded-full bg-primary/10 flex items-center justify-center shrink-0"
+                                style={{ 
+                                  height: preferences.density === 'compact' ? '28px' : '36px',
+                                  width: preferences.density === 'compact' ? '28px' : '36px'
+                                }}
+                              >
+                                <CreditCard 
+                                  className="text-primary" 
+                                  style={{ height: preferences.density === 'compact' ? '14px' : '18px', width: preferences.density === 'compact' ? '14px' : '18px' }}
+                                />
+                              </div>
+                              <div style={{ gap: preferences.density === 'compact' ? '0px' : '2px' }}>
+                                <p 
+                                  className="text-muted-foreground"
+                                  style={{ fontSize: preferences.density === 'compact' ? '10px' : '12px' }}
+                                >
+                                  Home Loan
+                                </p>
+                                <p 
+                                  className="font-semibold"
+                                  style={{ fontSize: preferences.density === 'compact' ? '13px' : '15px' }}
+                                >
+                                  ₹25,000
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div 
+                            className="rounded-lg border bg-card transition-all duration-300"
+                            style={{ padding: preferences.density === 'compact' ? '8px' : '16px' }}
+                          >
+                            <div className="flex items-center" style={{ gap: preferences.density === 'compact' ? '8px' : '12px' }}>
+                              <div 
+                                className="rounded-full bg-primary/10 flex items-center justify-center shrink-0"
+                                style={{ 
+                                  height: preferences.density === 'compact' ? '28px' : '36px',
+                                  width: preferences.density === 'compact' ? '28px' : '36px'
+                                }}
+                              >
+                                <Wallet 
+                                  className="text-primary" 
+                                  style={{ height: preferences.density === 'compact' ? '14px' : '18px', width: preferences.density === 'compact' ? '14px' : '18px' }}
+                                />
+                              </div>
+                              <div style={{ gap: preferences.density === 'compact' ? '0px' : '2px' }}>
+                                <p 
+                                  className="text-muted-foreground"
+                                  style={{ fontSize: preferences.density === 'compact' ? '10px' : '12px' }}
+                                >
+                                  Car Loan
+                                </p>
+                                <p 
+                                  className="font-semibold"
+                                  style={{ fontSize: preferences.density === 'compact' ? '13px' : '15px' }}
+                                >
+                                  ₹18,500
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
