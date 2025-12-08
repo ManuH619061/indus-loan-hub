@@ -800,6 +800,38 @@ export default function Settings() {
                           </div>
                         </div>
                       </div>
+
+                      {/* Font Size Preview */}
+                      <div className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Typography Preview</span>
+                        <div 
+                          className="p-4 rounded-lg border bg-background space-y-3"
+                          style={{
+                            fontSize: preferences.font_size === 'small' ? '14px' : preferences.font_size === 'large' ? '18px' : '16px'
+                          }}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="text-xs">
+                              {preferences.font_size === 'small' ? '14px' : preferences.font_size === 'large' ? '18px' : '16px'} base
+                            </Badge>
+                          </div>
+                          <h3 
+                            className="font-bold text-foreground"
+                            style={{ fontSize: preferences.font_size === 'small' ? '1.25em' : preferences.font_size === 'large' ? '1.5em' : '1.375em' }}
+                          >
+                            Monthly Financial Summary
+                          </h3>
+                          <p className="text-muted-foreground leading-relaxed" style={{ fontSize: '1em' }}>
+                            Your total outstanding balance is ₹4,50,000 across 5 active loans. 
+                            Next EMI of ₹25,000 is due on December 15th.
+                          </p>
+                          <div className="flex gap-4 text-sm">
+                            <span className="text-primary font-medium">↑ 12% savings this month</span>
+                            <span className="text-muted-foreground">•</span>
+                            <span className="text-green-600 font-medium">On track</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
