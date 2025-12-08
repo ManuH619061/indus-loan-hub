@@ -60,6 +60,11 @@ import UploadDocumentStepper from "@/components/documents/UploadDocumentStepper"
 import DocumentEmptyState from "@/components/documents/DocumentEmptyState";
 import { cn } from "@/lib/utils";
 
+const useIsMobileBoolean = () => {
+  const result = useIsMobile();
+  return result === true;
+};
+
 const DOC_TYPES = [
   "Loan Sanction Letter",
   "NOC",
@@ -357,7 +362,7 @@ export default function Documents() {
     }).length;
   }, [documents]);
 
-  const hasActiveFilters = searchTerm || typeFilter !== "all" || lenderFilter !== "all" || loanFilter !== "all" || expiryFilter !== "all" || showExpiring;
+  const hasActiveFilters = !!(searchTerm || typeFilter !== "all" || lenderFilter !== "all" || loanFilter !== "all" || expiryFilter !== "all" || showExpiring);
 
   const clearAllFilters = () => {
     setSearchTerm("");
