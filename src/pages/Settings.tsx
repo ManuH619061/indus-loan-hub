@@ -698,6 +698,113 @@ export default function Settings() {
 
                   <Separator />
 
+                  {/* Live Preview Section */}
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <Label className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        Live Preview
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        See how your accent color looks across UI elements
+                      </p>
+                    </div>
+                    
+                    <div className="p-4 rounded-xl border bg-card/50 space-y-5">
+                      {/* Buttons Preview */}
+                      <div className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Buttons</span>
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="sm">Primary</Button>
+                          <Button size="sm" variant="secondary">Secondary</Button>
+                          <Button size="sm" variant="outline">Outline</Button>
+                          <Button size="sm" variant="ghost">Ghost</Button>
+                        </div>
+                      </div>
+
+                      {/* Cards Preview */}
+                      <div className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Cards & Stats</span>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <div className="p-3 rounded-lg border bg-card">
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <Wallet className="h-4 w-4 text-primary" />
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Balance</p>
+                                <p className="font-semibold">₹1,25,000</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-3 rounded-lg border bg-card">
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <TrendingUp className="h-4 w-4 text-primary" />
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Savings</p>
+                                <p className="font-semibold">75%</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-3 rounded-lg border bg-card">
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <CreditCard className="h-4 w-4 text-primary" />
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Loans</p>
+                                <p className="font-semibold">5 Active</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Badges Preview */}
+                      <div className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Badges</span>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge>Default</Badge>
+                          <Badge variant="secondary">Secondary</Badge>
+                          <Badge variant="outline">Outline</Badge>
+                        </div>
+                      </div>
+
+                      {/* Progress Preview */}
+                      <div className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Progress</span>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between text-sm">
+                            <span>EMI Progress</span>
+                            <span className="font-medium">75%</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-muted overflow-hidden">
+                            <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: '75%' }} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Interactive Elements */}
+                      <div className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Interactive</span>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <Switch defaultChecked />
+                            <span className="text-sm">On</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Switch />
+                            <span className="text-sm">Off</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
                       <Label>Font Size</Label>
