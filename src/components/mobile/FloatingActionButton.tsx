@@ -11,6 +11,8 @@ import {
   FileUp,
   CreditCard,
   Target,
+  Landmark,
+  Calculator,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -58,7 +60,7 @@ const QUICK_ACTIONS: QuickAction[] = [
   {
     id: "add-bank-txn",
     label: "Bank Txn",
-    icon: CreditCard,
+    icon: Landmark,
     route: "/banking/accounts",
     queryParams: "?action=add-transaction",
     gradient: "from-indigo-500 to-blue-500",
@@ -73,11 +75,18 @@ const QUICK_ACTIONS: QuickAction[] = [
   },
   {
     id: "create-goal",
-    label: "Create Goal",
+    label: "Savings Goal",
     icon: Target,
     route: "/budget/savings-goals",
     queryParams: "?action=add",
     gradient: "from-pink-500 to-rose-500",
+  },
+  {
+    id: "compare-loans",
+    label: "Compare",
+    icon: Calculator,
+    route: "/loan-comparison",
+    gradient: "from-sky-500 to-blue-500",
   },
 ];
 
@@ -138,17 +147,17 @@ export function FloatingActionButton() {
                     key={action.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.04 }}
+                    transition={{ delay: index * 0.03 }}
                     onClick={() => handleAction(action)}
-                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-muted/50 hover:bg-muted active:scale-95 transition-all touch-manipulation"
+                    className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl bg-muted/50 hover:bg-muted active:scale-95 transition-all touch-manipulation"
                   >
                     <div className={cn(
-                      "p-2.5 rounded-xl bg-gradient-to-br shadow-sm",
+                      "p-2 rounded-xl bg-gradient-to-br shadow-sm",
                       action.gradient
                     )}>
-                      <Icon className="h-5 w-5 text-white" />
+                      <Icon className="h-4 w-4 text-white" />
                     </div>
-                    <span className="text-[10px] font-medium text-foreground text-center leading-tight line-clamp-2">
+                    <span className="text-[9px] font-medium text-foreground text-center leading-tight line-clamp-2">
                       {action.label}
                     </span>
                   </motion.button>
@@ -174,7 +183,7 @@ export function FloatingActionButton() {
         }}
         transition={{ duration: 0.2 }}
         style={{
-          boxShadow: "0 8px 32px rgba(31, 108, 255, 0.35)"
+          boxShadow: "0 8px 32px hsl(var(--primary) / 0.35)"
         }}
       >
         <Plus className="h-7 w-7 text-primary-foreground" />
