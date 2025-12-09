@@ -17,6 +17,14 @@ import {
   Receipt,
   ChevronLeft,
   ChevronRight,
+  LayoutDashboard,
+  Flame,
+  PiggyBank,
+  AlertTriangle,
+  LineChart,
+  Target,
+  Bot,
+  FileBarChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,7 +39,23 @@ interface AppSidebarProps {
 }
 
 const navigation = [
-  { name: "Home", href: "/dashboard", icon: Home },
+  {
+    name: "Dashboards",
+    key: "dashboards",
+    icon: LayoutDashboard,
+    children: [
+      { name: "Overview", href: "/dashboard", icon: Home },
+      { name: "Cashflow & Budget", href: "/dashboards/cashflow", icon: TrendingUp },
+      { name: "EMI Heatmap", href: "/dashboards/emi-heatmap", icon: Flame },
+      { name: "Loan Risk Analysis", href: "/dashboards/loan-risk", icon: AlertTriangle },
+      { name: "Spending Intelligence", href: "/dashboards/spending", icon: LineChart },
+      { name: "Debt Forecast", href: "/dashboards/debt-forecast", icon: BarChart3 },
+      { name: "Savings & Goals", href: "/dashboards/savings-goals", icon: Target },
+      { name: "Bank Balance Trends", href: "/dashboards/bank-trends", icon: PiggyBank },
+      { name: "AI Financial Advisor", href: "/dashboards/ai-advisor", icon: Bot },
+      { name: "Custom Reports", href: "/dashboards/custom-reports", icon: FileBarChart },
+    ],
+  },
   {
     name: "Bank Manager",
     key: "banking",
@@ -67,7 +91,6 @@ const navigation = [
       { name: "Reports", href: "/budget/reports-hub", icon: FileText },
     ],
   },
-  { name: "Financial Insights", href: "/financial-insights", icon: BarChart3 },
   { name: "FinPath AI", href: "/ai/chat", icon: Sparkles },
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Settings", href: "/settings", icon: Settings },
@@ -76,6 +99,7 @@ const navigation = [
 export function AppSidebar({ isOpen, onClose, isCollapsed, onCollapseToggle }: AppSidebarProps) {
   const location = useLocation();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    dashboards: false,
     banking: false,
     loans: false,
     budget: false,
