@@ -25,6 +25,11 @@ import {
   Target,
   Bot,
   FileBarChart,
+  Brain,
+  HeartPulse,
+  Lightbulb,
+  FolderOpen,
+  Calculator,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,6 +44,40 @@ interface AppSidebarProps {
 }
 
 const navigation = [
+  { name: "Main Dashboard", href: "/dashboard", icon: Home },
+  {
+    name: "Loan Manager",
+    key: "loans",
+    icon: Wallet,
+    children: [
+      { name: "All Loans", href: "/loans", icon: Wallet },
+      { name: "Lenders", href: "/lenders", icon: Building2 },
+      { name: "Payments", href: "/payments", icon: CreditCard },
+      { name: "EMI Calendar", href: "/emi-calendar", icon: CalendarDays },
+      { name: "Smart Comparison Hub", href: "/loan-comparison", icon: Scale },
+    ],
+  },
+  {
+    name: "Budget & Spending",
+    key: "budget",
+    icon: TrendingUp,
+    children: [
+      { name: "Monthly Expenses", href: "/budget/monthly-expenses", icon: Receipt },
+      { name: "Budget Planner", href: "/budget/planner", icon: TrendingUp },
+      { name: "12-Month Forecast", href: "/budget/overview", icon: BarChart3 },
+      { name: "Spending Tracker", href: "/budget/spending", icon: LineChart },
+    ],
+  },
+  {
+    name: "Financial Intelligence",
+    key: "intelligence",
+    icon: Brain,
+    children: [
+      { name: "Credit Health Center", href: "/credit-health", icon: HeartPulse },
+      { name: "AI Insights & Predictions", href: "/ai/chat", icon: Sparkles },
+      { name: "Debt Optimizer", href: "/budget/debt-optimizer", icon: Calculator },
+    ],
+  },
   {
     name: "Dashboards",
     key: "dashboards",
@@ -49,15 +88,13 @@ const navigation = [
       { name: "EMI Heatmap", href: "/dashboards/emi-heatmap", icon: Flame },
       { name: "Loan Risk Analysis", href: "/dashboards/loan-risk", icon: AlertTriangle },
       { name: "Spending Intelligence", href: "/dashboards/spending", icon: LineChart },
-      { name: "Debt Forecast", href: "/dashboards/debt-forecast", icon: BarChart3 },
       { name: "Savings & Goals", href: "/dashboards/savings-goals", icon: Target },
-      { name: "Bank Balance Trends", href: "/dashboards/bank-trends", icon: PiggyBank },
-      { name: "AI Financial Advisor", href: "/dashboards/ai-advisor", icon: Bot },
-      { name: "Custom Reports", href: "/dashboards/custom-reports", icon: FileBarChart },
+      { name: "Bank Trends", href: "/dashboards/bank-trends", icon: PiggyBank },
+      { name: "AI Advisor", href: "/dashboards/ai-advisor", icon: Bot },
     ],
   },
   {
-    name: "Bank Manager",
+    name: "Banking",
     key: "banking",
     icon: Building2,
     children: [
@@ -66,33 +103,7 @@ const navigation = [
       { name: "Transactions", href: "/expenses", icon: Receipt },
     ],
   },
-  {
-    name: "Loan Manager",
-    key: "loans",
-    icon: Wallet,
-    children: [
-      { name: "Loans", href: "/loans", icon: Wallet },
-      { name: "Lenders", href: "/lenders", icon: Building2 },
-      { name: "Payments", href: "/payments", icon: CreditCard },
-      { name: "EMI Calendar", href: "/emi-calendar", icon: CalendarDays },
-      { name: "Loan Comparison", href: "/loan-comparison", icon: Scale },
-      { name: "Debt Calculator", href: "/budget/debt-optimizer", icon: Scale },
-    ],
-  },
-  {
-    name: "Budget Manager",
-    key: "budget",
-    icon: TrendingUp,
-    children: [
-      { name: "Overview & Forecast", href: "/budget/overview", icon: BarChart3 },
-      { name: "Planner", href: "/budget/planner", icon: TrendingUp },
-      { name: "Spending", href: "/budget/spending", icon: Receipt },
-      { name: "Goals", href: "/budget/savings-goals", icon: TrendingUp },
-      { name: "Reports", href: "/budget/reports-hub", icon: FileText },
-    ],
-  },
-  { name: "FinPath AI", href: "/ai/chat", icon: Sparkles },
-  { name: "Documents", href: "/documents", icon: FileText },
+  { name: "Documents", href: "/documents", icon: FolderOpen },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 

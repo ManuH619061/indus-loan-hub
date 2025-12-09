@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Home, Wallet, Receipt, BarChart3, Sparkles } from "lucide-react";
+import { Home, Wallet, Receipt, BarChart3, Sparkles, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -27,22 +27,22 @@ const NAV_ITEMS: NavItem[] = [
     matchPaths: ["/loans", "/payments", "/lenders", "/emi-calendar", "/loan-comparison"],
   },
   {
-    id: "spending",
-    label: "Spending",
+    id: "budget",
+    label: "Budget",
     icon: Receipt,
     path: "/budget/spending",
-    matchPaths: ["/budget/spending", "/budget/monthly-expenses", "/expenses"],
+    matchPaths: ["/budget", "/expenses"],
   },
   {
-    id: "insights",
+    id: "dashboards",
     label: "Insights",
-    icon: BarChart3,
-    path: "/budget/overview",
-    matchPaths: ["/budget", "/financial-insights", "/insights"],
+    icon: LayoutDashboard,
+    path: "/dashboards/cashflow",
+    matchPaths: ["/dashboards", "/financial-insights", "/insights", "/credit-health"],
   },
   {
     id: "ai",
-    label: "FinPath AI",
+    label: "AI",
     icon: Sparkles,
     path: "/ai/chat",
     matchPaths: ["/ai"],
@@ -59,7 +59,7 @@ export function BottomNavBar() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card/95 backdrop-blur-lg border-t border-border/50 safe-bottom shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card/95 backdrop-blur-lg border-t border-border/50 safe-bottom shadow-[0_-4px_20px_hsl(var(--foreground)/0.05)]">
       <div className="flex items-center justify-around h-16 px-1 max-w-lg mx-auto">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;

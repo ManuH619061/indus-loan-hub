@@ -22,11 +22,15 @@ import {
   CreditCard,
   Receipt,
   FileText,
+  Percent,
+  TrendingDown,
+  Shield,
+  BarChart3,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR } from "@/lib/currency";
-import { format, startOfMonth, endOfMonth, isBefore, isWithinInterval, addDays } from "date-fns";
+import { format, startOfMonth, endOfMonth, isBefore, isWithinInterval, addDays, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
@@ -39,6 +43,14 @@ import {
 } from "@/lib/portfolio-stats";
 import { useDashboardWidgets } from "@/hooks/useDashboardWidgets";
 import { DashboardHeader, DashboardGrid, WidgetSettingsSheet } from "@/components/dashboard";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 interface QuickAction {
   icon: typeof Plus;
@@ -57,10 +69,13 @@ const quickActions: QuickAction[] = [
 const DEFAULT_WIDGETS = [
   { id: "ai-summary", title: "AI Summary" },
   { id: "quick-stats", title: "Quick Stats" },
+  { id: "emi-stress", title: "EMI Stress Ratio" },
+  { id: "alerts-warnings", title: "Alerts & Warnings" },
   { id: "payoff-progress", title: "Loan Payoff Progress" },
+  { id: "emi-timeline", title: "6-Month EMI Timeline" },
   { id: "upcoming-emis", title: "Upcoming EMIs" },
   { id: "quick-actions", title: "Quick Actions" },
-  { id: "overdue-alert", title: "Overdue Alert" },
+  { id: "smart-suggestions", title: "Smart Suggestions" },
   { id: "next-emi", title: "Next EMI Reminder" },
 ];
 
@@ -75,14 +90,20 @@ export default function OverviewDashboard() {
     totalOutstanding: 0,
     activeLoans: 0,
     thisMonthEMI: 0,
+    nextMonthEMI: 0,
+    totalPaid: 0,
     paidThisMonth: 0,
     overdueCount: 0,
     overdueAmount: 0,
     progressPercent: 0,
+    avgInterestRate: 0,
+    emiStressRatio: 0,
+    monthlyIncome: 0,
     nextEMIDate: null as string | null,
     nextEMIAmount: 0,
     nextEMILoan: "",
   });
+  const [emiTimelineData, setEmiTimelineData] = useState<{ month: string; amount: number }[]>([]);
   const [aiSummary, setAiSummary] = useState("");
 
   const {
@@ -157,14 +178,49 @@ export default function OverviewDashboard() {
         });
       });
 
+      // Calculate additional stats
+      const avgInterestRate = loansData.length > 0 
+        ? loansData.reduce((sum, l) => sum + l.interest_rate_apy, 0) / loansData.length 
+        : 0;
+      const totalPaid = loansData.reduce((sum, loan) => {
+        return sum + (loan.amortization_rows?.filter(r => r.is_paid).reduce((s, r) => s + r.scheduled_emi, 0) || 0);
+      }, 0);
+
+      // Get profile for income
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("monthly_income")
+        .eq("id", user.id)
+        .single();
+      const monthlyIncome = profileData?.monthly_income || 100000;
+      const emiStressRatio = (thisMonth.total / monthlyIncome) * 100;
+
+      // Next month EMI calculation
+      const nextMonthStart = startOfMonth(addDays(monthEnd, 1));
+      const nextMonthEnd = endOfMonth(nextMonthStart);
+      let nextMonthEMI = 0;
+      loansData.forEach(loan => {
+        loan.amortization_rows?.filter(r => !r.is_paid).forEach(row => {
+          const dueDate = new Date(row.due_on);
+          if (isWithinInterval(dueDate, { start: nextMonthStart, end: nextMonthEnd })) {
+            nextMonthEMI += row.scheduled_emi;
+          }
+        });
+      });
+
       setStats({
         totalOutstanding,
         activeLoans: loansData.filter(l => l.status === "ACTIVE").length,
         thisMonthEMI: thisMonth.total,
+        nextMonthEMI,
+        totalPaid,
         paidThisMonth,
         overdueCount,
         overdueAmount,
         progressPercent: progress.progressPercent,
+        avgInterestRate,
+        emiStressRatio,
+        monthlyIncome,
         nextEMIDate,
         nextEMIAmount,
         nextEMILoan,

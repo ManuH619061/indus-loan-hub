@@ -52,6 +52,7 @@ import ExpenseAIAdvice from "./pages/ai/ExpenseAIAdvice";
 import LoanEMIAIAdvice from "./pages/ai/LoanEMIAIAdvice";
 import AIChatAdvisor from "./pages/ai/AIChatAdvisor";
 import Search from "./pages/Search";
+import CreditHealthCenter from "./pages/CreditHealthCenter";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PageTransition from "./components/PageTransition";
@@ -123,6 +124,9 @@ function AnimatedRoutes() {
         <Route path="/dashboards/bank-trends" element={<ProtectedRoute><Layout><PageTransition><OverviewDashboard /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/dashboards/ai-advisor" element={<ProtectedRoute><Layout><PageTransition><OverviewDashboard /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/dashboards/custom-reports" element={<ProtectedRoute><Layout><PageTransition><OverviewDashboard /></PageTransition></Layout></ProtectedRoute>} />
+        
+        {/* Credit Health Center */}
+        <Route path="/credit-health" element={<ProtectedRoute><Layout><PageTransition><CreditHealthCenter /></PageTransition></Layout></ProtectedRoute>} />
         
         <Route path="/documents" element={<ProtectedRoute><Layout><PageTransition><Documents /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Layout><PageTransition><Settings /></PageTransition></Layout></ProtectedRoute>} />
