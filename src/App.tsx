@@ -58,6 +58,14 @@ import PageTransition from "./components/PageTransition";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 
+// Dashboard imports
+import {
+  OverviewDashboard,
+  CashflowBudgetDashboard,
+  EMIHeatmapDashboard,
+  LoanRiskDashboard,
+} from "./pages/dashboards";
+
 const queryClient = new QueryClient();
 
 function AnimatedRoutes() {
@@ -104,6 +112,18 @@ function AnimatedRoutes() {
         <Route path="/emi-calendar" element={<ProtectedRoute><Layout><PageTransition><EMICalendar /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/insights" element={<ProtectedRoute><Layout><PageTransition><NewInsights /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/financial-insights" element={<ProtectedRoute><Layout><PageTransition><FinancialInsights /></PageTransition></Layout></ProtectedRoute>} />
+        
+        {/* Dashboard routes */}
+        <Route path="/dashboards/cashflow" element={<ProtectedRoute><Layout><PageTransition><CashflowBudgetDashboard /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/dashboards/emi-heatmap" element={<ProtectedRoute><Layout><PageTransition><EMIHeatmapDashboard /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/dashboards/loan-risk" element={<ProtectedRoute><Layout><PageTransition><LoanRiskDashboard /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/dashboards/spending" element={<ProtectedRoute><Layout><PageTransition><OverviewDashboard /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/dashboards/debt-forecast" element={<ProtectedRoute><Layout><PageTransition><OverviewDashboard /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/dashboards/savings-goals" element={<ProtectedRoute><Layout><PageTransition><OverviewDashboard /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/dashboards/bank-trends" element={<ProtectedRoute><Layout><PageTransition><OverviewDashboard /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/dashboards/ai-advisor" element={<ProtectedRoute><Layout><PageTransition><OverviewDashboard /></PageTransition></Layout></ProtectedRoute>} />
+        <Route path="/dashboards/custom-reports" element={<ProtectedRoute><Layout><PageTransition><OverviewDashboard /></PageTransition></Layout></ProtectedRoute>} />
+        
         <Route path="/documents" element={<ProtectedRoute><Layout><PageTransition><Documents /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Layout><PageTransition><Settings /></PageTransition></Layout></ProtectedRoute>} />
         <Route path="/ai/budget-advice" element={<ProtectedRoute><Layout><PageTransition><BudgetAIAdvice /></PageTransition></Layout></ProtectedRoute>} />
