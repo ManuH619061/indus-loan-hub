@@ -1,73 +1,56 @@
-# Welcome to your Lovable project
+# AI Invoice Accounting
 
-## Project info
+A production-grade, single-user accounting application for processing scanned purchase invoices across
+multiple client companies — OCR extraction, AI ledger/GST/TDS suggestions, and Tally-ready Excel exports.
 
-**URL**: https://lovable.dev/projects/94e8253a-ee7c-4302-a8c5-69612ba1e3e4
+There is no login, registration, or multi-user support by design: this is a personal accounting tool for one
+user managing many client companies, each with completely separate data (invoices, masters, ledger memory,
+processed reports).
 
-## How can I edit this code?
+The application is being built module by module. **Completed so far:**
 
-There are several ways of editing your application.
+- **Client Management** — create, open, edit, archive, and delete client companies; search across all clients.
+  Every client's data (files, database rows) is fully isolated by `client_id`.
+- **Invoice Upload** — drag-and-drop or folder upload of up to 1,000 invoices per client (PDF/JPG/JPEG/PNG),
+  with live progress, thumbnails, page counts, duplicate-safe storage, retry/reprocess, and delete.
 
-**Use Lovable**
+Not yet built: ledger master upload, OCR extraction, AI accounting suggestions, GST/TDS validation,
+duplicate detection, narration generation, the review grid, the full dashboard, and Excel/Tally export.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/94e8253a-ee7c-4302-a8c5-69612ba1e3e4) and start prompting.
+## Architecture
 
-Changes made via Lovable will be committed automatically to this repo.
+```
+backend/    FastAPI + SQLAlchemy + SQLite (Postgres-ready — every query is ORM-based)
+frontend/   React + TypeScript + Vite + Tailwind CSS v4
+```
 
-**Use your preferred IDE**
+Each client's uploaded files live under `backend/storage/clients/<client_id>/`, kept separate from every
+other client. The database uses a single SQLite file with all tables scoped by `client_id`, which keeps
+cross-client queries impossible while remaining a straightforward `DATABASE_URL` swap to PostgreSQL later.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Backend
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```bash
+cd backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --reload --port 8000
+```
 
-Follow these steps:
+Runs the API at `http://localhost:8000` (docs at `/docs`). Run tests with:
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+```bash
+pytest
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Frontend
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+cd frontend
+npm install
+cp .env.example .env
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/94e8253a-ee7c-4302-a8c5-69612ba1e3e4) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Runs the app at `http://localhost:5173`.
