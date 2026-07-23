@@ -26,3 +26,9 @@ class ClientNotFoundError(Exception):
     def __init__(self, client_id: str):
         self.client_id = client_id
         super().__init__(f"Client '{client_id}' was not found.")
+
+
+class LedgerNotFoundError(Exception):
+    def __init__(self, ledger_id: str):
+        self.ledger_id = ledger_id
+        super().__init__(f"Ledger '{ledger_id}' was not found.")

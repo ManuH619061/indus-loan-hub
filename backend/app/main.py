@@ -13,13 +13,15 @@ from app.core.exceptions import (
     ClientNotFoundError,
     FileTooLargeError,
     InvoiceNotFoundError,
+    LedgerNotFoundError,
     UnsupportedFileTypeError,
 )
 from app.core.logging_config import configure_logging
 from app.db.base import Base
 from app.db.session import engine
-from app.models import Client, Invoice  # noqa: F401 - ensure models are registered on Base.metadata
+from app.models import Client, CostCentre, Invoice, Ledger, LedgerGroup, LedgerMasterImport  # noqa: F401 - ensure models are registered on Base.metadata
 from app.services.file_storage import ensure_root_storage_dir
+from app.services.tally_xml_parser import TallyXmlParseError
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -73,6 +75,16 @@ def handle_invoice_not_found(request: Request, exc: InvoiceNotFoundError) -> JSO
 @app.exception_handler(ClientNotFoundError)
 def handle_client_not_found(request: Request, exc: ClientNotFoundError) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(LedgerNotFoundError)
+def handle_ledger_not_found(request: Request, exc: LedgerNotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(TallyXmlParseError)
+def handle_tally_xml_parse_error(request: Request, exc: TallyXmlParseError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
 @app.get("/health")

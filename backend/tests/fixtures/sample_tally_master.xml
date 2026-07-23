@@ -1,0 +1,71 @@
+<ENVELOPE>
+ <HEADER>
+  <TALLYREQUEST>Export Data</TALLYREQUEST>
+ </HEADER>
+ <BODY>
+  <EXPORTDATA>
+   <REQUESTDESC>
+    <REPORTNAME>List of Accounts</REPORTNAME>
+   </REQUESTDESC>
+   <REQUESTDATA>
+    <TALLYMESSAGE xmlns:UDF="TallyUDF">
+     <GROUP NAME="Office Expenses" RESERVEDNAME="">
+      <PARENT>Indirect Expenses</PARENT>
+     </GROUP>
+     <LEDGER NAME="ABC Traders" RESERVEDNAME="">
+      <PARENT>Sundry Creditors</PARENT>
+      <GSTREGISTRATIONTYPE>Regular</GSTREGISTRATIONTYPE>
+      <PARTYGSTIN>27ABCDE1234F1Z5</PARTYGSTIN>
+      <INCOMETAXNUMBER>ABCDE1234F</INCOMETAXNUMBER>
+      <OPENINGBALANCE>-15000</OPENINGBALANCE>
+      <ISBILLWISEON>Yes</ISBILLWISEON>
+     </LEDGER>
+     <LEDGER NAME="XYZ Corp" RESERVEDNAME="">
+      <PARENT>Sundry Debtors</PARENT>
+      <PARTYGSTIN>29XYZAB5678G1Z3</PARTYGSTIN>
+      <OPENINGBALANCE>25000</OPENINGBALANCE>
+     </LEDGER>
+     <LEDGER NAME="HDFC Bank Current Account" RESERVEDNAME="">
+      <PARENT>Bank Accounts</PARENT>
+      <OPENINGBALANCE>500000</OPENINGBALANCE>
+     </LEDGER>
+     <LEDGER NAME="Cash" RESERVEDNAME="">
+      <PARENT>Cash-in-hand</PARENT>
+      <OPENINGBALANCE>10000</OPENINGBALANCE>
+     </LEDGER>
+     <LEDGER NAME="CGST" RESERVEDNAME="">
+      <PARENT>Duties &amp; Taxes</PARENT>
+     </LEDGER>
+     <LEDGER NAME="SGST" RESERVEDNAME="">
+      <PARENT>Duties &amp; Taxes</PARENT>
+     </LEDGER>
+     <LEDGER NAME="IGST" RESERVEDNAME="">
+      <PARENT>Duties &amp; Taxes</PARENT>
+     </LEDGER>
+     <LEDGER NAME="TDS on Professional Charges" RESERVEDNAME="">
+      <PARENT>Duties &amp; Taxes</PARENT>
+     </LEDGER>
+     <LEDGER NAME="Office Expenses" RESERVEDNAME="">
+      <PARENT>Office Expenses</PARENT>
+     </LEDGER>
+     <LEDGER NAME="Professional Charges" RESERVEDNAME="">
+      <PARENT>Indirect Expenses</PARENT>
+     </LEDGER>
+     <LEDGER NAME="Motor Car Insurance" RESERVEDNAME="">
+      <PARENT>Indirect Expenses</PARENT>
+     </LEDGER>
+     <LEDGER NAME="Domestic Sales" RESERVEDNAME="">
+      <PARENT>Sales Accounts</PARENT>
+     </LEDGER>
+     <LEDGER NAME="Office Building" RESERVEDNAME="">
+      <PARENT>Fixed Assets</PARENT>
+      <OPENINGBALANCE>2000000</OPENINGBALANCE>
+     </LEDGER>
+     <COSTCENTRE NAME="Mumbai Branch" RESERVEDNAME="">
+      <CATEGORY>Primary Cost Category</CATEGORY>
+     </COSTCENTRE>
+    </TALLYMESSAGE>
+   </REQUESTDATA>
+  </EXPORTDATA>
+ </BODY>
+</ENVELOPE>

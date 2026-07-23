@@ -3,6 +3,7 @@ import { ClientShell } from "@/components/layout/ClientShell";
 import { ClientDashboardPage } from "@/pages/ClientDashboardPage";
 import { ClientWorkspacePage } from "@/pages/ClientWorkspacePage";
 import { UploadInvoicesPage } from "@/pages/UploadInvoicesPage";
+import { UploadLedgerMasterPage } from "@/pages/UploadLedgerMasterPage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
 
 function App() {
@@ -13,7 +14,7 @@ function App() {
         <Route path="/clients/:clientId" element={<ClientShell />}>
           <Route index element={<ClientWorkspacePage />} />
           <Route path="upload" element={<UploadInvoicesPage />} />
-          <Route path="masters" element={<PlaceholderPage />} />
+          <Route path="masters" element={<UploadLedgerMasterPage />} />
           <Route path="process" element={<PlaceholderPage />} />
           <Route path="review" element={<PlaceholderPage />} />
           <Route path="export" element={<PlaceholderPage />} />
