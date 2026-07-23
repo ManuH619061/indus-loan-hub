@@ -1,4 +1,5 @@
 import { FileText, RotateCcw, Trash2, ZoomIn } from "lucide-react";
+import { resolveApiUrl } from "@/api/invoices";
 import { ProgressBar } from "@/components/common/ProgressBar";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { formatBytes } from "@/lib/formatBytes";
@@ -16,7 +17,9 @@ export function FileQueueRow({ item, onRetry, onRemove, onPreview }: FileQueueRo
   const filename = item.file?.name ?? item.invoice?.original_filename ?? "Unknown file";
   const size = item.file?.size ?? item.invoice?.file_size_bytes ?? 0;
   const pageCount = item.invoice?.page_count ?? null;
-  const thumbnailSrc = item.invoice?.thumbnail_url ?? item.localPreviewUrl;
+  const thumbnailSrc = item.invoice?.thumbnail_url
+    ? resolveApiUrl(item.invoice.thumbnail_url)
+    : item.localPreviewUrl;
   const canPreview = item.status === "success" || (item.status === "error" && item.invoice);
 
   return (

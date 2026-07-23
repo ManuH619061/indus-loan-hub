@@ -1,4 +1,4 @@
-import { apiClient } from "@/api/client";
+import { API_ORIGIN, apiClient } from "@/api/client";
 import type { Invoice, InvoiceListResponse, InvoiceStatsResponse } from "@/types/invoice";
 
 interface UploadOptions {
@@ -42,7 +42,9 @@ export async function reprocessInvoice(clientId: string, invoiceId: string): Pro
   return response.data;
 }
 
+/** Resolves a server-provided path (e.g. invoice.thumbnail_url, already
+ * prefixed with /api/v1/...) against the API's origin, for use directly in
+ * <img src> / <iframe src> / href attributes. */
 export function resolveApiUrl(path: string): string {
-  const base = apiClient.defaults.baseURL ?? "";
-  return `${base.replace(/\/$/, "")}${path}`;
+  return `${API_ORIGIN}${path}`;
 }
